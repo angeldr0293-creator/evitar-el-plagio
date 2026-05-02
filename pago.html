@@ -1,0 +1,735 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pago del plan - Originalidad Acad&eacute;mica</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #f8faf9;
+      color: #071832;
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.6;
+    }
+
+    .container {
+      width: min(90%, 1180px);
+      margin: 0 auto;
+    }
+
+    .site-header {
+      background: rgba(255,255,255,0.94);
+      border-bottom: 1px solid #dfe6ea;
+      box-shadow: 0 8px 24px rgba(7,24,50,0.04);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(12px);
+    }
+
+    .nav {
+      min-height: 86px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: #071832;
+    }
+
+    .brand-mark {
+      width: 46px;
+      height: 46px;
+      color: #071832;
+      display: inline-flex;
+    }
+
+    .brand-title {
+      display: block;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .brand-subtitle {
+      display: block;
+      color: #475569;
+      font-size: 15px;
+      margin-top: 2px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+      font-weight: 700;
+    }
+
+    .nav-links a {
+      color: #071832;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .nav-button,
+    .btn-primary {
+      background: #071832;
+      color: white;
+      box-shadow: 0 12px 24px rgba(7,24,50,0.18);
+    }
+
+    .nav-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      min-height: 52px;
+      padding: 14px 22px;
+      color: white !important;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .hero {
+      background:
+        radial-gradient(circle at 76% 18%, rgba(223,233,232,0.72), transparent 32%),
+        linear-gradient(115deg, #fbfaf7 0%, #f7faf9 58%, #edf4f4 100%);
+      padding: 66px 0 54px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      background: #edf6f3;
+      border: 1px solid #cfe2dc;
+      border-radius: 999px;
+      color: #11493f;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      margin-bottom: 22px;
+      padding: 8px 15px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      color: #071832;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(38px, 5vw, 62px);
+      line-height: 1.06;
+      margin-bottom: 18px;
+      max-width: 760px;
+    }
+
+    .hero p {
+      color: #26364d;
+      font-size: 18px;
+      max-width: 760px;
+    }
+
+    main {
+      padding: 70px 0;
+    }
+
+    .checkout-layout {
+      display: grid;
+      grid-template-columns: 1fr 390px;
+      gap: 28px;
+      align-items: start;
+    }
+
+    .panel,
+    .summary {
+      background: white;
+      border: 1px solid #e2e9ec;
+      border-radius: 22px;
+      box-shadow: 0 16px 38px rgba(7,24,50,0.06);
+    }
+
+    .panel {
+      padding: 32px;
+    }
+
+    .summary {
+      padding: 28px;
+      position: sticky;
+      top: 110px;
+    }
+
+    .section-heading {
+      margin-bottom: 24px;
+    }
+
+    .section-heading h2,
+    .summary h2 {
+      color: #071832;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 28px;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+
+    .section-heading p,
+    .summary p {
+      color: #475569;
+    }
+
+    .benefits {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      list-style: none;
+      margin: 24px 0 32px;
+    }
+
+    .benefits li,
+    .detail-card {
+      background: #f8faf9;
+      border: 1px solid #e8eef1;
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .benefits li {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 10px;
+      color: #26364d;
+    }
+
+    .benefits li::before {
+      content: "✓";
+      color: #2b7a68;
+      font-weight: 900;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 32px;
+    }
+
+    .detail-card span {
+      color: #64748b;
+      display: block;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .detail-card strong {
+      color: #071832;
+      display: block;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 22px;
+      line-height: 1.15;
+    }
+
+    .payment-methods {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .method {
+      border: 1px solid #d8e0e5;
+      border-radius: 16px;
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      padding: 16px;
+      transition: 0.2s ease;
+    }
+
+    .method:hover {
+      border-color: #2b7a68;
+      transform: translateY(-2px);
+    }
+
+    .method input {
+      accent-color: #2b7a68;
+      margin-top: 4px;
+    }
+
+    .method strong {
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .method span {
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      color: #26364d;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    input {
+      width: 100%;
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      color: #071832;
+      font-size: 15px;
+      outline: none;
+      padding: 13px 14px;
+      transition: 0.2s ease;
+    }
+
+    input:focus {
+      border-color: #2b7a68;
+      box-shadow: 0 0 0 4px rgba(43,122,104,0.12);
+    }
+
+    .divider {
+      background: #e8eef1;
+      height: 1px;
+      margin: 28px 0;
+    }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 800;
+      min-height: 54px;
+      padding: 14px 22px;
+      text-decoration: none;
+      transition: 0.2s ease;
+      width: 100%;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: white;
+      border-color: #d8e0e5;
+      color: #071832;
+      margin-top: 12px;
+    }
+
+    .price {
+      color: #071832;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 46px;
+      font-weight: 700;
+      margin: 12px 0 8px;
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 13px;
+      list-style: none;
+      margin: 22px 0;
+    }
+
+    .summary-list li {
+      color: #475569;
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 10px;
+    }
+
+    .summary-list li::before {
+      content: "✓";
+      color: #2b7a68;
+      font-weight: 900;
+    }
+
+    .secure-note {
+      background: #edf6f3;
+      border: 1px solid #cfe2dc;
+      border-radius: 16px;
+      color: #11493f;
+      font-size: 14px;
+      padding: 14px;
+    }
+
+    footer {
+      background: white;
+      border-top: 1px solid #e2e9ec;
+      color: #475569;
+      font-size: 14px;
+      padding: 26px 0;
+      text-align: center;
+    }
+
+    svg {
+      width: 24px;
+      height: 24px;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    .brand-mark svg {
+      width: 46px;
+      height: 46px;
+    }
+
+    @media (max-width: 980px) {
+      .nav,
+      .nav-links {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .checkout-layout,
+      .benefits,
+      .details-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .summary {
+        position: static;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .nav {
+        min-height: auto;
+        padding: 18px 0;
+      }
+
+      .brand-title {
+        font-size: 21px;
+      }
+
+      .brand-subtitle,
+      .nav-links a {
+        font-size: 14px;
+      }
+
+      .nav-links {
+        gap: 12px;
+      }
+
+      .nav-button,
+      .btn {
+        width: 100%;
+      }
+
+      .hero {
+        padding: 46px 0;
+      }
+
+      main {
+        padding: 46px 0;
+      }
+
+      .panel,
+      .summary {
+        padding: 22px;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="nav">
+        <a href="index.html" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <path d="M24 4 40 10v12c0 11-6.8 18.2-16 22C14.8 40.2 8 33 8 22V10l16-6Z"></path>
+              <path d="M24 13v22"></path>
+              <path d="m16 23 5 5 11-12"></path>
+            </svg>
+          </span>
+          <span>
+            <span class="brand-title">Originalidad Acad&eacute;mica</span>
+            <span class="brand-subtitle">Escribe con integridad. Destaca con originalidad.</span>
+          </span>
+        </a>
+
+        <div class="nav-links">
+          <a href="index.html#servicios">Qu&eacute; hacemos</a>
+          <a href="index.html#proceso">C&oacute;mo ayudamos</a>
+          <a href="precios.html">Precios</a>
+          <a href="panel.html">Mi panel</a>
+          <a href="solicitar.html" class="nav-button">Solicitar revisi&oacute;n</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <span class="badge">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+        Pago seguro del plan
+      </span>
+      <h1 id="hero-title">Confirma tu plan antes de continuar</h1>
+      <p id="hero-text">Revisa los beneficios incluidos, completa los datos de pago y luego contin&uacute;a con tu solicitud.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="container checkout-layout">
+      <section class="panel">
+        <div class="section-heading">
+          <h2 id="plan-name">Plan seleccionado</h2>
+          <p id="plan-description">Estos son los beneficios incluidos en tu paquete.</p>
+        </div>
+
+        <div class="details-grid">
+          <div class="detail-card">
+            <span>Precio</span>
+            <strong id="plan-price">$0.00</strong>
+          </div>
+          <div class="detail-card">
+            <span>Trabajos</span>
+            <strong id="plan-works">-</strong>
+          </div>
+          <div class="detail-card">
+            <span>P&aacute;ginas</span>
+            <strong id="plan-pages">-</strong>
+          </div>
+        </div>
+
+        <h2>Beneficios incluidos</h2>
+        <ul class="benefits" id="benefits-list"></ul>
+
+        <div class="divider"></div>
+
+        <div class="section-heading">
+          <h2>Datos para realizar el pago</h2>
+          <p>Esta pantalla deja listo el flujo visual de pago. Cuando conectes una pasarela real, estos campos pueden enviarse al proveedor de pagos.</p>
+        </div>
+
+        <form id="payment-form">
+          <div class="payment-methods" aria-label="M&eacute;todos de pago">
+            <label class="method">
+              <input type="radio" name="payment-method" value="tarjeta" checked />
+              <span>
+                <strong>Tarjeta de cr&eacute;dito o d&eacute;bito</strong>
+                <span>Visa, Mastercard u otra tarjeta compatible.</span>
+              </span>
+            </label>
+
+            <label class="method">
+              <input type="radio" name="payment-method" value="transferencia" />
+              <span>
+                <strong>Transferencia bancaria</strong>
+                <span>Recibe instrucciones para completar el pago manualmente.</span>
+              </span>
+            </label>
+          </div>
+
+          <div class="form-grid">
+            <div class="field full">
+              <label for="card-name">Nombre del titular</label>
+              <input type="text" id="card-name" placeholder="Nombre como aparece en la tarjeta" required />
+            </div>
+
+            <div class="field full">
+              <label for="card-number">N&uacute;mero de tarjeta</label>
+              <input type="text" id="card-number" inputmode="numeric" maxlength="19" placeholder="0000 0000 0000 0000" required />
+            </div>
+
+            <div class="field">
+              <label for="card-expiry">Vencimiento</label>
+              <input type="text" id="card-expiry" placeholder="MM/AA" required />
+            </div>
+
+            <div class="field">
+              <label for="card-cvv">CVV</label>
+              <input type="text" id="card-cvv" inputmode="numeric" maxlength="4" placeholder="123" required />
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <button class="btn btn-primary" type="submit">Pagar y continuar con la solicitud</button>
+          <a id="change-plan" class="btn btn-secondary" href="precios.html">Cambiar de plan</a>
+        </form>
+      </section>
+
+      <aside class="summary">
+        <h2>Resumen del pedido</h2>
+        <p>Vas a pagar el paquete seleccionado y luego podr&aacute;s enviar los archivos de tu trabajo.</p>
+        <div class="price" id="summary-price">$0.00</div>
+        <p id="summary-name">Plan seleccionado</p>
+
+        <ul class="summary-list" id="summary-list"></ul>
+
+        <div class="secure-note">
+          Tu solicitud quedar&aacute; asociada al plan elegido. Si todav&iacute;a no tienes cuenta, primero se te pedir&aacute; crear una o iniciar sesi&oacute;n.
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      Originalidad Acad&eacute;mica - Pago de planes para textos m&aacute;s humanos, claros y responsables
+    </div>
+  </footer>
+
+  <script src="auth.js"></script>
+  <script>
+    if (isTeacherUser()) {
+      window.location.replace("profesor.html");
+    }
+
+    const plans = {
+      inicial: {
+        name: "Paquete Inicial",
+        price: "$14.99",
+        works: "5 trabajos",
+        pages: "Hasta 5 por trabajo",
+        description: "Ideal para estudiantes que necesitan revisar varios trabajos cortos con una intervenci&oacute;n clara y cuidada.",
+        benefits: [
+          "Incluye 5 trabajos acad&eacute;micos.",
+          "Hasta 5 p&aacute;ginas por trabajo.",
+          "Revisi&oacute;n de similitud general.",
+          "Redacci&oacute;n m&aacute;s clara y natural.",
+          "Humanizaci&oacute;n b&aacute;sica del contenido.",
+          "Entrega est&aacute;ndar."
+        ]
+      },
+      academico: {
+        name: "Paquete Acad&eacute;mico",
+        price: "$21.99",
+        works: "5 trabajos",
+        pages: "Hasta 10 por trabajo",
+        description: "La opci&oacute;n m&aacute;s equilibrada para trabajos largos que necesitan humanizaci&oacute;n y reducci&oacute;n de similitud.",
+        benefits: [
+          "Incluye 5 trabajos acad&eacute;micos.",
+          "Hasta 10 p&aacute;ginas por trabajo.",
+          "Revisi&oacute;n m&aacute;s detallada de similitud.",
+          "Humanizaci&oacute;n de texto generado por IA.",
+          "Mejora de coherencia y estructura.",
+          "Revisi&oacute;n m&aacute;s profunda del estilo acad&eacute;mico."
+        ]
+      },
+      premium: {
+        name: "Paquete Premium",
+        price: "$36.99",
+        works: "10 trabajos",
+        pages: "Hasta 10 por trabajo",
+        description: "Perfecto para quienes manejan m&aacute;s entregas y quieren una soluci&oacute;n completa para varios documentos.",
+        benefits: [
+          "Incluye 10 trabajos acad&eacute;micos.",
+          "Hasta 10 p&aacute;ginas por trabajo.",
+          "Intervenci&oacute;n avanzada del contenido.",
+          "Humanizaci&oacute;n completa del documento.",
+          "Apoyo con citas y referencias.",
+          "Acompa&ntilde;amiento m&aacute;s completo para varias entregas."
+        ]
+      }
+    };
+
+    function decodeHTML(value) {
+      const textarea = document.createElement("textarea");
+      textarea.innerHTML = value;
+      return textarea.value;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const selectedPlanKey = plans[params.get("plan")] ? params.get("plan") : "academico";
+    const selectedPlan = plans[selectedPlanKey];
+    const requestUrl = `solicitar.html?plan=${encodeURIComponent(selectedPlanKey)}`;
+
+    document.title = decodeHTML(`Pago ${selectedPlan.name} - Originalidad Acad&eacute;mica`);
+    document.getElementById("hero-title").textContent = decodeHTML(`Confirma tu ${selectedPlan.name}`);
+    document.getElementById("hero-text").textContent = decodeHTML(selectedPlan.description);
+    document.getElementById("plan-name").textContent = decodeHTML(selectedPlan.name);
+    document.getElementById("plan-description").textContent = decodeHTML(selectedPlan.description);
+    document.getElementById("plan-price").textContent = selectedPlan.price;
+    document.getElementById("plan-works").textContent = selectedPlan.works;
+    document.getElementById("plan-pages").textContent = selectedPlan.pages;
+    document.getElementById("summary-price").textContent = selectedPlan.price;
+    document.getElementById("summary-name").textContent = decodeHTML(selectedPlan.name);
+
+    const benefitsList = document.getElementById("benefits-list");
+    const summaryList = document.getElementById("summary-list");
+
+    selectedPlan.benefits.forEach((benefit) => {
+      const item = document.createElement("li");
+      item.textContent = decodeHTML(benefit);
+      benefitsList.appendChild(item);
+    });
+
+    [selectedPlan.works, selectedPlan.pages, "Plan guardado para tu solicitud"].forEach((itemText) => {
+      const item = document.createElement("li");
+      item.textContent = decodeHTML(itemText);
+      summaryList.appendChild(item);
+    });
+
+    const paymentMethodInputs = document.querySelectorAll("input[name='payment-method']");
+    const cardFields = ["card-name", "card-number", "card-expiry", "card-cvv"].map((id) => document.getElementById(id));
+
+    function syncPaymentFields() {
+      const selectedMethod = document.querySelector("input[name='payment-method']:checked").value;
+      const requiresCard = selectedMethod === "tarjeta";
+
+      cardFields.forEach((field) => {
+        field.required = requiresCard;
+        field.disabled = !requiresCard;
+      });
+    }
+
+    paymentMethodInputs.forEach((input) => input.addEventListener("change", syncPaymentFields));
+    syncPaymentFields();
+
+    document.getElementById("payment-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      sessionStorage.setItem("oa_selected_plan", selectedPlanKey);
+      sessionStorage.setItem("oa_payment_token", `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+      registerPendingSubscription();
+      window.location.href = requestUrl;
+    });
+  </script>
+</body>
+</html>
+
+

@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Administración - Originalidad Académica</title>
+  <link rel="stylesheet" href="notifications.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #f7faf9;
+      color: #071832;
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.6;
+    }
+
+    .container {
+      width: min(92%, 1240px);
+      margin: 0 auto;
+    }
+
+    .site-header {
+      background: rgba(255,255,255,0.95);
+      border-bottom: 1px solid #dfe6ea;
+      box-shadow: 0 8px 24px rgba(7,24,50,0.04);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(12px);
+    }
+
+    .nav {
+      min-height: 86px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: #071832;
+      text-decoration: none;
+    }
+
+    .brand-mark {
+      width: 46px;
+      height: 46px;
+      color: #071832;
+      display: inline-flex;
+    }
+
+    .brand-title {
+      display: block;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .brand-subtitle {
+      color: #475569;
+      display: block;
+      font-size: 15px;
+      margin-top: 2px;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn,
+    .ghost-btn {
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      min-height: 48px;
+      padding: 12px 18px;
+      text-decoration: none;
+      transition: 0.2s ease;
+    }
+
+    .btn {
+      background: #071832;
+      border: 1px solid transparent;
+      color: white;
+      box-shadow: 0 12px 24px rgba(7,24,50,0.16);
+    }
+
+    .ghost-btn {
+      background: white;
+      border: 1px solid #d8e0e5;
+      color: #071832;
+    }
+
+    main {
+      padding: 48px 0 72px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #071832, #123c43);
+      border-radius: 22px;
+      color: white;
+      margin-bottom: 24px;
+      padding: 34px;
+    }
+
+    .hero h1 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(34px, 4vw, 52px);
+      line-height: 1.08;
+      margin-bottom: 10px;
+    }
+
+    .hero p {
+      color: #dbe7e6;
+      max-width: 780px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat,
+    .panel,
+    .client-folder,
+    .detail-card,
+    .empty-state,
+    .work-card {
+      background: white;
+      border: 1px solid #e2e9ec;
+      border-radius: 18px;
+      box-shadow: 0 14px 34px rgba(7,24,50,0.05);
+    }
+
+    .stat {
+      padding: 20px;
+    }
+
+    .stat strong {
+      display: block;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 34px;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat span,
+    .muted {
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .panel {
+      padding: 24px;
+    }
+
+    .admin-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .admin-tab {
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 999px;
+      color: #071832;
+      cursor: pointer;
+      font-weight: 800;
+      min-height: 42px;
+      padding: 9px 16px;
+    }
+
+    .admin-tab.active {
+      background: #071832;
+      border-color: #071832;
+      color: white;
+    }
+
+    .admin-section[hidden] {
+      display: none;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .panel h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 28px;
+      line-height: 1.2;
+      margin-bottom: 6px;
+    }
+
+    .panel p,
+    .empty-state p {
+      color: #475569;
+    }
+
+    .filter {
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      color: #071832;
+      font-size: 15px;
+      min-height: 46px;
+      padding: 10px 12px;
+      width: min(100%, 320px);
+    }
+
+    .admin-form {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr) auto auto;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .admin-form input {
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      color: #071832;
+      font-size: 15px;
+      min-height: 48px;
+      padding: 10px 12px;
+      width: 100%;
+    }
+
+    .teacher-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .teacher-row {
+      align-items: center;
+      background: #f8faf9;
+      border: 1px solid #e8eef1;
+      border-radius: 14px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      padding: 14px;
+    }
+
+    .credential-box {
+      background: #edf6f3;
+      border: 1px solid #cfe2dc;
+      border-radius: 14px;
+      color: #11493f;
+      display: none;
+      font-size: 14px;
+      margin-top: 14px;
+      padding: 14px;
+    }
+
+    .credential-box.show {
+      display: block;
+    }
+
+    .credential-box strong {
+      color: #071832;
+    }
+
+    .clients {
+      display: grid;
+      gap: 14px;
+    }
+
+    .alert-banner {
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+      border-radius: 16px;
+      color: #9f1239;
+      font-weight: 800;
+      margin-bottom: 18px;
+      padding: 14px 16px;
+    }
+
+    .alert-banner.ok {
+      background: #edf6f3;
+      border-color: #cfe2dc;
+      color: #11493f;
+    }
+
+    .folder-summary {
+      align-items: center;
+      cursor: pointer;
+      display: grid;
+      grid-template-columns: 44px 1.4fr 1fr 0.8fr auto;
+      gap: 14px;
+      list-style: none;
+      padding: 18px;
+    }
+
+    .folder-summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .folder-icon {
+      align-items: center;
+      background: #edf6f3;
+      border: 1px solid #cfe2dc;
+      border-radius: 12px;
+      color: #11493f;
+      display: inline-flex;
+      height: 44px;
+      justify-content: center;
+      width: 44px;
+    }
+
+    .folder-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .client-name {
+      font-size: 18px;
+      line-height: 1.2;
+      margin-bottom: 2px;
+    }
+
+    .pill {
+      background: #f8faf9;
+      border: 1px solid #e1e8eb;
+      border-radius: 999px;
+      color: #26364d;
+      display: inline-flex;
+      font-size: 13px;
+      font-weight: 800;
+      justify-content: center;
+      padding: 7px 10px;
+      white-space: nowrap;
+    }
+
+    .pill.active {
+      background: #edf6f3;
+      border-color: #cfe2dc;
+      color: #11493f;
+    }
+
+    .folder-arrow {
+      color: #64748b;
+      font-size: 22px;
+      line-height: 1;
+      transition: 0.2s ease;
+    }
+
+    .client-folder[open] .folder-arrow {
+      transform: rotate(90deg);
+    }
+
+    .folder-body {
+      border-top: 1px solid #e8eef1;
+      padding: 18px;
+    }
+
+    .subfolder {
+      border: 1px solid #e2e9ec;
+      border-radius: 16px;
+      margin-top: 12px;
+      overflow: hidden;
+    }
+
+    .subfolder summary {
+      align-items: center;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      list-style: none;
+      padding: 14px 16px;
+    }
+
+    .subfolder summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .subfolder-body {
+      border-top: 1px solid #e8eef1;
+      padding: 14px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .detail-card {
+      box-shadow: none;
+      padding: 14px;
+    }
+
+    .detail-card strong {
+      color: #071832;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .section-title {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 22px;
+      margin: 20px 0 10px;
+    }
+
+    .subscription-list,
+    .works-list,
+    .work-board {
+      display: grid;
+      gap: 12px;
+    }
+
+    .work-board {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .work-column {
+      background: #f8faf9;
+      border: 1px solid #e8eef1;
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .work-column h3 {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+
+    .work-mini-card {
+      background: white;
+      border: 1px solid #e2e9ec;
+      border-radius: 14px;
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+    }
+
+    .work-mini-card + .work-mini-card {
+      margin-top: 10px;
+    }
+
+    .work-mini-card strong {
+      display: block;
+    }
+
+    .subscription-row,
+    .work-card {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr auto;
+      padding: 14px;
+    }
+
+    .work-card {
+      align-items: center;
+    }
+
+    .work-details {
+      grid-column: 1 / -1;
+    }
+
+    .subscription-row {
+      background: #f8faf9;
+      border: 1px solid #e8eef1;
+      border-radius: 14px;
+    }
+
+    .work-meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .meta-item {
+      background: #f8faf9;
+      border: 1px solid #e8eef1;
+      border-radius: 12px;
+      color: #475569;
+      font-size: 14px;
+      padding: 12px;
+      min-width: 0;
+    }
+
+    .meta-item strong {
+      color: #071832;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .notes {
+      grid-column: 1 / -1;
+      white-space: pre-wrap;
+    }
+
+    .status-select {
+      align-self: start;
+      background: #edf6f3;
+      border: 1px solid #cfe2dc;
+      border-radius: 999px;
+      color: #11493f;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 8px 12px;
+    }
+
+    .assign-select {
+      align-self: start;
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      color: #071832;
+      font-size: 14px;
+      font-weight: 800;
+      padding: 9px 12px;
+    }
+
+    .empty-state {
+      box-shadow: none;
+      padding: 20px;
+      text-align: center;
+    }
+
+    svg {
+      width: 46px;
+      height: 46px;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    @media (max-width: 980px) {
+      .nav,
+      .nav-actions,
+      .panel-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .stats,
+      .detail-grid,
+      .admin-form,
+      .work-board,
+      .work-meta {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .folder-summary {
+        grid-template-columns: 44px 1fr;
+      }
+
+      .folder-summary > .pill,
+      .folder-arrow {
+        grid-column: 2;
+        justify-self: start;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .nav {
+        min-height: auto;
+        padding: 18px 0;
+      }
+
+      .nav-actions,
+      .btn,
+      .ghost-btn,
+      .filter {
+        width: 100%;
+      }
+
+      .hero,
+      .panel {
+        padding: 22px;
+      }
+
+      .stats,
+      .detail-grid,
+      .admin-form,
+      .teacher-row,
+      .subscription-row,
+      .work-card,
+      .work-board,
+      .work-meta {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="nav">
+        <a href="admin.html" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <path d="M24 4 40 10v12c0 11-6.8 18.2-16 22C14.8 40.2 8 33 8 22V10l16-6Z"></path>
+              <path d="M17 24h14"></path>
+              <path d="M24 17v14"></path>
+            </svg>
+          </span>
+          <span>
+            <span class="brand-title">Originalidad Académica</span>
+            <span class="brand-subtitle">Panel privado de administración</span>
+          </span>
+        </a>
+
+        <div class="nav-actions">
+          <a class="ghost-btn" href="index.html">Ver sitio</a>
+          <button class="ghost-btn" type="button" onclick="logout()">Cerrar sesión</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <section class="hero">
+        <h1>Clientes y suscripciones</h1>
+        <p>Vista privada organizada por cliente para revisar plan activo, vencimiento, historial de suscripciones y trabajos enviados.</p>
+      </section>
+
+      <section class="stats">
+        <article class="stat">
+          <strong id="total-clients">0</strong>
+          <span>Clientes registrados</span>
+        </article>
+        <article class="stat">
+          <strong id="active-clients">0</strong>
+          <span>Clientes activos</span>
+        </article>
+        <article class="stat">
+          <strong id="total-subscriptions">0</strong>
+          <span>Suscripciones</span>
+        </article>
+        <article class="stat">
+          <strong id="total-works">0</strong>
+          <span>Trabajos enviados</span>
+        </article>
+      </section>
+
+      <div id="admin-alert"></div>
+
+      <div class="admin-tabs" aria-label="Secciones de administración">
+        <button class="admin-tab active" type="button" data-admin-view="clients">Clientes</button>
+        <button class="admin-tab" type="button" data-admin-view="works">Trabajos</button>
+        <button class="admin-tab" type="button" data-admin-view="teachers">Profesores</button>
+      </div>
+
+      <section id="admin-teachers-section" class="panel admin-section" hidden>
+        <div class="panel-head">
+          <div>
+            <h2>Profesores</h2>
+            <p>Crea las cuentas internas de profesores y luego asigna trabajos desde cada carpeta de cliente.</p>
+          </div>
+        </div>
+
+        <form id="teacher-form" class="admin-form">
+          <input id="teacher-name" type="text" placeholder="Nombre del profesor" required />
+          <input id="teacher-email" type="email" placeholder="Correo" required />
+          <input id="teacher-phone" type="tel" placeholder="Teléfono" />
+          <input id="teacher-password" type="text" placeholder="Contraseña temporal" minlength="6" required />
+          <button id="generate-password" class="ghost-btn" type="button">Generar clave</button>
+          <button class="btn" type="submit">Crear profesor</button>
+        </form>
+
+        <div id="teacher-message" class="muted"></div>
+        <div id="teacher-credentials" class="credential-box"></div>
+        <div id="teacher-list" class="teacher-list"></div>
+      </section>
+
+      <section id="admin-works-section" class="panel admin-section" hidden>
+        <div class="panel-head">
+          <div>
+            <h2>Trabajos</h2>
+            <p>Vista rápida por estado para revisar asignación, proceso y entregas sin abrir cada carpeta.</p>
+          </div>
+        </div>
+        <div id="admin-work-board" class="work-board"></div>
+      </section>
+
+      <section id="admin-clients-section" class="panel admin-section">
+        <div class="panel-head">
+          <div>
+            <h2>Carpetas de clientes</h2>
+            <p>Cada carpeta muestra el resumen afuera. Al abrirla ves suscripción, vencimiento, historial y trabajos.</p>
+          </div>
+          <input id="client-search" class="filter" type="search" placeholder="Buscar por nombre o correo" />
+        </div>
+
+        <div id="clients-list" class="clients"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="auth.js"></script>
+  <script src="notifications.js"></script>
+  <script>
+    const user = getCurrentUser();
+
+    if (!isAdminUser(user)) {
+      window.location.href = `registro.html?next=${encodeURIComponent("admin.html")}`;
+    }
+
+    const packageNames = {
+      inicial: "Inicial",
+      academico: "Académico",
+      premium: "Premium"
+    };
+
+    const statusOptions = ["Recibida", "En proceso", "Lista", "Entregada"];
+    const clientsList = document.getElementById("clients-list");
+    const clientSearch = document.getElementById("client-search");
+    const adminAlert = document.getElementById("admin-alert");
+    const teacherForm = document.getElementById("teacher-form");
+    const teacherList = document.getElementById("teacher-list");
+    const teacherMessage = document.getElementById("teacher-message");
+    const teacherCredentials = document.getElementById("teacher-credentials");
+    const teacherPassword = document.getElementById("teacher-password");
+    const generatePassword = document.getElementById("generate-password");
+    const adminTabs = document.querySelectorAll(".admin-tab");
+    const adminSections = {
+      clients: document.getElementById("admin-clients-section"),
+      works: document.getElementById("admin-works-section"),
+      teachers: document.getElementById("admin-teachers-section")
+    };
+    const adminWorkBoard = document.getElementById("admin-work-board");
+    let activeAdminView = "clients";
+
+    function escapeHTML(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function formatDate(value) {
+      if (!value) {
+        return "-";
+      }
+
+      return new Intl.DateTimeFormat("es", {
+        year: "numeric",
+        month: "short",
+        day: "numeric"
+      }).format(new Date(value));
+    }
+
+    function formatFileSize(bytes) {
+      if (!bytes) {
+        return "";
+      }
+
+      return bytes < 1048576 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
+    }
+
+    function renderAttachments(request) {
+      if (Array.isArray(request.attachments) && request.attachments.length) {
+        return request.attachments.map((file) => `
+          <a href="${file.dataUrl}" download="${escapeHTML(file.name)}">${escapeHTML(file.name)} ${formatFileSize(file.size)}</a>
+        `).join("<br>");
+      }
+
+      if (Array.isArray(request.files) && request.files.length) {
+        return request.files.map(escapeHTML).join("<br>");
+      }
+
+      return "Sin archivos registrados";
+    }
+
+    function renderDelivery(request) {
+      if (!request.delivery || !request.delivery.dataUrl) {
+        return "Sin entrega del profesor";
+      }
+
+      return `<a href="${request.delivery.dataUrl}" download="${escapeHTML(request.delivery.name)}">${escapeHTML(request.delivery.name)} ${formatFileSize(request.delivery.size)}</a>`;
+    }
+
+    function daysUntil(value) {
+      if (!value) {
+        return "-";
+      }
+
+      const diff = new Date(value).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0);
+      const days = Math.ceil(diff / 86400000);
+
+      if (days < 0) {
+        return `Venció hace ${Math.abs(days)} día(s)`;
+      }
+
+      if (days === 0) {
+        return "Vence hoy";
+      }
+
+      return `${days} día(s) restantes`;
+    }
+
+    function isSubscriptionActive(subscription) {
+      return Boolean(subscription && subscription.status === "Activa" && new Date(subscription.expiresAt) >= new Date());
+    }
+
+    function createTemporaryPassword() {
+      return `Prof-${Math.random().toString(36).slice(2, 8)}${Math.floor(100 + Math.random() * 900)}`;
+    }
+
+    function renderStats(clients) {
+      const subscriptions = clients.flatMap((client) => client.subscriptions);
+      const works = clients.flatMap((client) => client.requests);
+
+      document.getElementById("total-clients").textContent = clients.length;
+      document.getElementById("active-clients").textContent = clients.filter((client) => client.activeSubscription).length;
+      document.getElementById("total-subscriptions").textContent = subscriptions.length;
+      document.getElementById("total-works").textContent = works.length;
+    }
+
+    function renderAdminAlert(clients) {
+      const unassigned = clients.flatMap((client) => client.requests).filter((request) => !request.teacherId);
+
+      adminAlert.innerHTML = `
+        <div class="alert-banner ${unassigned.length ? "" : "ok"}">
+          ${unassigned.length
+            ? `${unassigned.length} trabajo(s) en espera de asignación.`
+            : "No hay trabajos pendientes de asignar."}
+        </div>
+      `;
+    }
+
+    function renderTeachers() {
+      const teachers = getTeachers();
+
+      if (!teachers.length) {
+        teacherList.innerHTML = `
+          <div class="empty-state">
+            <h3>Sin profesores creados</h3>
+            <p>Crea una cuenta para poder asignarle trabajos desde las carpetas de clientes.</p>
+          </div>
+        `;
+        return;
+      }
+
+      teacherList.innerHTML = teachers.map((teacher) => {
+        const assignedCount = getAdminRequests().filter((request) => request.teacherId === teacher.id).length;
+
+        return `
+          <div class="teacher-row">
+            <div>
+              <strong>${escapeHTML(teacher.name)}</strong>
+              <p class="muted">${escapeHTML(teacher.email)}${teacher.phone ? ` · ${escapeHTML(teacher.phone)}` : ""}</p>
+            </div>
+            <div>
+              <span class="pill">${assignedCount} trabajo(s)</span>
+              <button class="ghost-btn reset-teacher-password" type="button" data-teacher-id="${escapeHTML(teacher.id)}" data-teacher-email="${escapeHTML(teacher.email)}">Resetear clave</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      document.querySelectorAll(".reset-teacher-password").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          const newPassword = createTemporaryPassword();
+          resetTeacherPassword(event.currentTarget.dataset.teacherId, newPassword);
+          teacherCredentials.innerHTML = `
+            <strong>Nueva clave del profesor:</strong><br />
+            Correo: ${escapeHTML(event.currentTarget.dataset.teacherEmail)}<br />
+            Contraseña: ${escapeHTML(newPassword)}<br />
+            Panel: profesor.html
+          `;
+          teacherCredentials.classList.add("show");
+        });
+      });
+    }
+
+    function renderSubscriptions(client) {
+      if (!client.subscriptions.length) {
+        return `
+          <div class="empty-state">
+            <h3>Sin suscripciones guardadas</h3>
+            <p>Cuando este cliente pague un plan y envíe su solicitud, aparecerá aquí.</p>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="subscription-list">
+          ${client.subscriptions.map((subscription) => `
+            <div class="subscription-row">
+              <div>
+                <strong>${escapeHTML(packageNames[subscription.plan] || subscription.plan)}</strong>
+                <p class="muted">Inicio: ${formatDate(subscription.startsAt)} · Vence: ${formatDate(subscription.expiresAt)}</p>
+              </div>
+              <span class="pill ${isSubscriptionActive(subscription) ? "active" : ""}">
+                ${isSubscriptionActive(subscription) ? "Activa" : "Vencida"}
+              </span>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function isCompletedWork(request) {
+      return request.status === "Lista" || request.status === "Entregada";
+    }
+
+    function syncAdminSections() {
+      adminTabs.forEach((tab) => {
+        tab.classList.toggle("active", tab.dataset.adminView === activeAdminView);
+      });
+
+      Object.entries(adminSections).forEach(([name, section]) => {
+        section.hidden = name !== activeAdminView;
+      });
+    }
+
+    function renderAdminWorkBoard() {
+      const requests = getAdminRequests();
+      const groups = [
+        {
+          title: "Nuevos / por asignar",
+          items: requests.filter((request) => request.status === "Recibida" || !request.teacherId)
+        },
+        {
+          title: "En proceso",
+          items: requests.filter((request) => request.status === "En proceso")
+        },
+        {
+          title: "Entregados",
+          items: requests.filter((request) => request.status === "Entregada" || request.status === "Lista")
+        }
+      ];
+
+      adminWorkBoard.innerHTML = groups.map((group) => `
+        <section class="work-column">
+          <h3>${group.title} <span class="pill">${group.items.length}</span></h3>
+          ${group.items.length ? group.items.map((request) => {
+            const customer = request.user || {};
+            return `
+              <article class="work-mini-card">
+                <div>
+                  <strong>${escapeHTML(request.documentType || "Documento académico")}</strong>
+                  <p class="muted">${escapeHTML(customer.name || "Cliente")} · ${formatDate(request.createdAt)}</p>
+                </div>
+                <span class="pill ${request.status === "Entregada" ? "active" : ""}">${escapeHTML(request.status || "Recibida")}</span>
+                <p class="muted">Profesor: ${escapeHTML(request.teacherName || "Sin profesor")}</p>
+                ${request.delivery ? `<p class="muted">Entrega final: ${renderDelivery(request)}</p>` : ""}
+              </article>
+            `;
+          }).join("") : `
+            <div class="empty-state">
+              <h3>Sin trabajos</h3>
+              <p>No hay elementos en esta sección.</p>
+            </div>
+          `}
+        </section>
+      `).join("");
+    }
+
+    function renderProfile(client, planName, expiryText) {
+      return `
+        <div class="detail-grid">
+          <div class="detail-card"><strong>Nombre</strong>${escapeHTML(client.name)}</div>
+          <div class="detail-card"><strong>Correo</strong>${escapeHTML(client.email)}</div>
+          <div class="detail-card"><strong>Teléfono</strong>${escapeHTML(client.phone || "Sin teléfono")}</div>
+          <div class="detail-card"><strong>Profesor responsable</strong>${escapeHTML(client.teacher ? client.teacher.name : "Sin profesor fijo")}</div>
+          <div class="detail-card"><strong>Plan actual</strong>${escapeHTML(planName)}</div>
+          <div class="detail-card"><strong>Vencimiento</strong>${escapeHTML(expiryText)}</div>
+          <div class="detail-card"><strong>Veces suscrito</strong>${client.subscriptions.length}</div>
+          <div class="detail-card"><strong>Cliente desde</strong>${formatDate(client.createdAt)}</div>
+        </div>
+        ${client.teacher ? `<button class="ghost-btn clear-client-teacher" type="button" data-client-id="${escapeHTML(client.id)}">Quitar profesor fijo</button>` : ""}
+      `;
+    }
+
+    function renderWorks(client, completed) {
+      const requests = client.requests.filter((request) => completed ? isCompletedWork(request) : !isCompletedWork(request));
+
+      if (!requests.length) {
+        return `
+          <div class="empty-state">
+            <h3>Sin trabajos en esta carpeta</h3>
+            <p>Cuando exista un trabajo con este estado, aparecerá aquí.</p>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="works-list">
+          ${requests.map((request) => {
+            const files = renderAttachments(request);
+            const selectedOptions = statusOptions.map((status) => `
+              <option value="${status}" ${request.status === status ? "selected" : ""}>${status}</option>
+            `).join("");
+            const teacherOptions = getTeachers().map((teacher) => `
+              <option value="${teacher.id}" ${request.teacherId === teacher.id ? "selected" : ""}>${escapeHTML(teacher.name)}</option>
+            `).join("");
+
+            return `
+              <article class="work-card">
+                <div>
+                  <h3>${escapeHTML(request.documentType || "Documento académico")}</h3>
+                  <p class="muted">Recibido: ${formatDate(request.createdAt)} · Profesor: ${escapeHTML(request.teacherName || "Sin profesor")}</p>
+                </div>
+                <div>
+                  <select class="assign-select" data-request-id="${escapeHTML(request.id)}" aria-label="Asignar profesor">
+                    <option value="">Sin profesor</option>
+                    ${teacherOptions}
+                  </select>
+                  <select class="status-select" data-request-id="${escapeHTML(request.id)}" aria-label="Cambiar estado">
+                    ${selectedOptions}
+                  </select>
+                </div>
+                <details class="work-details">
+                  <summary class="muted">Ver detalle del trabajo</summary>
+                  <div class="work-meta">
+                    <div class="meta-item"><strong>Plan</strong>${escapeHTML(packageNames[request.package] || request.package || "-")}</div>
+                    <div class="meta-item"><strong>Ayuda</strong>${escapeHTML(request.helpType || "-")}</div>
+                    <div class="meta-item"><strong>Fecha límite</strong>${escapeHTML(request.deadline || "-")}</div>
+                    <div class="meta-item"><strong>Trabajos</strong>${escapeHTML(request.workCount || "-")}</div>
+                    <div class="meta-item"><strong>Páginas</strong>${escapeHTML(request.pages || "-")}</div>
+                    <div class="meta-item"><strong>Urgencia</strong>${escapeHTML(request.urgency || "-")}</div>
+                    <div class="meta-item"><strong>Formato</strong>${escapeHTML(request.format || "-")}</div>
+                    <div class="meta-item notes"><strong>Archivos</strong>${files}</div>
+                    <div class="meta-item notes"><strong>Entrega final</strong>${renderDelivery(request)}</div>
+                    <div class="meta-item notes"><strong>Instrucciones</strong>${escapeHTML(request.instructions || "Sin instrucciones adicionales")}</div>
+                  </div>
+                </details>
+              </article>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
+    function renderClients() {
+      const search = clientSearch.value.trim().toLowerCase();
+      const clients = getAdminClients();
+      const visibleClients = clients.filter((client) => (
+        client.name.toLowerCase().includes(search) ||
+        client.email.toLowerCase().includes(search)
+      ));
+
+      renderStats(clients);
+      renderAdminAlert(clients);
+
+      if (!visibleClients.length) {
+        clientsList.innerHTML = `
+          <div class="empty-state">
+            <h3>No hay clientes para mostrar</h3>
+            <p>Cuando alguien cree una cuenta, aparecerá como carpeta en esta vista.</p>
+          </div>
+        `;
+        return;
+      }
+
+      clientsList.innerHTML = visibleClients.map((client) => {
+        const subscription = client.activeSubscription || client.latestSubscription;
+        const planName = subscription ? packageNames[subscription.plan] || subscription.plan : "Sin plan";
+        const statusLabel = client.activeSubscription ? "Activa" : "Sin suscripción activa";
+        const expiryText = subscription ? `${formatDate(subscription.expiresAt)} · ${daysUntil(subscription.expiresAt)}` : "-";
+
+        return `
+          <details class="client-folder">
+            <summary class="folder-summary">
+              <span class="folder-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 6h6l2 2h8v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"></path></svg>
+              </span>
+              <span>
+                <strong class="client-name">${escapeHTML(client.name)}</strong>
+                <span class="muted">${escapeHTML(client.email)}</span>
+              </span>
+              <span class="pill ${client.activeSubscription ? "active" : ""}">${escapeHTML(planName)}</span>
+              <span class="pill">${escapeHTML(statusLabel)}</span>
+              <span class="folder-arrow">›</span>
+            </summary>
+
+            <div class="folder-body">
+              <details class="subfolder">
+                <summary><strong>Perfil de la persona</strong><span class="pill">${escapeHTML(client.teacher ? client.teacher.name : "Sin profesor fijo")}</span></summary>
+                <div class="subfolder-body">${renderProfile(client, planName, expiryText)}</div>
+              </details>
+
+              <details class="subfolder">
+                <summary><strong>Nuevos trabajos</strong><span class="pill">${client.requests.filter((request) => !isCompletedWork(request)).length}</span></summary>
+                <div class="subfolder-body">${renderWorks(client, false)}</div>
+              </details>
+
+              <details class="subfolder">
+                <summary><strong>Trabajos solicitados</strong><span class="pill">${client.requests.filter(isCompletedWork).length}</span></summary>
+                <div class="subfolder-body">${renderWorks(client, true)}</div>
+              </details>
+
+              <details class="subfolder">
+                <summary><strong>Suscripciones</strong><span class="pill">${client.subscriptions.length}</span></summary>
+                <div class="subfolder-body">${renderSubscriptions(client)}</div>
+              </details>
+            </div>
+          </details>
+        `;
+      }).join("");
+
+      document.querySelectorAll(".status-select").forEach((select) => {
+        select.addEventListener("change", (event) => {
+          updateRequestStatus(event.currentTarget.dataset.requestId, event.currentTarget.value);
+          window.refreshNotifications?.();
+          renderAdminWorkBoard();
+          renderClients();
+        });
+      });
+
+      document.querySelectorAll(".assign-select").forEach((select) => {
+        select.addEventListener("change", (event) => {
+          assignRequestToTeacher(event.currentTarget.dataset.requestId, event.currentTarget.value);
+          window.refreshNotifications?.();
+          renderTeachers();
+          renderAdminWorkBoard();
+          renderClients();
+        });
+      });
+
+      document.querySelectorAll(".clear-client-teacher").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          clearClientTeacher(event.currentTarget.dataset.clientId);
+          renderClients();
+        });
+      });
+    }
+
+    if (isAdminUser(user)) {
+      syncAdminSections();
+      renderTeachers();
+      renderAdminWorkBoard();
+      renderClients();
+      adminTabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          activeAdminView = tab.dataset.adminView;
+          syncAdminSections();
+        });
+      });
+      clientSearch.addEventListener("input", renderClients);
+      teacherForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+
+        const password = teacherPassword.value;
+
+        try {
+          const teacher = createTeacherUser({
+            name: document.getElementById("teacher-name").value.trim(),
+            email: document.getElementById("teacher-email").value.trim(),
+            phone: document.getElementById("teacher-phone").value.trim(),
+            password
+          });
+
+          teacherMessage.textContent = `Profesor creado: ${teacher.email}`;
+          teacherCredentials.innerHTML = `
+            <strong>Credenciales para entregar al profesor:</strong><br />
+            Correo: ${escapeHTML(teacher.email)}<br />
+            Contraseña: ${escapeHTML(password)}<br />
+            Panel: profesor.html
+          `;
+          teacherCredentials.classList.add("show");
+          teacherForm.reset();
+          renderTeachers();
+          renderAdminWorkBoard();
+          renderClients();
+        } catch (error) {
+          teacherMessage.textContent = error.message;
+          teacherCredentials.classList.remove("show");
+        }
+      });
+
+      generatePassword.addEventListener("click", () => {
+        teacherPassword.value = createTemporaryPassword();
+      });
+    }
+  </script>
+</body>
+</html>

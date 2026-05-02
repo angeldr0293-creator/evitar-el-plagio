@@ -1,0 +1,68 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Redirigiendo - Originalidad Académica</title>
+  <style>
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #f8faf9;
+      color: #071832;
+      font-family: Arial, Helvetica, sans-serif;
+      text-align: center;
+      padding: 24px;
+    }
+
+    .box {
+      background: white;
+      border: 1px solid #e2e9ec;
+      border-radius: 22px;
+      box-shadow: 0 16px 38px rgba(7,24,50,0.06);
+      max-width: 460px;
+      padding: 30px;
+    }
+
+    h1 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 30px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      color: #475569;
+    }
+  </style>
+</head>
+<body>
+  <main class="box">
+    <h1>Preparando tu solicitud</h1>
+    <p>Estamos revisando si ya tienes una sesión activa.</p>
+  </main>
+
+  <script src="auth.js"></script>
+  <script>
+    if (isTeacherUser()) {
+      window.location.replace("profesor.html");
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const plan = params.get("plan");
+    const formPage = plan ? `formulario.html?plan=${encodeURIComponent(plan)}` : "formulario.html";
+    const currentUser = getCurrentUser();
+
+    if (currentUser) {
+      registerPendingSubscription();
+    }
+
+    const destination = currentUser
+      ? formPage
+      : `registro.html?next=${encodeURIComponent(formPage)}`;
+    window.location.replace(destination);
+  </script>
+</body>
+</html>
+
+

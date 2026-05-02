@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel del profesor - Originalidad Académica</title>
+  <link rel="stylesheet" href="notifications.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #f7faf9;
+      color: #071832;
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.6;
+    }
+
+    .container {
+      width: min(92%, 1180px);
+      margin: 0 auto;
+    }
+
+    .site-header {
+      background: rgba(255,255,255,0.95);
+      border-bottom: 1px solid #dfe6ea;
+      box-shadow: 0 8px 24px rgba(7,24,50,0.04);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(12px);
+    }
+
+    .nav {
+      min-height: 86px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      color: #071832;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+    }
+
+    .brand-mark {
+      color: #071832;
+      display: inline-flex;
+      height: 46px;
+      width: 46px;
+    }
+
+    .brand-title {
+      display: block;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .brand-subtitle {
+      color: #475569;
+      display: block;
+      font-size: 15px;
+      margin-top: 2px;
+    }
+
+    .ghost-btn {
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      color: #071832;
+      cursor: pointer;
+      font-weight: 800;
+      min-height: 48px;
+      padding: 12px 18px;
+    }
+
+    main {
+      padding: 48px 0 72px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #071832, #123c43);
+      border-radius: 22px;
+      color: white;
+      margin-bottom: 24px;
+      padding: 34px;
+    }
+
+    .hero h1 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(34px, 4vw, 52px);
+      line-height: 1.08;
+      margin-bottom: 10px;
+    }
+
+    .hero p {
+      color: #dbe7e6;
+      max-width: 760px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .alert-banner {
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+      border-radius: 16px;
+      color: #9f1239;
+      font-weight: 800;
+      margin-bottom: 18px;
+      padding: 14px 16px;
+    }
+
+    .alert-banner.ok {
+      background: #edf6f3;
+      border-color: #cfe2dc;
+      color: #11493f;
+    }
+
+    .stat,
+    .panel,
+    .work-card,
+    .empty-state {
+      background: white;
+      border: 1px solid #e2e9ec;
+      border-radius: 18px;
+      box-shadow: 0 14px 34px rgba(7,24,50,0.05);
+    }
+
+    .stat {
+      padding: 20px;
+    }
+
+    .stat strong {
+      display: block;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 34px;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat span,
+    .muted {
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .panel {
+      padding: 24px;
+    }
+
+    .panel h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 28px;
+      line-height: 1.2;
+      margin-bottom: 6px;
+    }
+
+    .panel > p {
+      color: #475569;
+      margin-bottom: 18px;
+    }
+
+    .work-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .work-tab {
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 999px;
+      color: #071832;
+      cursor: pointer;
+      font-weight: 800;
+      min-height: 42px;
+      padding: 9px 14px;
+    }
+
+    .work-tab.active {
+      background: #071832;
+      border-color: #071832;
+      color: white;
+    }
+
+    .works-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .work-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      padding: 18px;
+    }
+
+    .work-card h3 {
+      font-size: 20px;
+      line-height: 1.25;
+      margin-bottom: 4px;
+    }
+
+    .quick-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .quick-meta span {
+      background: #f8faf9;
+      border: 1px solid #e8eef1;
+      border-radius: 999px;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 6px 10px;
+    }
+
+    .work-details {
+      grid-column: 1 / -1;
+      margin-top: 12px;
+    }
+
+    .work-details summary {
+      color: #071832;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .work-meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .meta-item {
+      background: #f8faf9;
+      border: 1px solid #e8eef1;
+      border-radius: 12px;
+      color: #475569;
+      font-size: 14px;
+      padding: 12px;
+      min-width: 0;
+    }
+
+    .meta-item strong {
+      color: #071832;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .notes {
+      grid-column: 1 / -1;
+      white-space: pre-wrap;
+    }
+
+    .status-select {
+      align-self: start;
+      background: #edf6f3;
+      border: 1px solid #cfe2dc;
+      border-radius: 999px;
+      color: #11493f;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 8px 12px;
+    }
+
+    .delivery-box {
+      background: #f8faf9;
+      border: 1px solid #e8eef1;
+      border-radius: 14px;
+      display: grid;
+      gap: 10px;
+      grid-column: 1 / -1;
+      margin-top: 12px;
+      padding: 14px;
+    }
+
+    .delivery-box strong {
+      color: #071832;
+      font-weight: 800;
+    }
+
+    .delivery-box input {
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      color: #071832;
+      padding: 10px;
+      width: 100%;
+    }
+
+    .delivery-file {
+      display: none;
+    }
+
+    .upload-dropzone {
+      align-items: center;
+      background: white;
+      border: 1.5px dashed #b8c8d1;
+      border-radius: 14px;
+      color: #475569;
+      cursor: pointer;
+      display: grid;
+      gap: 4px;
+      justify-items: center;
+      min-height: 108px;
+      padding: 18px;
+      text-align: center;
+      transition: 0.2s ease;
+    }
+
+    .upload-dropzone strong {
+      color: #071832;
+      display: block;
+    }
+
+    .upload-dropzone.is-dragging {
+      background: #edf6f3;
+      border-color: #2b7a68;
+    }
+
+    .delivery-actions {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .delivery-message {
+      color: #11493f;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .client-row {
+      align-items: center;
+      background: white;
+      border: 1px solid #e2e9ec;
+      border-radius: 14px;
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr auto;
+      padding: 14px;
+    }
+
+    .client-row strong {
+      display: block;
+    }
+
+    .client-row span {
+      color: #475569;
+      font-size: 14px;
+    }
+
+    .empty-state {
+      box-shadow: none;
+      padding: 28px;
+      text-align: center;
+    }
+
+    .empty-state p {
+      color: #475569;
+      margin-top: 6px;
+    }
+
+    svg {
+      fill: none;
+      height: 46px;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+      width: 46px;
+    }
+
+    @media (max-width: 900px) {
+      .nav {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 18px 0;
+      }
+
+      .stats,
+      .work-meta {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .work-card {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .stats,
+      .work-meta {
+        grid-template-columns: 1fr;
+      }
+
+      .hero,
+      .panel {
+        padding: 22px;
+      }
+
+      .ghost-btn,
+      .status-select,
+      .delivery-actions .ghost-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="nav">
+        <a href="profesor.html" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <path d="M24 4 40 10v12c0 11-6.8 18.2-16 22C14.8 40.2 8 33 8 22V10l16-6Z"></path>
+              <path d="M16 17h16"></path>
+              <path d="M16 24h16"></path>
+              <path d="M16 31h10"></path>
+            </svg>
+          </span>
+          <span>
+            <span class="brand-title">Originalidad Académica</span>
+            <span class="brand-subtitle">Panel del profesor</span>
+          </span>
+        </a>
+
+        <button class="ghost-btn" type="button" onclick="logout()">Cerrar sesión</button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <section class="hero">
+        <h1 id="welcome-title">Trabajos asignados</h1>
+        <p>Revisa los trabajos que administración te asignó, consulta las instrucciones y actualiza el estado del proceso.</p>
+      </section>
+
+      <section class="stats">
+        <article class="stat">
+          <strong id="total-works">0</strong>
+          <span>Total asignados</span>
+        </article>
+        <article class="stat">
+          <strong id="received-works">0</strong>
+          <span>Recibidos</span>
+        </article>
+        <article class="stat">
+          <strong id="progress-works">0</strong>
+          <span>En proceso</span>
+        </article>
+        <article class="stat">
+          <strong id="done-works">0</strong>
+          <span>Listos o entregados</span>
+        </article>
+      </section>
+
+      <div id="teacher-alert"></div>
+
+      <section class="panel">
+        <h2>Mis trabajos</h2>
+        <p>Solo aparecen los trabajos asignados a tu usuario de profesor.</p>
+        <div class="work-tabs" aria-label="Filtrar trabajos">
+          <button class="work-tab active" type="button" data-view="new">Nuevos</button>
+          <button class="work-tab" type="button" data-view="progress">En proceso</button>
+          <button class="work-tab" type="button" data-view="done">Listos / entregados</button>
+          <button class="work-tab" type="button" data-view="clients">Clientes</button>
+        </div>
+        <div id="works-list" class="works-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="auth.js"></script>
+  <script src="notifications.js"></script>
+  <script>
+    const currentUser = getCurrentUser();
+
+    if (!currentUser) {
+      window.location.href = `registro.html?next=${encodeURIComponent("profesor.html")}`;
+    }
+
+    if (isAdminUser(currentUser)) {
+      window.location.href = "admin.html";
+    }
+
+    if (currentUser && !isTeacherUser(currentUser) && !isAdminUser(currentUser)) {
+      window.location.href = "panel.html";
+    }
+
+    const statusOptions = ["Recibida", "En proceso", "Lista", "Entregada"];
+    const worksList = document.getElementById("works-list");
+    const teacherAlert = document.getElementById("teacher-alert");
+    const workTabs = document.querySelectorAll(".work-tab");
+    let activeView = "new";
+
+    function escapeHTML(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function formatDate(value) {
+      if (!value) {
+        return "-";
+      }
+
+      return new Intl.DateTimeFormat("es", {
+        year: "numeric",
+        month: "short",
+        day: "numeric"
+      }).format(new Date(value));
+    }
+
+    function formatFileSize(bytes) {
+      if (!bytes) {
+        return "";
+      }
+
+      return bytes < 1048576 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
+    }
+
+    function isDeliverySaved(requestId) {
+      const savedRequest = getRequests().find((request) => request.id === requestId);
+      return Boolean(savedRequest && savedRequest.delivery && savedRequest.delivery.dataUrl);
+    }
+
+    function renderAttachments(request) {
+      if (Array.isArray(request.attachments) && request.attachments.length) {
+        return request.attachments.map((file) => `
+          <a href="${file.dataUrl}" download="${escapeHTML(file.name)}">${escapeHTML(file.name)} ${formatFileSize(file.size)}</a>
+        `).join("<br>");
+      }
+
+      if (Array.isArray(request.files) && request.files.length) {
+        return request.files.map(escapeHTML).join("<br>");
+      }
+
+      return "Sin archivos registrados";
+    }
+
+    function renderDelivery(request) {
+      if (request.delivery && request.delivery.dataUrl) {
+        return `
+          <div class="delivery-box">
+            <strong>Entrega subida</strong>
+            <a href="${request.delivery.dataUrl}" download="${escapeHTML(request.delivery.name)}">${escapeHTML(request.delivery.name)} ${formatFileSize(request.delivery.size)}</a>
+            <span class="muted">El cliente ya puede descargar este documento desde su panel.</span>
+          </div>
+        `;
+      }
+
+      return `
+        <form class="delivery-box delivery-form" data-request-id="${escapeHTML(request.id)}">
+          <strong>Subir trabajo terminado</strong>
+          <label class="upload-dropzone" for="delivery-${escapeHTML(request.id)}">
+            <strong>Arrastra el documento aquí</strong>
+            <span>o presiona para seleccionarlo</span>
+            <small class="muted">DOC, DOCX, PDF o TXT</small>
+          </label>
+          <input id="delivery-${escapeHTML(request.id)}" type="file" class="delivery-file" accept=".doc,.docx,.pdf,.txt" required />
+          <div class="delivery-actions">
+            <button class="ghost-btn" type="submit">Guardar entrega</button>
+            <span class="delivery-message" aria-live="polite"></span>
+          </div>
+        </form>
+      `;
+    }
+
+    function fileToAttachment(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          resolve({
+            name: file.name,
+            type: file.type || "application/octet-stream",
+            size: file.size,
+            dataUrl: reader.result
+          });
+        };
+
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderStats(requests) {
+      document.getElementById("total-works").textContent = requests.length;
+      document.getElementById("received-works").textContent = requests.filter((item) => item.status === "Recibida").length;
+      document.getElementById("progress-works").textContent = requests.filter((item) => item.status === "En proceso").length;
+      document.getElementById("done-works").textContent = requests.filter((item) => item.status === "Lista" || item.status === "Entregada").length;
+    }
+
+    function renderTeacherAlert(requests) {
+      const pending = requests.filter((item) => item.status === "Recibida");
+
+      if (!pending.length) {
+        teacherAlert.innerHTML = "";
+        return;
+      }
+
+      teacherAlert.innerHTML = `
+        <div class="alert-banner">
+          ${pending.length} trabajo(s) nuevo(s) pendientes por revisar.
+        </div>
+      `;
+    }
+
+    function getVisibleRequests(requests) {
+      if (activeView === "progress") {
+        return requests.filter((request) => request.status === "En proceso");
+      }
+
+      if (activeView === "done") {
+        return requests.filter((request) => request.status === "Lista" || request.status === "Entregada");
+      }
+
+      return requests.filter((request) => request.status === "Recibida");
+    }
+
+    function getEmptyMessage() {
+      if (activeView === "progress") {
+        return "No tienes trabajos en proceso.";
+      }
+
+      if (activeView === "done") {
+        return "Todavía no hay trabajos listos o entregados.";
+      }
+
+      return "No tienes trabajos nuevos por revisar.";
+    }
+
+    function renderClientHistory(requests) {
+      const clients = requests.reduce((result, request) => {
+        const key = request.userId || "sin-cliente";
+        const customer = request.user || {};
+
+        if (!result[key]) {
+          result[key] = {
+            name: customer.name || "Cliente",
+            email: customer.email || "Sin correo",
+            total: 0,
+            done: 0,
+            latest: request.createdAt
+          };
+        }
+
+        result[key].total += 1;
+        result[key].done += request.status === "Lista" || request.status === "Entregada" ? 1 : 0;
+        result[key].latest = new Date(request.createdAt) > new Date(result[key].latest) ? request.createdAt : result[key].latest;
+        return result;
+      }, {});
+
+      const rows = Object.values(clients);
+
+      if (!rows.length) {
+        worksList.innerHTML = `
+          <div class="empty-state">
+            <h3>Sin clientes asignados</h3>
+            <p>Cuando administración te asigne trabajos, aquí verás el historial de clientes atendidos.</p>
+          </div>
+        `;
+        return;
+      }
+
+      worksList.innerHTML = rows.map((client) => `
+        <article class="client-row">
+          <div>
+            <strong>${escapeHTML(client.name)}</strong>
+            <span>${escapeHTML(client.email)} · Último trabajo: ${formatDate(client.latest)}</span>
+          </div>
+          <span>${client.done}/${client.total} entregado(s)</span>
+        </article>
+      `).join("");
+    }
+
+    function renderWorks() {
+      const requests = getTeacherRequests();
+      renderStats(requests);
+      renderTeacherAlert(requests);
+      document.getElementById("welcome-title").textContent = `Hola, ${currentUser.name}`;
+
+      const visibleRequests = activeView === "clients" ? requests : getVisibleRequests(requests);
+
+      if (activeView === "clients") {
+        renderClientHistory(requests);
+        return;
+      }
+
+      if (!visibleRequests.length) {
+        worksList.innerHTML = `
+          <div class="empty-state">
+            <h3>${getEmptyMessage()}</h3>
+            <p>Cuando administración te asigne un trabajo, aparecerá en este panel.</p>
+          </div>
+        `;
+        return;
+      }
+
+      worksList.innerHTML = visibleRequests.map((request) => {
+        const customer = request.user || {};
+        const files = renderAttachments(request);
+        const selectedOptions = statusOptions.map((status) => `
+          <option value="${status}" ${request.status === status ? "selected" : ""}>${status}</option>
+        `).join("");
+
+        return `
+          <article class="work-card">
+            <div>
+              <h3>${escapeHTML(request.documentType || "Documento académico")}</h3>
+              <p class="muted">Cliente: ${escapeHTML(customer.name || "Sin nombre")} · ${escapeHTML(customer.email || "Sin correo")}</p>
+              <p class="muted">Asignado: ${formatDate(request.assignedAt)} · Recibido: ${formatDate(request.createdAt)}</p>
+              <div class="quick-meta">
+                <span>${escapeHTML(request.helpType || "Ayuda no indicada")}</span>
+                <span>Vence: ${escapeHTML(request.deadline || "-")}</span>
+                <span>${escapeHTML(request.pages || "-")} páginas</span>
+                <span>${escapeHTML(request.urgency || "-")}</span>
+              </div>
+              <details class="work-details">
+                <summary>Ver detalles, archivo e instrucciones</summary>
+                <div class="work-meta">
+                <div class="meta-item"><strong>Ayuda</strong>${escapeHTML(request.helpType || "-")}</div>
+                <div class="meta-item"><strong>Fecha límite</strong>${escapeHTML(request.deadline || "-")}</div>
+                <div class="meta-item"><strong>Trabajos</strong>${escapeHTML(request.workCount || "-")}</div>
+                <div class="meta-item"><strong>Páginas</strong>${escapeHTML(request.pages || "-")}</div>
+                <div class="meta-item"><strong>Urgencia</strong>${escapeHTML(request.urgency || "-")}</div>
+                <div class="meta-item"><strong>Formato</strong>${escapeHTML(request.format || "-")}</div>
+                <div class="meta-item notes"><strong>Archivos</strong>${files}</div>
+                <div class="meta-item notes"><strong>Instrucciones</strong>${escapeHTML(request.instructions || "Sin instrucciones adicionales")}</div>
+                </div>
+              </details>
+              ${renderDelivery(request)}
+            </div>
+            <select class="status-select" data-request-id="${escapeHTML(request.id)}" aria-label="Cambiar estado">
+              ${selectedOptions}
+            </select>
+          </article>
+        `;
+      }).join("");
+
+      document.querySelectorAll(".status-select").forEach((select) => {
+        select.addEventListener("change", (event) => {
+          updateRequestStatus(event.currentTarget.dataset.requestId, event.currentTarget.value);
+          window.refreshNotifications?.();
+          renderWorks();
+        });
+      });
+
+      document.querySelectorAll(".delivery-form").forEach((form) => {
+        const input = form.querySelector(".delivery-file");
+        const dropzone = form.querySelector(".upload-dropzone");
+        const message = form.querySelector(".delivery-message");
+
+        dropzone.addEventListener("dragover", (event) => {
+          event.preventDefault();
+          dropzone.classList.add("is-dragging");
+        });
+
+        dropzone.addEventListener("dragleave", () => {
+          dropzone.classList.remove("is-dragging");
+        });
+
+        dropzone.addEventListener("drop", (event) => {
+          event.preventDefault();
+          dropzone.classList.remove("is-dragging");
+
+          if (event.dataTransfer.files.length) {
+            input.files = event.dataTransfer.files;
+            message.textContent = event.dataTransfer.files[0].name;
+          }
+        });
+
+        input.addEventListener("change", () => {
+          message.textContent = input.files[0] ? input.files[0].name : "";
+        });
+
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          const file = input.files[0];
+
+          if (!file) {
+            message.textContent = "Selecciona un archivo.";
+            return;
+          }
+
+          if (file.size > 2 * 1024 * 1024) {
+            message.textContent = "El archivo debe pesar menos de 2 MB por ahora.";
+            return;
+          }
+
+          const button = event.currentTarget.querySelector("button");
+          const requestId = event.currentTarget.dataset.requestId;
+
+          try {
+            button.disabled = true;
+            message.textContent = "Guardando...";
+            await new Promise((resolve) => setTimeout(resolve, 30));
+
+            const delivery = await fileToAttachment(file);
+            saveTeacherDelivery(requestId, delivery);
+
+            if (!isDeliverySaved(requestId)) {
+              throw new Error("No se pudo confirmar el guardado. Recarga la página e intenta otra vez.");
+            }
+
+            message.textContent = "Entrega guardada.";
+            activeView = "done";
+            syncTabs();
+            window.refreshNotifications?.();
+            renderWorks();
+          } catch (error) {
+            button.disabled = false;
+            message.textContent = error.message || "No se pudo guardar la entrega.";
+          }
+        });
+      });
+    }
+
+    function syncTabs() {
+      workTabs.forEach((tab) => {
+        tab.classList.toggle("active", tab.dataset.view === activeView);
+      });
+    }
+
+    workTabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        activeView = tab.dataset.view;
+        syncTabs();
+        renderWorks();
+      });
+    });
+
+    if (isTeacherUser(currentUser)) {
+      renderWorks();
+    }
+  </script>
+</body>
+</html>

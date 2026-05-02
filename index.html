@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Originalidad Académica</title>
+  <link rel="stylesheet" href="notifications.css" />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #f8faf9;
+      color: #071832;
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.6;
+    }
+
+    .container {
+      width: min(90%, 1220px);
+      margin: 0 auto;
+    }
+
+    .site-header {
+      background: rgba(255,255,255,0.92);
+      border-bottom: 1px solid #dfe6ea;
+      box-shadow: 0 8px 24px rgba(7,24,50,0.04);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(12px);
+    }
+
+    .nav {
+      min-height: 86px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: #071832;
+    }
+
+    .brand-mark,
+    .mini-icon,
+    .feature-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #2b7a68;
+    }
+
+    .brand-mark {
+      width: 46px;
+      height: 46px;
+      color: #071832;
+    }
+
+    .brand-title {
+      display: block;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .brand-subtitle {
+      display: block;
+      color: #475569;
+      font-size: 15px;
+      margin-top: 2px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+      font-weight: 700;
+    }
+
+    .nav-links a {
+      color: #071832;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .nav-button,
+    .btn-primary {
+      background: #071832;
+      color: white;
+      box-shadow: 0 12px 24px rgba(7,24,50,0.18);
+    }
+
+    .nav-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      min-height: 52px;
+      padding: 14px 22px;
+      color: white !important;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 70px 0 42px;
+      background:
+        radial-gradient(circle at 72% 38%, rgba(223,233,232,0.72), transparent 34%),
+        linear-gradient(115deg, #fbfaf7 0%, #f7faf9 54%, #edf4f4 100%);
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      left: -240px;
+      bottom: -170px;
+      width: 560px;
+      height: 560px;
+      border-radius: 50%;
+      border: 1px solid rgba(43,122,104,0.22);
+      box-shadow:
+        0 0 0 28px rgba(43,122,104,0.04),
+        0 0 0 58px rgba(43,122,104,0.035),
+        0 0 0 88px rgba(43,122,104,0.03),
+        0 0 0 118px rgba(43,122,104,0.025);
+    }
+
+    .hero-grid {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 64px;
+      align-items: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      background: #edf6f3;
+      border: 1px solid #cfe2dc;
+      border-radius: 999px;
+      color: #11493f;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      margin-bottom: 28px;
+      padding: 8px 15px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      max-width: 720px;
+      color: #071832;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(44px, 5.5vw, 72px);
+      line-height: 1.04;
+      margin-bottom: 24px;
+    }
+
+    .accent {
+      color: #2b7a68;
+      display: block;
+    }
+
+    .hero-text {
+      color: #26364d;
+      font-size: 20px;
+      max-width: 650px;
+      margin-bottom: 34px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      margin-bottom: 50px;
+    }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      justify-content: center;
+      min-height: 54px;
+      padding: 14px 24px;
+      text-decoration: none;
+      transition: 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn-secondary {
+      background: white;
+      border-color: #d8e0e5;
+      color: #071832;
+    }
+
+    .trust-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+      max-width: 780px;
+    }
+
+    .trust-item {
+      display: grid;
+      grid-template-columns: 32px 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .trust-item strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 2px;
+    }
+
+    .trust-item span {
+      color: #475569;
+      font-size: 14px;
+    }
+
+    .hero-card {
+      background: rgba(255,255,255,0.78);
+      border: 1px solid #dfe7ea;
+      border-radius: 24px;
+      box-shadow: 0 28px 60px rgba(7,24,50,0.08);
+      padding: 34px;
+      backdrop-filter: blur(12px);
+    }
+
+    .card-title {
+      display: grid;
+      grid-template-columns: 58px 1fr;
+      gap: 18px;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+
+    .feature-icon {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: #edf4f2;
+    }
+
+    .hero-card h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 25px;
+      line-height: 1.2;
+      margin-bottom: 12px;
+    }
+
+    .title-line {
+      width: 56px;
+      height: 2px;
+      background: #2b7a68;
+    }
+
+    .help-list {
+      display: grid;
+      gap: 0;
+      list-style: none;
+      margin-bottom: 30px;
+    }
+
+    .help-list li {
+      display: grid;
+      grid-template-columns: 54px 1fr;
+      gap: 16px;
+      align-items: center;
+      border: 1px solid #e3e9ec;
+      border-radius: 18px;
+      color: #071832;
+      font-size: 16px;
+      margin-top: -1px;
+      min-height: 86px;
+      padding: 16px;
+      background: rgba(255,255,255,0.62);
+    }
+
+    .help-list li:first-child {
+      margin-top: 0;
+    }
+
+    .mini-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #edf4f2;
+      flex: none;
+    }
+
+    .card-note {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 16px;
+      align-items: center;
+      color: #475569;
+      margin-top: 10px;
+    }
+
+    .stats {
+      background: white;
+      border-top: 1px solid #e5ecef;
+      padding: 34px 0 46px;
+      text-align: center;
+    }
+
+    .stats-label {
+      color: #071832;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .small-line {
+      width: 34px;
+      height: 2px;
+      background: #2b7a68;
+      margin: 0 auto 30px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 28px;
+      align-items: center;
+    }
+
+    .stat {
+      display: inline-grid;
+      grid-template-columns: 44px auto;
+      gap: 14px;
+      text-align: left;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .stat strong {
+      display: block;
+      color: #071832;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 31px;
+      line-height: 1;
+    }
+
+    .stat span {
+      color: #475569;
+      display: block;
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    section {
+      padding: 78px 0;
+    }
+
+    .section-title {
+      color: #071832;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 40px;
+      line-height: 1.15;
+      margin: 0 auto 14px;
+      max-width: 760px;
+      text-align: center;
+    }
+
+    .section-text {
+      color: #475569;
+      font-size: 17px;
+      margin: 0 auto 44px;
+      max-width: 780px;
+      text-align: center;
+    }
+
+    .services,
+    .features {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 22px;
+    }
+
+    .service-card,
+    .feature,
+    .faq-item {
+      background: white;
+      border: 1px solid #e2e9ec;
+      border-radius: 18px;
+      box-shadow: 0 14px 34px rgba(7,24,50,0.05);
+      padding: 28px;
+    }
+
+    .service-card h3,
+    .feature h3,
+    .faq-item h3 {
+      color: #071832;
+      font-size: 21px;
+      margin-bottom: 10px;
+    }
+
+    .service-card p,
+    .feature p,
+    .faq-item p {
+      color: #475569;
+    }
+
+    .process {
+      background: #ffffff;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+    }
+
+    .step {
+      background: #f8faf9;
+      border: 1px solid #e2e9ec;
+      border-radius: 18px;
+      padding: 24px;
+    }
+
+    .step-number {
+      align-items: center;
+      background: #edf4f2;
+      border-radius: 50%;
+      color: #2b7a68;
+      display: flex;
+      font-weight: 800;
+      height: 44px;
+      justify-content: center;
+      margin-bottom: 16px;
+      width: 44px;
+    }
+
+    .step h3 {
+      color: #071832;
+      font-size: 19px;
+      margin-bottom: 9px;
+    }
+
+    .step p {
+      color: #475569;
+    }
+
+    .faq {
+      display: grid;
+      gap: 16px;
+      margin: 0 auto;
+      max-width: 900px;
+    }
+
+    .cta {
+      background: linear-gradient(135deg, #071832, #123c43);
+      border-radius: 24px;
+      color: white;
+      padding: 46px 32px;
+      text-align: center;
+    }
+
+    .cta h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 36px;
+      line-height: 1.2;
+      margin-bottom: 14px;
+    }
+
+    .cta p {
+      color: #dbe7e6;
+      font-size: 17px;
+      margin: 0 auto 24px;
+      max-width: 720px;
+    }
+
+    footer {
+      background: white;
+      border-top: 1px solid #e2e9ec;
+      color: #475569;
+      font-size: 14px;
+      padding: 26px 0;
+      text-align: center;
+    }
+
+    svg {
+      width: 24px;
+      height: 24px;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    .brand-mark svg {
+      width: 46px;
+      height: 46px;
+    }
+
+    @media (max-width: 980px) {
+      .nav,
+      .nav-links {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .hero-grid,
+      .services,
+      .features,
+      .steps,
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero {
+        padding-top: 48px;
+      }
+
+      .trust-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .nav {
+        min-height: auto;
+        padding: 18px 0;
+      }
+
+      .brand-title {
+        font-size: 21px;
+      }
+
+      .brand-subtitle,
+      .nav-links a {
+        font-size: 14px;
+      }
+
+      .nav-links {
+        gap: 12px;
+      }
+
+      .hero {
+        padding-bottom: 34px;
+      }
+
+      .hero-grid {
+        gap: 34px;
+      }
+
+      .hero-text {
+        font-size: 17px;
+      }
+
+      .hero-actions {
+        margin-bottom: 34px;
+      }
+
+      .btn,
+      .nav-button {
+        width: 100%;
+      }
+
+      .hero-card,
+      .service-card,
+      .feature,
+      .faq-item,
+      .step {
+        padding: 22px;
+      }
+
+      .card-title,
+      .help-list li,
+      .card-note {
+        grid-template-columns: 1fr;
+      }
+
+      .section-title,
+      .cta h2 {
+        font-size: 31px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="nav">
+        <a href="#" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <path d="M24 4 40 10v12c0 11-6.8 18.2-16 22C14.8 40.2 8 33 8 22V10l16-6Z"></path>
+              <path d="M24 13v22"></path>
+              <path d="m16 23 5 5 11-12"></path>
+            </svg>
+          </span>
+          <span>
+            <span class="brand-title">Originalidad Académica</span>
+            <span class="brand-subtitle">Escribe con integridad. Destaca con originalidad.</span>
+          </span>
+        </a>
+
+        <div class="nav-links" id="nav-links">
+          <a class="client-nav" href="#servicios">Qué hacemos</a>
+          <a class="client-nav" href="#proceso">Cómo ayudamos</a>
+          <a class="client-nav" href="precios.html">Precios</a>
+          <a class="client-nav" href="#preguntas">Preguntas frecuentes</a>
+          <a id="panel-link" href="panel.html">Mi panel</a>
+          <a href="solicitar.html" class="nav-button client-nav">Solicitar revisión</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <span class="badge">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m22 10-10-5-10 5 10 5 10-5Z"></path><path d="M6 12v5c3 2 9 2 12 0v-5"></path></svg>
+            Apoyo para estudiantes
+          </span>
+
+          <h1>Humanizamos tus trabajos y reducimos el plagio <span class="accent">con ética y calidad</span></h1>
+          <p class="hero-text">
+            Transformamos textos con alta similitud o generados por IA en contenidos más originales, claros y naturales, manteniendo tu mensaje y mejorando su impacto académico.
+          </p>
+
+          <div class="hero-actions">
+            <a href="#servicios" class="btn btn-primary">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path><path d="M14 2v6h6"></path><path d="M9 15h6"></path><path d="M9 18h4"></path></svg>
+              Ver lo que hacemos
+            </a>
+            <a href="solicitar.html" class="btn btn-secondary client-action">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z"></path></svg>
+              Solicitar revisión
+            </a>
+          </div>
+
+          <div class="trust-row">
+            <div class="trust-item">
+              <span class="mini-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
+              <div>
+                <strong>Confidencialidad</strong>
+                <span>Tu información está 100% protegida.</span>
+              </div>
+            </div>
+
+            <div class="trust-item">
+              <span class="mini-icon"><svg viewBox="0 0 24 24"><path d="M12 2 9.9 5.8 6 6.3l2.9 2.8-.7 3.9L12 11l3.8 2-.7-3.9L18 6.3l-3.9-.5L12 2Z"></path><path d="M5 15v5h14v-5"></path></svg></span>
+              <div>
+                <strong>Calidad garantizada</strong>
+                <span>Textos naturales, coherentes y más originales.</span>
+              </div>
+            </div>
+
+            <div class="trust-item">
+              <span class="mini-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
+              <div>
+                <strong>Entrega puntual</strong>
+                <span>Cumplimos los tiempos acordados.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="hero-card">
+          <div class="card-title">
+            <span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M13 2 3 14h8l-1 8 10-12h-8l1-8Z"></path></svg></span>
+            <div>
+              <h2>Esta página puede ayudarte a:</h2>
+              <div class="title-line"></div>
+            </div>
+          </div>
+
+          <ul class="help-list">
+            <li>
+              <span class="mini-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path><path d="M14 2v6h6"></path><path d="M9 13h6"></path><path d="M9 17h6"></path></svg></span>
+              <span>Detectar y reducir frases copiadas, repetitivas o con alta similitud.</span>
+            </li>
+            <li>
+              <span class="mini-icon"><svg viewBox="0 0 24 24"><path d="m14 4 6 6"></path><path d="M5 19 19 5l-6-1-8 8-1 6Z"></path><path d="m5 19 6-1"></path></svg></span>
+              <span>Humanizar textos que suenan artificiales o generados por IA.</span>
+            </li>
+            <li>
+              <span class="mini-icon"><svg viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 0 1 4 4L8 20l-5 1 1-5Z"></path><path d="m15 5 4 4"></path></svg></span>
+              <span>Reescribir ideas sin perder el sentido original del estudiante.</span>
+            </li>
+            <li>
+              <span class="mini-icon"><svg viewBox="0 0 24 24"><path d="M7 17a4 4 0 0 1-4-4V8a4 4 0 0 1 4-4"></path><path d="M17 4a4 4 0 0 1 4 4v5a4 4 0 0 1-4 4"></path><path d="M8 21c4-2 4-5 4-8"></path><path d="M16 21c-4-2-4-5-4-8"></path></svg></span>
+              <span>Revisar citas y referencias para respaldar mejor el contenido.</span>
+            </li>
+          </ul>
+
+          <div class="card-note">
+            <span class="mini-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
+            <span>Enfocados en la integridad académica y el éxito de los estudiantes.</span>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="stats" aria-label="Confían en nuestro trabajo">
+      <div class="container">
+        <div class="stats-label">Confían en nuestro trabajo</div>
+        <div class="small-line"></div>
+
+        <div class="stats-grid">
+          <div class="stat">
+            <span class="mini-icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.9"></path><path d="M16 3.1a4 4 0 0 1 0 7.8"></path></svg></span>
+            <div><strong>1,200+</strong><span>Estudiantes ayudados</span></div>
+          </div>
+
+          <div class="stat">
+            <span class="mini-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path><path d="M14 2v6h6"></path><path d="M9 15h6"></path></svg></span>
+            <div><strong>2,800+</strong><span>Trabajos revisados</span></div>
+          </div>
+
+          <div class="stat">
+            <span class="mini-icon"><svg viewBox="0 0 24 24"><path d="m12 2 3 6 6.6 1-4.8 4.7 1.1 6.6L12 17.2l-5.9 3.1 1.1-6.6L2.4 9 9 8Z"></path></svg></span>
+            <div><strong>4.9/5</strong><span>Calificación promedio</span></div>
+          </div>
+
+          <div class="stat">
+            <span class="mini-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"></path><path d="m9 12 2 2 4-4"></path></svg></span>
+            <div><strong>98%</strong><span>Clientes satisfechos</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="servicios">
+      <div class="container">
+        <h2 class="section-title">Qué hacemos por los estudiantes</h2>
+        <p class="section-text">
+          Ayudamos con dos problemas comunes: el plagio por copiar y pegar, y los textos que parecen escritos por IA porque se sienten fríos, genéricos o poco naturales.
+        </p>
+
+        <div class="services">
+          <article class="service-card">
+            <h3>Revisión de similitud</h3>
+            <p>Identificamos fragmentos que parecen copiados, repetidos o demasiado parecidos a otras fuentes para saber qué partes necesitan reescritura o citas.</p>
+          </article>
+
+          <article class="service-card">
+            <h3>Humanización de texto con IA</h3>
+            <p>Trabajamos textos que suenan automáticos, planos o genéricos para darles una voz más natural, coherente y cercana al estilo del estudiante.</p>
+          </article>
+
+          <article class="service-card">
+            <h3>Mejora de redacción</h3>
+            <p>Reformulamos ideas, ajustamos frases confusas y hacemos que el texto se lea más humano, académico y fácil de entender.</p>
+          </article>
+
+          <article class="service-card">
+            <h3>Apoyo con citas</h3>
+            <p>Revisamos si el contenido necesita citas, referencias o ajustes para que las ideas tomadas de otras fuentes estén mejor respaldadas.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="proceso" class="process">
+      <div class="container">
+        <h2 class="section-title">Cómo ayudamos paso a paso</h2>
+        <p class="section-text">
+          El objetivo es que recibas una versión más humana, entendible y alineada con buenas prácticas académicas.
+        </p>
+
+        <div class="steps">
+          <article class="step">
+            <div class="step-number">1</div>
+            <h3>Recibimos el trabajo</h3>
+            <p>Compartes tu documento y explicas qué necesitas mejorar.</p>
+          </article>
+
+          <article class="step">
+            <div class="step-number">2</div>
+            <h3>Analizamos el texto</h3>
+            <p>Revisamos similitud, frases copiadas y señales de texto demasiado artificial.</p>
+          </article>
+
+          <article class="step">
+            <div class="step-number">3</div>
+            <h3>Humanizamos el contenido</h3>
+            <p>Reescribimos y reforzamos la claridad sin borrar la idea principal.</p>
+          </article>
+
+          <article class="step">
+            <div class="step-number">4</div>
+            <h3>Entregamos la revisión</h3>
+            <p>Recibes un archivo más natural, revisado y mejor respaldado.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="preguntas">
+      <div class="container">
+        <h2 class="section-title">Preguntas frecuentes</h2>
+        <p class="section-text">
+          Estas respuestas explican el enfoque del servicio y lo que puede hacer la plataforma por los estudiantes.
+        </p>
+
+        <div class="faq">
+          <article class="faq-item">
+            <h3>¿La página cambia todo el trabajo automáticamente?</h3>
+            <p>No. La idea es combinar herramientas de apoyo con revisión y criterio humano para mejorar el texto de forma más responsable.</p>
+          </article>
+
+          <article class="faq-item">
+            <h3>¿Pueden humanizar un trabajo hecho con IA?</h3>
+            <p>Sí. Podemos revisar textos que suenan genéricos o artificiales y trabajarlos para que tengan una redacción más natural, clara y coherente.</p>
+          </article>
+
+          <article class="faq-item">
+            <h3>¿También se revisan citas y referencias?</h3>
+            <p>Sí. La plataforma puede ayudar a detectar cuándo una idea necesita citarse mejor o cuándo una referencia debe presentarse con más orden.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="cta">
+          <h2>Envía tu trabajo para una revisión más humana y original</h2>
+          <p>
+            Cuéntanos qué necesitas, comparte tu archivo y revisamos el mejor camino para mejorar tu documento.
+          </p>
+          <a href="solicitar.html" class="btn btn-primary client-action">Solicitar revisión</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      Originalidad Académica - Apoyo para textos más humanos, claros y responsables
+    </div>
+  </footer>
+  <script src="auth.js"></script>
+  <script src="notifications.js"></script>
+  <script>
+    const currentUser = getCurrentUser();
+
+    if (isTeacherUser(currentUser)) {
+      document.querySelectorAll(".client-nav, .client-action").forEach((item) => {
+        item.style.display = "none";
+      });
+      document.getElementById("panel-link").href = "profesor.html";
+    }
+
+    if (isAdminUser(currentUser)) {
+      document.getElementById("panel-link").href = "admin.html";
+    }
+  </script>
+</body>
+</html>

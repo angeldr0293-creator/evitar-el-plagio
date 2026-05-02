@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crear cuenta - Originalidad Académica</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 20% 18%, rgba(43,122,104,0.12), transparent 28%),
+        linear-gradient(115deg, #fbfaf7 0%, #f7faf9 58%, #edf4f4 100%);
+      color: #071832;
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.6;
+    }
+
+    .container {
+      width: min(90%, 1120px);
+      margin: 0 auto;
+    }
+
+    .topbar {
+      min-height: 86px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .brand,
+    .back-link {
+      color: #071832;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-mark {
+      width: 46px;
+      height: 46px;
+      display: inline-flex;
+      color: #071832;
+    }
+
+    .brand-title {
+      display: block;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      line-height: 1.1;
+    }
+
+    .brand-subtitle {
+      color: #475569;
+      display: block;
+      font-size: 15px;
+      font-weight: 400;
+      margin-top: 2px;
+    }
+
+    .auth-layout {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 42px;
+      align-items: center;
+      padding: 52px 0 74px;
+    }
+
+    .intro h1 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(38px, 5vw, 60px);
+      line-height: 1.06;
+      margin-bottom: 18px;
+    }
+
+    .intro p {
+      color: #26364d;
+      font-size: 18px;
+      max-width: 560px;
+    }
+
+    .benefits {
+      display: grid;
+      gap: 14px;
+      list-style: none;
+      margin-top: 30px;
+      max-width: 520px;
+    }
+
+    .benefits li {
+      background: rgba(255,255,255,0.68);
+      border: 1px solid #dfe7ea;
+      border-radius: 16px;
+      padding: 14px 16px;
+      color: #475569;
+    }
+
+    .benefits strong {
+      color: #071832;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .auth-card {
+      background: rgba(255,255,255,0.82);
+      border: 1px solid #dfe7ea;
+      border-radius: 24px;
+      box-shadow: 0 28px 60px rgba(7,24,50,0.08);
+      padding: 30px;
+      backdrop-filter: blur(12px);
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      background: #edf4f2;
+      border-radius: 14px;
+      padding: 6px;
+      margin-bottom: 24px;
+    }
+
+    .tab {
+      border: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: #475569;
+      cursor: pointer;
+      font-weight: 800;
+      padding: 12px;
+    }
+
+    .tab.active {
+      background: white;
+      color: #071832;
+      box-shadow: 0 8px 18px rgba(7,24,50,0.08);
+    }
+
+    .form {
+      display: none;
+    }
+
+    .form.active {
+      display: grid;
+      gap: 16px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    label {
+      color: #26364d;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    input {
+      width: 100%;
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      color: #071832;
+      font-size: 15px;
+      outline: none;
+      padding: 13px 14px;
+      transition: 0.2s ease;
+    }
+
+    input:focus {
+      border-color: #2b7a68;
+      box-shadow: 0 0 0 4px rgba(43,122,104,0.12);
+    }
+
+    .btn {
+      background: #071832;
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 12px 24px rgba(7,24,50,0.18);
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 800;
+      min-height: 54px;
+      padding: 14px 22px;
+      transition: 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .message {
+      border-radius: 12px;
+      display: none;
+      font-size: 14px;
+      padding: 12px 14px;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.error {
+      background: #fff1f2;
+      color: #9f1239;
+    }
+
+    .message.success {
+      background: #edf6f3;
+      color: #11493f;
+    }
+
+    svg {
+      width: 46px;
+      height: 46px;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    @media (max-width: 880px) {
+      .topbar,
+      .auth-layout {
+        align-items: flex-start;
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        flex-direction: column;
+        padding: 20px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="topbar">
+      <a href="index.html" class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48">
+            <path d="M24 4 40 10v12c0 11-6.8 18.2-16 22C14.8 40.2 8 33 8 22V10l16-6Z"></path>
+            <path d="M24 13v22"></path>
+            <path d="m16 23 5 5 11-12"></path>
+          </svg>
+        </span>
+        <span>
+          <span class="brand-title">Originalidad Académica</span>
+          <span class="brand-subtitle">Tu espacio privado de revisión.</span>
+        </span>
+      </a>
+      <a class="back-link" href="index.html">Volver al inicio</a>
+    </header>
+
+    <main class="auth-layout">
+      <section class="intro">
+        <h1>Crea tu cuenta y administra tus revisiones en un solo lugar</h1>
+        <p>
+          Tu plataforma personal te permite enviar trabajos, guardar solicitudes, revisar estados y mantener tus archivos organizados.
+        </p>
+
+        <ul class="benefits">
+          <li><strong>Historial de solicitudes</strong> Consulta los trabajos que has enviado y el paquete seleccionado.</li>
+          <li><strong>Seguimiento personalizado</strong> Mira si tu revisión está recibida, en proceso o lista.</li>
+          <li><strong>Datos guardados</strong> No tienes que escribir tu información cada vez que solicitas una revisión.</li>
+        </ul>
+      </section>
+
+      <section class="auth-card">
+        <div class="tabs">
+          <button class="tab active" type="button" data-target="register-form">Crear cuenta</button>
+          <button class="tab" type="button" data-target="login-form">Iniciar sesión</button>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <form id="register-form" class="form active">
+          <div class="field">
+            <label for="register-name">Nombre completo</label>
+            <input type="text" id="register-name" placeholder="Ej. María González" required />
+          </div>
+
+          <div class="field">
+            <label for="register-email">Correo electrónico</label>
+            <input type="email" id="register-email" placeholder="tu@email.com" required />
+          </div>
+
+          <div class="field">
+            <label for="register-phone">Teléfono o WhatsApp</label>
+            <input type="tel" id="register-phone" placeholder="+507 6000-0000" />
+          </div>
+
+          <div class="field">
+            <label for="register-password">Contraseña</label>
+            <input type="password" id="register-password" minlength="6" placeholder="Mínimo 6 caracteres" required />
+          </div>
+
+          <button class="btn" type="submit">Crear mi cuenta</button>
+        </form>
+
+        <form id="login-form" class="form">
+          <div class="field">
+            <label for="login-email">Correo electrónico</label>
+            <input type="email" id="login-email" placeholder="tu@email.com" required />
+          </div>
+
+          <div class="field">
+            <label for="login-password">Contraseña</label>
+            <input type="password" id="login-password" placeholder="Tu contraseña" required />
+          </div>
+
+          <button class="btn" type="submit">Entrar a mi panel</button>
+        </form>
+      </section>
+    </main>
+  </div>
+
+  <script src="auth.js"></script>
+  <script>
+    const tabs = document.querySelectorAll(".tab");
+    const forms = document.querySelectorAll(".form");
+    const message = document.getElementById("message");
+    const params = new URLSearchParams(window.location.search);
+    const nextPage = params.get("next") || "panel.html";
+    const existingUser = getCurrentUser();
+
+    if (isAdminUser(existingUser)) {
+      window.location.replace("admin.html");
+    }
+
+    if (isTeacherUser(existingUser)) {
+      window.location.replace("profesor.html");
+    }
+
+    function showMessage(text, type) {
+      message.textContent = text;
+      message.className = `message show ${type}`;
+    }
+
+    function getHomeForUser(user) {
+      if (isAdminUser(user)) {
+        return "admin.html";
+      }
+
+      if (isTeacherUser(user)) {
+        return "profesor.html";
+      }
+
+      return nextPage;
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        tabs.forEach((item) => item.classList.remove("active"));
+        forms.forEach((form) => form.classList.remove("active"));
+        tab.classList.add("active");
+        document.getElementById(tab.dataset.target).classList.add("active");
+        message.className = "message";
+      });
+    });
+
+    document.getElementById("register-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      try {
+        registerUser({
+          name: document.getElementById("register-name").value.trim(),
+          email: document.getElementById("register-email").value.trim(),
+          phone: document.getElementById("register-phone").value.trim(),
+          password: document.getElementById("register-password").value
+        });
+
+        registerPendingSubscription();
+        showMessage("Cuenta creada correctamente. Redirigiendo...", "success");
+        setTimeout(() => window.location.href = nextPage, 700);
+      } catch (error) {
+        showMessage(error.message, "error");
+      }
+    });
+
+    document.getElementById("login-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      try {
+        const user = loginUser(
+          document.getElementById("login-email").value.trim(),
+          document.getElementById("login-password").value
+        );
+
+        registerPendingSubscription();
+        showMessage("Sesión iniciada. Redirigiendo...", "success");
+        setTimeout(() => window.location.href = getHomeForUser(user), 700);
+      } catch (error) {
+        showMessage(error.message, "error");
+      }
+    });
+  </script>
+</body>
+</html>

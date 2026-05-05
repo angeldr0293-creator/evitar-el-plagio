@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mi panel - Originalidad Académica</title>
-  <link rel="stylesheet" href="notifications.css" />
+  <link rel="stylesheet" href="css/notifications.css" />
   <style>
     * {
       margin: 0;
@@ -40,6 +40,7 @@
       align-items: center;
       justify-content: space-between;
       gap: 24px;
+      flex-wrap: wrap;
     }
 
     .brand {
@@ -75,7 +76,9 @@
     .nav-actions {
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
       gap: 14px;
+      justify-content: flex-end;
     }
 
     .btn,
@@ -168,6 +171,97 @@
 
     .stat span {
       color: #475569;
+    }
+
+    .credit-card {
+      align-items: center;
+      background: white;
+      border: 1px solid #d7e6f8;
+      border-radius: 16px;
+      box-shadow: 0 8px 22px rgba(15,47,87,0.035);
+      display: grid;
+      gap: 12px;
+      grid-template-columns: auto 1fr auto;
+      margin-bottom: 18px;
+      overflow: hidden;
+      padding: 10px 14px;
+      position: relative;
+    }
+
+    .credit-gem {
+      align-items: center;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      color: #1d4ed8;
+      display: inline-flex;
+      flex: 0 0 auto;
+      height: 34px;
+      justify-content: center;
+      width: 34px;
+    }
+
+    .credit-gem svg {
+      display: block;
+      fill: rgba(29,78,216,0.12);
+      height: 19px;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+      transform-box: fill-box;
+      transform-origin: center;
+      width: 19px;
+    }
+
+    .credit-card strong {
+      color: #071832;
+      display: block;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 17px;
+      line-height: 1.15;
+      margin-bottom: 2px;
+    }
+
+    .credit-card span {
+      color: #31506f;
+      display: block;
+      font-size: 11px;
+    }
+
+    .credit-card small {
+      color: #64748b;
+      display: block;
+      font-size: 10.5px;
+      margin-top: 2px;
+    }
+
+    .credit-meter {
+      align-self: center;
+      display: grid;
+      gap: 4px;
+      min-width: 160px;
+    }
+
+    .credit-meter-track {
+      background: #dbeafe;
+      border-radius: 999px;
+      height: 4px;
+      overflow: hidden;
+    }
+
+    .credit-meter-fill {
+      background: linear-gradient(90deg, #1d4ed8, #38bdf8);
+      border-radius: inherit;
+      display: block;
+      height: 100%;
+      width: 0%;
+    }
+
+    .credit-meter span {
+      color: #31506f;
+      font-size: 10.5px;
+      text-align: right;
     }
 
     .dashboard-grid {
@@ -319,9 +413,22 @@
         flex-direction: column;
       }
 
+      .header-credits {
+        align-self: flex-start;
+      }
+
       .stats,
+      .credit-card,
       .dashboard-grid {
         grid-template-columns: 1fr;
+      }
+
+      .credit-meter {
+        min-width: 0;
+      }
+
+      .credit-meter span {
+        text-align: left;
       }
 
       .side-card {
@@ -336,9 +443,14 @@
       }
 
       .nav-actions,
+      .header-credits,
       .btn,
       .ghost-btn {
         width: 100%;
+      }
+
+      .header-credits {
+        justify-content: center;
       }
 
       .welcome,
@@ -375,7 +487,7 @@
 
         <div class="nav-actions">
           <a class="ghost-btn" href="precios.html">Ver paquetes</a>
-          <a class="btn" href="formulario.html">Nueva solicitud</a>
+          <a class="btn" data-request-action href="formulario.html">Nueva solicitud</a>
           <button class="ghost-btn" type="button" onclick="logout()">Cerrar sesión</button>
         </div>
       </nav>
@@ -406,6 +518,23 @@
         </article>
       </section>
 
+      <section class="credit-card" aria-label="Créditos disponibles">
+        <span class="credit-gem" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M8 5.5h8l3.5 4.2L12 18.5 4.5 9.7 8 5.5Z"></path><path d="M4.5 9.7h15"></path><path d="M9 9.7 12 18.5l3-8.8"></path><path d="M8 5.5 9 9.7"></path><path d="M16 5.5 15 9.7"></path></svg>
+        </span>
+        <div>
+          <strong id="available-credits">0 créditos</strong>
+          <span id="credits-detail">1 página = 2 créditos</span>
+          <small>Los créditos no utilizados quedan disponibles para próximos trabajos.</small>
+        </div>
+        <div class="credit-meter" aria-hidden="true">
+          <div class="credit-meter-track">
+            <span id="credits-meter-fill" class="credit-meter-fill"></span>
+          </div>
+          <span id="credits-meter-label">0 de 0 créditos disponibles</span>
+        </div>
+      </section>
+
       <div class="dashboard-grid">
         <section class="panel-card">
           <h2>Mis solicitudes</h2>
@@ -423,14 +552,14 @@
             <li><strong>Próximo paso</strong>Envía un nuevo trabajo desde el formulario para verlo aquí.</li>
           </ul>
 
-          <a class="btn" href="formulario.html">Enviar trabajo</a>
+          <a class="btn" id="account-action" href="formulario.html">Enviar trabajo</a>
         </aside>
       </div>
     </div>
   </main>
 
-  <script src="auth.js"></script>
-  <script src="notifications.js"></script>
+  <script src="auth/auth.js"></script>
+  <script src="js/notifications.js"></script>
   <script>
     const user = getCurrentUser();
 
@@ -450,6 +579,11 @@
       inicial: "Inicial",
       academico: "Académico",
       premium: "Premium"
+    };
+    const planCredits = {
+      inicial: { credits: 50, pages: 25 },
+      academico: { credits: 100, pages: 50 },
+      premium: { credits: 200, pages: 100 }
     };
 
     function formatDate(value) {
@@ -505,22 +639,86 @@
       `;
     }
 
+    function getRequestPages(request) {
+      const directPages = Number(request.pages);
+
+      if (Number.isFinite(directPages) && directPages > 0) {
+        return directPages;
+      }
+
+      if (Array.isArray(request.pageDetails)) {
+        return request.pageDetails.reduce((total, item) => total + (Number(item.pages) || 0), 0);
+      }
+
+      return 0;
+    }
+
+    function getCreditSummary(requests) {
+      const subscriptions = getCurrentUserSubscriptions();
+      const purchasedCredits = subscriptions.reduce((total, subscription) => (
+        total + (planCredits[subscription.plan]?.credits || 0)
+      ), 0);
+      const purchasedPages = subscriptions.reduce((total, subscription) => (
+        total + (planCredits[subscription.plan]?.pages || 0)
+      ), 0);
+
+      const inferredPlans = subscriptions.length ? [] : requests.map((request) => request.package);
+      const inferredCredits = inferredPlans.reduce((total, plan) => total + (planCredits[plan]?.credits || 0), 0);
+      const inferredPages = inferredPlans.reduce((total, plan) => total + (planCredits[plan]?.pages || 0), 0);
+
+      const totalCredits = purchasedCredits || inferredCredits;
+      const totalPages = purchasedPages || inferredPages;
+      const usedPages = requests.reduce((total, request) => total + getRequestPages(request), 0);
+      const usedCredits = usedPages * 2;
+      const availableCredits = Math.max(totalCredits - usedCredits, 0);
+      const availablePages = Math.floor(availableCredits / 2);
+      const percentage = totalCredits ? Math.round((availableCredits / totalCredits) * 100) : 0;
+
+      return {
+        availableCredits,
+        availablePages,
+        totalCredits,
+        totalPages,
+        usedCredits,
+        percentage
+      };
+    }
+
     function renderPanel() {
       const requests = getCurrentUserRequests();
       const requestsList = document.getElementById("requests-list");
+      const creditSummary = getCreditSummary(requests);
 
       document.getElementById("welcome-title").textContent = `Hola, ${user.name}`;
       document.getElementById("account-email").textContent = user.email;
       document.getElementById("total-requests").textContent = requests.length;
       document.getElementById("received-requests").textContent = requests.filter((item) => item.status === "Recibida").length;
       document.getElementById("latest-package").textContent = requests[0] ? packageNames[requests[0].package] : "-";
+      document.getElementById("available-credits").textContent = `${creditSummary.availableCredits} créditos`;
+      document.getElementById("credits-detail").textContent = creditSummary.totalCredits
+        ? `${creditSummary.availablePages} página(s) disponibles de ${creditSummary.totalPages} compradas. 1 página = 2 créditos.`
+        : "Compra un plan para activar tus créditos. 1 página = 2 créditos.";
+      document.getElementById("credits-meter-fill").style.width = `${creditSummary.percentage}%`;
+      document.getElementById("credits-meter-label").textContent = creditSummary.totalCredits
+        ? `${creditSummary.availableCredits} de ${creditSummary.totalCredits} créditos disponibles`
+        : "Sin créditos activos";
+      const accountAction = document.getElementById("account-action");
+      const canSendWork = creditSummary.availableCredits >= 2;
+
+      accountAction.textContent = canSendWork ? "Enviar trabajo" : "Comprar créditos";
+      accountAction.href = canSendWork ? "formulario.html" : "precios.html";
+      document.querySelectorAll("[data-request-action]").forEach((link) => {
+        link.textContent = canSendWork ? "Nueva solicitud" : "Comprar créditos";
+        link.href = canSendWork ? "formulario.html" : "precios.html";
+      });
+      setupCreditBadges();
 
       if (!requests.length) {
         requestsList.innerHTML = `
           <div class="empty-state">
             <h3>Aún no tienes solicitudes</h3>
             <p>Cuando envíes tu primer trabajo, aparecerá aquí con su paquete, fecha y estado.</p>
-            <a class="btn" href="formulario.html">Enviar mi primer trabajo</a>
+            <a class="btn" href="${canSendWork ? "formulario.html" : "precios.html"}">${canSendWork ? "Enviar mi primer trabajo" : "Comprar créditos"}</a>
           </div>
         `;
         return;
@@ -539,8 +737,10 @@
             <span><strong>Paquete:</strong> ${packageNames[request.package] || request.package}</span>
             <span><strong>Ayuda:</strong> ${request.helpType}</span>
             <span><strong>Trabajos:</strong> ${request.workCount}</span>
+            <span><strong>Créditos invertidos:</strong> ${getRequestPages(request) * 2}</span>
             <span><strong>Archivos:</strong> ${renderAttachments(request)}</span>
             <span><strong>Páginas:</strong> ${request.pages}</span>
+            <span><strong>Hora de entrega:</strong> ${request.deliveryTime || "-"}</span>
           </div>
           ${renderDelivery(request)}
         </article>

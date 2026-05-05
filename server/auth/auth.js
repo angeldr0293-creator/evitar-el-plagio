@@ -1,10 +1,15 @@
-const AUTH_USER_KEY = "oa_current_user";
+﻿const AUTH_USER_KEY = "oa_current_user";
 const AUTH_USERS_KEY = "oa_users";
 const AUTH_REQUESTS_KEY = "oa_requests";
 const AUTH_SUBSCRIPTIONS_KEY = "oa_subscriptions";
 const ADMIN_EMAIL = "admin@originalidad.com";
 const ADMIN_PASSWORD = "Admin2026!";
 const SHARED_KEYS = [AUTH_USERS_KEY, AUTH_REQUESTS_KEY, AUTH_SUBSCRIPTIONS_KEY];
+const API_STATE_ENDPOINTS = [
+  "/api/state",
+  "http://127.0.0.1:5173/api/state",
+  "http://localhost:5173/api/state"
+];
 
 function createId() {
   if (window.crypto && crypto.randomUUID) {
@@ -19,31 +24,61 @@ function getDefaultSharedValue(key) {
 }
 
 function getSharedState() {
-  try {
-    const request = new XMLHttpRequest();
-    request.open("GET", "/api/state", false);
-    request.send();
+  for (const endpoint of API_STATE_ENDPOINTS) {
+    try {
+      const request = new XMLHttpRequest();
+      request.open("GET", endpoint, false);
+      request.send();
 
-    if (request.status >= 200 && request.status < 300) {
-      return JSON.parse(request.responseText || "{}");
+      if (request.status >= 200 && request.status < 300) {
+        return JSON.parse(request.responseText || "{}");
+      }
+    } catch (error) {
+      // Se prueba el siguiente endpoint disponible.
     }
-  } catch (error) {
-    return null;
   }
 
   return null;
 }
 
 function saveSharedState(state) {
-  try {
-    const request = new XMLHttpRequest();
-    request.open("POST", "/api/state", false);
-    request.setRequestHeader("Content-Type", "application/json");
-    request.send(JSON.stringify(state));
-    return request.status >= 200 && request.status < 300;
-  } catch (error) {
-    return false;
+  for (const endpoint of API_STATE_ENDPOINTS) {
+    try {
+      const request = new XMLHttpRequest();
+      request.open("POST", endpoint, false);
+      request.setRequestHeader("Content-Type", "application/json");
+      request.send(JSON.stringify(state));
+      if (request.status >= 200 && request.status < 300) {
+        return true;
+      }
+    } catch (error) {
+      // Se prueba el siguiente endpoint disponible.
+    }
   }
+
+  return false;
+}
+
+function mergeSharedArray(serverItems, localItems) {
+  const merged = Array.isArray(serverItems) ? [...serverItems] : [];
+  const localArray = Array.isArray(localItems) ? localItems : [];
+
+  localArray.forEach((localItem) => {
+    const exists = merged.some((serverItem) => (
+      (localItem.id && serverItem.id === localItem.id)
+      || (
+        localItem.email
+        && serverItem.email
+        && serverItem.email.toLowerCase() === localItem.email.toLowerCase()
+      )
+    ));
+
+    if (!exists) {
+      merged.push(localItem);
+    }
+  });
+
+  return merged;
 }
 
 function getSharedItem(key) {
@@ -54,7 +89,13 @@ function getSharedItem(key) {
     return fallback;
   }
 
-  if ((!state[key] || !state[key].length) && fallback && fallback.length) {
+  if (Array.isArray(state[key]) && Array.isArray(fallback) && fallback.length) {
+    const merged = mergeSharedArray(state[key], fallback);
+    if (merged.length !== state[key].length) {
+      state[key] = merged;
+      saveSharedState(state);
+    }
+  } else if ((!state[key] || !state[key].length) && fallback && fallback.length) {
     state[key] = fallback;
     saveSharedState(state);
   }
@@ -134,6 +175,128 @@ function setCurrentUser(user) {
 function logout() {
   localStorage.removeItem(AUTH_USER_KEY);
   window.location.href = "index.html";
+}
+
+function setupAuthLinks() {
+  document.querySelectorAll("[data-auth-link]").forEach((link) => {
+    const user = getCurrentUser();
+
+    if (!user) {
+      link.textContent = "Iniciar sesión / Registrarse";
+      link.href = "registro.html";
+      return;
+    }
+
+    link.textContent = "Cerrar sesión";
+    link.href = "#";
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      logout();
+    });
+  });
+
+  setupCreditBadges();
+}
+
+function getPlanCreditConfig() {
+  return {
+    inicial: { credits: 50, pages: 25 },
+    academico: { credits: 100, pages: 50 },
+    premium: { credits: 200, pages: 100 }
+  };
+}
+
+function getRequestPages(request) {
+  const directPages = Number(request.pages);
+
+  if (Number.isFinite(directPages) && directPages > 0) {
+    return directPages;
+  }
+
+  if (Array.isArray(request.pageDetails)) {
+    return request.pageDetails.reduce((total, item) => total + (Number(item.pages) || 0), 0);
+  }
+
+  return 0;
+}
+
+function getClientCreditSummary(requests = getCurrentUserRequests(), subscriptions = getCurrentUserSubscriptions()) {
+  const planCredits = getPlanCreditConfig();
+  const purchasedCredits = subscriptions.reduce((total, subscription) => (
+    total + (planCredits[subscription.plan]?.credits || 0)
+  ), 0);
+  const purchasedPages = subscriptions.reduce((total, subscription) => (
+    total + (planCredits[subscription.plan]?.pages || 0)
+  ), 0);
+  const inferredPlans = subscriptions.length ? [] : requests.map((request) => request.package);
+  const inferredCredits = inferredPlans.reduce((total, plan) => total + (planCredits[plan]?.credits || 0), 0);
+  const inferredPages = inferredPlans.reduce((total, plan) => total + (planCredits[plan]?.pages || 0), 0);
+  const totalCredits = purchasedCredits || inferredCredits;
+  const totalPages = purchasedPages || inferredPages;
+  const usedPages = requests.reduce((total, request) => total + getRequestPages(request), 0);
+  const usedCredits = usedPages * 2;
+  const availableCredits = Math.max(totalCredits - usedCredits, 0);
+
+  return {
+    availableCredits,
+    availablePages: Math.floor(availableCredits / 2),
+    totalCredits,
+    totalPages,
+    usedCredits,
+    percentage: totalCredits ? Math.round((availableCredits / totalCredits) * 100) : 0
+  };
+}
+
+function setupCreditBadges() {
+  const user = getCurrentUser();
+  const nav = document.querySelector(".nav");
+
+  if (!nav || !user || isAdminUser(user) || isTeacherUser(user)) {
+    document.querySelectorAll(".header-credits").forEach((badge) => badge.remove());
+    return;
+  }
+
+  let badge = document.querySelector(".header-credits");
+  const summary = getClientCreditSummary();
+
+  if (!badge) {
+    badge = document.createElement("div");
+    badge.className = "header-credits";
+    badge.setAttribute("aria-label", "Créditos disponibles");
+    badge.innerHTML = `
+      <span class="credit-gem-mini" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M8 5.5h8l3.5 4.2L12 18.5 4.5 9.7 8 5.5Z"></path><path d="M4.5 9.7h15"></path><path d="M9 9.7 12 18.5l3-8.8"></path><path d="M8 5.5 9 9.7"></path><path d="M16 5.5 15 9.7"></path></svg>
+      </span>
+      <span class="header-credits-count"></span>
+    `;
+
+  }
+
+  const authLink = document.querySelector("[data-auth-link]");
+  const logoutButton = document.querySelector(".nav-actions button[onclick*='logout']");
+  const accountControl = authLink || logoutButton;
+
+  if (accountControl) {
+    let accountGroup = accountControl.closest(".nav-account-group");
+
+    if (!accountGroup) {
+      accountGroup = document.createElement("span");
+      accountGroup.className = "nav-account-group";
+      accountControl.parentNode.insertBefore(accountGroup, accountControl);
+      accountGroup.appendChild(accountControl);
+    }
+
+    accountGroup.appendChild(badge);
+  } else if (!badge.parentNode) {
+    const anchor = document.querySelector(".nav-actions") || document.querySelector(".nav-links") || document.querySelector(".nav-toggle");
+    if (anchor) {
+      nav.insertBefore(badge, anchor);
+    } else {
+      nav.appendChild(badge);
+    }
+  }
+
+  badge.querySelector(".header-credits-count").textContent = `${summary.availableCredits} créditos`;
 }
 
 function isAdminUser(user = getCurrentUser()) {
@@ -268,6 +431,25 @@ function resetTeacherPassword(teacherId, password) {
   ));
 
   saveUsers(updatedUsers);
+}
+
+function resetClientPassword(clientId, password) {
+  if (!isAdminUser()) {
+    throw new Error("Solo el administrador puede cambiar contraseñas de clientes.");
+  }
+
+  const users = getUsers();
+  const client = users.find((user) => user.id === clientId && (user.role || "client") === "client");
+
+  if (!client) {
+    throw new Error("No se encontró el cliente.");
+  }
+
+  saveUsers(users.map((user) => (
+    user.id === clientId ? { ...user, password } : user
+  )));
+
+  return { ...client, password };
 }
 
 function registerSubscription(plan, paymentToken = "") {

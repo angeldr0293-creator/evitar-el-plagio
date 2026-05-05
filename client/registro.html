@@ -290,22 +290,22 @@
         <form id="register-form" class="form active">
           <div class="field">
             <label for="register-name">Nombre completo</label>
-            <input type="text" id="register-name" placeholder="Ej. María González" required />
+            <input type="text" id="register-name" autocomplete="name" placeholder="Ej. María González" required />
           </div>
 
           <div class="field">
             <label for="register-email">Correo electrónico</label>
-            <input type="email" id="register-email" placeholder="tu@email.com" required />
+            <input type="email" id="register-email" autocomplete="email" placeholder="tu@email.com" required />
           </div>
 
           <div class="field">
             <label for="register-phone">Teléfono o WhatsApp</label>
-            <input type="tel" id="register-phone" placeholder="+507 6000-0000" />
+            <input type="tel" id="register-phone" autocomplete="tel" placeholder="+507 6000-0000" />
           </div>
 
           <div class="field">
             <label for="register-password">Contraseña</label>
-            <input type="password" id="register-password" minlength="6" placeholder="Mínimo 6 caracteres" required />
+            <input type="password" id="register-password" autocomplete="new-password" minlength="6" placeholder="Mínimo 6 caracteres" required />
           </div>
 
           <button class="btn" type="submit">Crear mi cuenta</button>
@@ -314,12 +314,12 @@
         <form id="login-form" class="form">
           <div class="field">
             <label for="login-email">Correo electrónico</label>
-            <input type="email" id="login-email" placeholder="tu@email.com" required />
+            <input type="email" id="login-email" autocomplete="username" placeholder="tu@email.com" required />
           </div>
 
           <div class="field">
             <label for="login-password">Contraseña</label>
-            <input type="password" id="login-password" placeholder="Tu contraseña" required />
+            <input type="password" id="login-password" autocomplete="current-password" placeholder="Tu contraseña" required />
           </div>
 
           <button class="btn" type="submit">Entrar a mi panel</button>
@@ -328,13 +328,13 @@
     </main>
   </div>
 
-  <script src="auth.js"></script>
+  <script src="auth/auth.js"></script>
   <script>
     const tabs = document.querySelectorAll(".tab");
     const forms = document.querySelectorAll(".form");
     const message = document.getElementById("message");
     const params = new URLSearchParams(window.location.search);
-    const nextPage = params.get("next") || "panel.html";
+    const nextPage = params.get("next") || "";
     const existingUser = getCurrentUser();
 
     if (isAdminUser(existingUser)) {
@@ -359,7 +359,9 @@
         return "profesor.html";
       }
 
-      return nextPage;
+      return nextPage && !["admin.html", "profesor.html", "registro.html"].includes(nextPage)
+        ? nextPage
+        : "panel.html";
     }
 
     tabs.forEach((tab) => {
@@ -376,7 +378,7 @@
       event.preventDefault();
 
       try {
-        registerUser({
+        const user = registerUser({
           name: document.getElementById("register-name").value.trim(),
           email: document.getElementById("register-email").value.trim(),
           phone: document.getElementById("register-phone").value.trim(),
@@ -385,7 +387,7 @@
 
         registerPendingSubscription();
         showMessage("Cuenta creada correctamente. Redirigiendo...", "success");
-        setTimeout(() => window.location.href = nextPage, 700);
+        setTimeout(() => window.location.href = getHomeForUser(user), 700);
       } catch (error) {
         showMessage(error.message, "error");
       }
@@ -397,7 +399,7 @@
       try {
         const user = loginUser(
           document.getElementById("login-email").value.trim(),
-          document.getElementById("login-password").value
+          document.getElementById("login-password").value.trim()
         );
 
         registerPendingSubscription();

@@ -1,3 +1,80 @@
+.header-credits {
+  align-items: center;
+  background:
+    radial-gradient(circle at 100% 0%, rgba(56,189,248,0.22), transparent 32%),
+    linear-gradient(135deg, #eff6ff, #ffffff);
+  border: 1px solid #93c5fd;
+  border-radius: 999px;
+  box-shadow: 0 10px 22px rgba(29,78,216,0.14);
+  color: #071832;
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 900;
+  min-height: 36px;
+  padding: 5px 11px 5px 7px;
+  white-space: nowrap;
+}
+
+.credit-gem-mini {
+  align-items: center;
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  border-radius: 999px;
+  color: #1d4ed8;
+  display: inline-flex;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
+.credit-gem-mini svg {
+  display: block;
+  fill: rgba(29,78,216,0.12);
+  height: 15px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  transform-box: fill-box;
+  transform-origin: center;
+  width: 15px;
+}
+
+.nav-account-group {
+  align-items: center;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nav-account-group [data-auth-link],
+.nav-account-group .ghost-btn {
+  min-height: auto;
+}
+
+.nav-actions .nav-account-group .ghost-btn {
+  min-height: 38px;
+  padding: 8px 14px;
+}
+
+.nav-links .nav-account-group {
+  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nav-links .nav-account-group a {
+  text-align: center;
+}
+
+.nav-links .nav-account-group .header-credits {
+  justify-content: center;
+  width: 100%;
+}
+
 .notification-bell {
   position: relative;
 }
@@ -191,7 +268,17 @@
 
 @media (max-width: 640px) {
   .notification-bell,
-  .notification-trigger {
+  .notification-trigger,
+  .header-credits {
+    width: 100%;
+  }
+
+  .header-credits {
+    justify-content: center;
+  }
+
+  .nav-account-group {
+    align-items: stretch;
     width: 100%;
   }
 

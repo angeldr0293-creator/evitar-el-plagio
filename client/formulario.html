@@ -41,6 +41,10 @@
       gap: 24px;
     }
 
+    .nav-toggle {
+      display: none;
+    }
+
     .brand {
       display: flex;
       align-items: center;
@@ -283,6 +287,13 @@
       border: 2px dashed #bfd3ce;
       border-radius: 18px;
       padding: 24px;
+      transition: 0.2s ease;
+    }
+
+    .file-box.drag-over {
+      background: #edf6f3;
+      border-color: #2b7a68;
+      box-shadow: 0 0 0 4px rgba(43,122,104,0.12);
     }
 
     .file-box input {
@@ -293,6 +304,84 @@
     .hint {
       color: #64748b;
       font-size: 13px;
+    }
+
+    .file-analysis {
+      display: grid;
+      gap: 10px;
+    }
+
+    .selected-files {
+      display: grid;
+      gap: 10px;
+    }
+
+    .selected-file {
+      align-items: center;
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr auto;
+      padding: 12px 14px;
+    }
+
+    .selected-file .hint {
+      display: block;
+    }
+
+    .selected-file strong {
+      color: #071832;
+      display: block;
+      overflow-wrap: anywhere;
+    }
+
+    .remove-file {
+      align-items: center;
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 999px;
+      color: #071832;
+      cursor: pointer;
+      display: inline-flex;
+      font-weight: 800;
+      height: 36px;
+      justify-content: center;
+      padding: 0;
+      width: 36px;
+    }
+
+    .file-check {
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      color: #26364d;
+      padding: 12px 14px;
+    }
+
+    .file-check strong {
+      color: #071832;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .file-check.ok {
+      background: #edf6f3;
+      border-color: #cfe2dc;
+      color: #11493f;
+    }
+
+    .file-check.error {
+      background: #fff1f2;
+      border-color: #fecdd3;
+      color: #9f1239;
+    }
+
+    .file-check.warning {
+      background: #fffbeb;
+      border-color: #fde68a;
+      color: #854d0e;
     }
 
     .divider {
@@ -380,11 +469,74 @@
       height: 17px;
     }
 
-    @media (max-width: 980px) {
-      .nav,
+    @media (max-width: 1280px) {
+      .nav {
+        align-items: center;
+        min-height: 76px;
+        position: relative;
+      }
+
+      .brand {
+        min-width: 0;
+      }
+
+      .brand-title,
+      .brand-subtitle {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .nav-toggle {
+        align-items: center;
+        background: white;
+        border: 1px solid #d8e0e5;
+        border-radius: 10px;
+        color: #071832;
+        cursor: pointer;
+        display: inline-flex;
+        flex: 0 0 auto;
+        height: 44px;
+        justify-content: center;
+        width: 48px;
+      }
+
+      .nav-toggle svg {
+        width: 24px;
+        height: 24px;
+      }
+
       .nav-links {
-        align-items: flex-start;
-        flex-direction: column;
+        background: white;
+        border: 1px solid #dfe6ea;
+        border-radius: 14px;
+        box-shadow: 0 20px 42px rgba(7,24,50,0.12);
+        display: none;
+        gap: 8px;
+        left: 0;
+        padding: 12px;
+        position: absolute;
+        right: 0;
+        top: calc(100% + 8px);
+        z-index: 20;
+      }
+
+      .nav-links.open {
+        display: grid;
+      }
+
+      .nav-links a {
+        border-radius: 10px;
+        padding: 11px 12px;
+      }
+
+      .nav-links a:hover {
+        background: #f3f7f6;
+      }
+
+      .nav-button {
+        min-height: 46px;
+        width: 100%;
       }
 
       .hero-inner,
@@ -400,8 +552,7 @@
 
     @media (max-width: 640px) {
       .nav {
-        min-height: auto;
-        padding: 18px 0;
+        padding: 12px 0;
       }
 
       .brand-title {
@@ -411,14 +562,6 @@
       .brand-subtitle,
       .nav-links a {
         font-size: 14px;
-      }
-
-      .nav-links {
-        gap: 12px;
-      }
-
-      .nav-button {
-        width: 100%;
       }
 
       .hero {
@@ -459,12 +602,21 @@
           </span>
         </a>
 
-        <div class="nav-links">
+        <button class="nav-toggle" type="button" aria-controls="nav-links" aria-expanded="false" aria-label="Abrir menú">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h16"></path>
+            <path d="M4 12h16"></path>
+            <path d="M4 17h16"></path>
+          </svg>
+        </button>
+
+        <div class="nav-links" id="nav-links">
           <a href="index.html#servicios">Qué hacemos</a>
           <a href="index.html#proceso">Cómo ayudamos</a>
           <a href="precios.html">Precios</a>
           <a href="index.html#preguntas">Preguntas frecuentes</a>
           <a href="panel.html">Mi panel</a>
+          <a data-auth-link href="registro.html">Iniciar sesión / Registrarse</a>
           <a href="solicitar.html" class="nav-button">Solicitar revisión</a>
         </div>
       </nav>
@@ -534,17 +686,6 @@
           </div>
 
           <div class="field">
-            <label for="cantidad-trabajos">Cantidad de trabajos</label>
-            <input type="number" id="cantidad-trabajos" name="cantidad-trabajos" min="1" placeholder="Ej. 5" required />
-          </div>
-
-          <div class="field">
-            <label for="paginas">Páginas por trabajo</label>
-            <input type="number" id="paginas" name="paginas" min="1" placeholder="Ej. 10" required />
-          </div>
-
-
-          <div class="field">
             <label for="tipo-ayuda">Qué necesitas principalmente</label>
             <select id="tipo-ayuda" name="tipo-ayuda" required>
               <option value="">Selecciona una opción</option>
@@ -568,13 +709,8 @@
           </div>
 
           <div class="field">
-            <label for="urgencia">Urgencia</label>
-            <select id="urgencia" name="urgencia" required>
-              <option value="">Selecciona una opción</option>
-              <option value="estandar">Entrega estándar</option>
-              <option value="rapida">Entrega rápida</option>
-              <option value="prioritaria">Entrega prioritaria</option>
-            </select>
+            <label for="hora-entrega">Hora de entrega</label>
+            <input type="time" id="hora-entrega" name="hora-entrega" required />
           </div>
 
           <div class="field">
@@ -590,8 +726,12 @@
 
           <div class="field full file-box">
             <label for="archivo">Subir archivo</label>
-            <input type="file" id="archivo" name="archivo" accept=".doc,.docx,.pdf,.txt" multiple required />
-            <p class="hint">Formatos permitidos: DOC, DOCX, PDF o TXT. Puedes subir uno o varios archivos.</p>
+            <input type="file" id="archivo" name="archivo" accept=".docx,.pdf" required />
+            <p class="hint">Arrastra tu documento aquí o usa el botón para elegirlo.</p>
+            <p id="plan-limits" class="hint">El consumo se calculará por páginas: 1 página = 2 créditos.</p>
+            <p class="hint">Para edición recomendamos DOCX. PDF queda permitido para pruebas de conteo automático.</p>
+            <div id="selected-files" class="selected-files"></div>
+            <div id="file-analysis" class="file-analysis"></div>
           </div>
 
           <div class="field full">
@@ -638,8 +778,26 @@
       Originalidad Académica - Solicitudes para textos más humanos, claros y responsables
     </div>
   </footer>
-  <script src="auth.js"></script>
+  <script src="auth/auth.js"></script>
   <script>
+    const navToggle = document.querySelector(".nav-toggle");
+    const navLinks = document.getElementById("nav-links");
+    setupAuthLinks();
+
+    navToggle.addEventListener("click", () => {
+      const isOpen = navLinks.classList.toggle("open");
+      navToggle.setAttribute("aria-expanded", String(isOpen));
+      navToggle.setAttribute("aria-label", isOpen ? "Cerrar menú" : "Abrir menú");
+    });
+
+    navLinks.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", () => {
+        navLinks.classList.remove("open");
+        navToggle.setAttribute("aria-expanded", "false");
+        navToggle.setAttribute("aria-label", "Abrir menú");
+      });
+    });
+
     if (isTeacherUser()) {
       window.location.replace("profesor.html");
     }
@@ -658,18 +816,291 @@
     const planFromPayment = sessionStorage.getItem("oa_selected_plan");
     const planFromUrl = params.get("plan");
     const purchasedPlan = allowedPlans.includes(planFromPayment) ? planFromPayment : null;
+    const activeSubscription = getCurrentUserSubscriptions().find((subscription) => (
+      subscription.status === "Activa" && new Date(subscription.expiresAt) >= new Date()
+    )) || getCurrentUserSubscriptions()[0] || null;
+    const requestPlan = purchasedPlan || (activeSubscription ? activeSubscription.plan : null);
+    const planGuides = {
+      inicial: { name: "Paquete Inicial", works: 5, pages: 5 },
+      academico: { name: "Paquete Académico", works: 5, pages: 10 },
+      premium: { name: "Paquete Premium", works: 10, pages: 10 }
+    };
+    const activePlanGuide = planGuides[requestPlan] || null;
+    const fileInput = document.getElementById("archivo");
+    const fileDropZone = document.querySelector(".file-box");
+    const selectedFilesList = document.getElementById("selected-files");
+    const fileAnalysis = document.getElementById("file-analysis");
+    const planLimitsText = document.getElementById("plan-limits");
+    let latestPageAnalysis = null;
 
     if (purchasedPlan && planFromUrl !== purchasedPlan) {
       const url = new URL(window.location.href);
       url.searchParams.set("plan", purchasedPlan);
       window.history.replaceState({}, "", url);
     }
+
+    if (activePlanGuide) {
+      planLimitsText.textContent = `${activePlanGuide.name}: uso estimado de ${activePlanGuide.works} trabajo(s) de hasta ${activePlanGuide.pages} página(s). Puedes enviar más páginas si tienes créditos suficientes.`;
+    }
+
     const labels = {
       "copy-paste": "Reducir plagio por copy paste",
       ia: "Humanizar texto generado por IA",
       ambos: "Ambas cosas",
       citas: "Apoyo con citas y referencias"
     };
+
+    function getFileExtension(file) {
+      return file.name.split(".").pop().toLowerCase();
+    }
+
+    function decodeBytes(bytes) {
+      return new TextDecoder("utf-8").decode(bytes);
+    }
+
+    function getUint16(view, offset) {
+      return view.getUint16(offset, true);
+    }
+
+    function getUint32(view, offset) {
+      return view.getUint32(offset, true);
+    }
+
+    function findEndOfCentralDirectory(view) {
+      const minOffset = Math.max(0, view.byteLength - 66000);
+
+      for (let offset = view.byteLength - 22; offset >= minOffset; offset -= 1) {
+        if (getUint32(view, offset) === 0x06054b50) {
+          return offset;
+        }
+      }
+
+      return -1;
+    }
+
+    async function inflateRaw(bytes) {
+      if (!("DecompressionStream" in window)) {
+        throw new Error("Este navegador no puede descomprimir DOCX automáticamente.");
+      }
+
+      const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+      return new Uint8Array(await new Response(stream).arrayBuffer());
+    }
+
+    async function extractZipFile(arrayBuffer, targetName) {
+      const view = new DataView(arrayBuffer);
+      const eocdOffset = findEndOfCentralDirectory(view);
+
+      if (eocdOffset < 0) {
+        throw new Error("No se pudo leer la estructura del DOCX.");
+      }
+
+      const totalEntries = getUint16(view, eocdOffset + 10);
+      let offset = getUint32(view, eocdOffset + 16);
+
+      for (let index = 0; index < totalEntries; index += 1) {
+        if (getUint32(view, offset) !== 0x02014b50) {
+          throw new Error("El índice interno del DOCX no se pudo leer.");
+        }
+
+        const method = getUint16(view, offset + 10);
+        const compressedSize = getUint32(view, offset + 20);
+        const fileNameLength = getUint16(view, offset + 28);
+        const extraLength = getUint16(view, offset + 30);
+        const commentLength = getUint16(view, offset + 32);
+        const localHeaderOffset = getUint32(view, offset + 42);
+        const fileNameBytes = new Uint8Array(arrayBuffer, offset + 46, fileNameLength);
+        const fileName = decodeBytes(fileNameBytes);
+
+        if (fileName === targetName) {
+          const localNameLength = getUint16(view, localHeaderOffset + 26);
+          const localExtraLength = getUint16(view, localHeaderOffset + 28);
+          const dataStart = localHeaderOffset + 30 + localNameLength + localExtraLength;
+          const compressedBytes = new Uint8Array(arrayBuffer, dataStart, compressedSize);
+
+          if (method === 0) {
+            return compressedBytes;
+          }
+
+          if (method === 8) {
+            return inflateRaw(compressedBytes);
+          }
+
+          throw new Error("El DOCX usa una compresión no compatible.");
+        }
+
+        offset += 46 + fileNameLength + extraLength + commentLength;
+      }
+
+      throw new Error("El DOCX no contiene metadatos de páginas.");
+    }
+
+    async function countDocxPages(file) {
+      const appXmlBytes = await extractZipFile(await file.arrayBuffer(), "docProps/app.xml");
+      const appXml = decodeBytes(appXmlBytes);
+      const pagesMatch = appXml.match(/<Pages>(\d+)<\/Pages>/i);
+      const pages = pagesMatch ? Number(pagesMatch[1]) : 0;
+
+      if (!pages) {
+        throw new Error("No se encontró el número de páginas guardado por Word.");
+      }
+
+      return pages;
+    }
+
+    async function countPdfPages(file) {
+      const text = new TextDecoder("latin1").decode(await file.arrayBuffer());
+      const matches = text.match(/\/Type\s*\/Page\b/g) || [];
+
+      if (!matches.length) {
+        throw new Error("No se pudo contar las páginas del PDF.");
+      }
+
+      return matches.length;
+    }
+
+    async function countFilePages(file) {
+      const extension = getFileExtension(file);
+
+      if (extension === "docx") {
+        return countDocxPages(file);
+      }
+
+      if (extension === "pdf") {
+        return countPdfPages(file);
+      }
+
+      throw new Error("Por ahora la detección automática solo funciona con DOCX y PDF.");
+    }
+
+    function renderPageAnalysis(analysis) {
+      if (!analysis || !analysis.items.length) {
+        fileAnalysis.innerHTML = "";
+        return;
+      }
+
+      const readableItems = analysis.items.filter((item) => !item.error);
+      const totalPages = readableItems.reduce((sum, item) => sum + item.pages, 0);
+      const requiredCredits = totalPages * 2;
+      const creditSummary = getClientCreditSummary();
+      const canCompareCredits = readableItems.length === analysis.items.length;
+      const creditWarning = canCompareCredits && requiredCredits > creditSummary.availableCredits
+        ? `<div class="file-check error"><strong>Crédito insuficiente</strong>Este envío requiere ${requiredCredits} crédito(s) y tienes ${creditSummary.availableCredits} disponible(s). Compra un nuevo paquete para continuar.</div>`
+        : "";
+      const totalNotice = canCompareCredits && totalPages
+        ? `<div class="file-check ${creditWarning ? "warning" : "ok"}"><strong>Créditos a invertir</strong>${totalPages} página(s) detectada(s) consumirán ${requiredCredits} crédito(s). Tienes ${creditSummary.availableCredits} crédito(s) disponible(s).</div>`
+        : "";
+      const planWarning = activePlanGuide && analysis.items.length > activePlanGuide.works
+        ? `<div class="file-check warning"><strong>Uso superior al estimado</strong>${activePlanGuide.name} se presenta como referencia de ${activePlanGuide.works} trabajo(s). Puedes enviarlos si tus créditos alcanzan.</div>`
+        : "";
+
+      fileAnalysis.innerHTML = `
+        ${planWarning}
+        ${analysis.items.map((item) => {
+          const exceedsGuide = Boolean(activePlanGuide && item.pages > activePlanGuide.pages);
+          const status = item.error ? "warning" : exceedsGuide ? "warning" : "ok";
+          const message = item.error
+            ? item.error
+            : exceedsGuide
+              ? `Tiene ${item.pages} página(s). Supera la referencia de ${activePlanGuide.pages} página(s), pero puede enviarse si tienes créditos suficientes. Consumirá ${item.pages * 2} crédito(s).`
+              : `Tiene ${item.pages} página(s). Consumirá ${item.pages * 2} crédito(s).`;
+
+          return `
+            <div class="file-check ${status}">
+              <strong>${item.name}</strong>
+              ${message}
+            </div>
+          `;
+        }).join("")}
+        ${totalNotice}
+        ${creditWarning}
+      `;
+    }
+
+    function syncFileInput(files) {
+      const dataTransfer = new DataTransfer();
+      files.forEach((file) => dataTransfer.items.add(file));
+      fileInput.files = dataTransfer.files;
+    }
+
+    function refreshSelectedFiles() {
+      latestPageAnalysis = null;
+      renderSelectedFiles();
+
+      if (fileInput.files.length) {
+        analyzeSelectedFiles();
+      } else {
+        renderPageAnalysis(null);
+      }
+    }
+
+    function setSelectedFile(files) {
+      const selectedFile = Array.from(files).find((file) => {
+        const extension = getFileExtension(file);
+        return extension === "docx" || extension === "pdf";
+      });
+
+      if (!selectedFile) {
+        return;
+      }
+
+      syncFileInput([selectedFile]);
+      refreshSelectedFiles();
+    }
+
+    function renderSelectedFiles() {
+      const selectedFiles = Array.from(fileInput.files);
+
+      if (!selectedFiles.length) {
+        selectedFilesList.innerHTML = "";
+        return;
+      }
+
+      selectedFilesList.innerHTML = selectedFiles.map((file, index) => `
+        <div class="selected-file">
+          <span>
+            <strong>${file.name}</strong>
+            <span class="hint">${formatFileSize(file.size)}</span>
+          </span>
+          <button class="remove-file" type="button" data-file-index="${index}" aria-label="Quitar archivo">×</button>
+        </div>
+      `).join("");
+
+      selectedFilesList.querySelectorAll(".remove-file").forEach((button) => {
+        button.addEventListener("click", () => {
+          const removeIndex = Number(button.dataset.fileIndex);
+          const remainingFiles = Array.from(fileInput.files).filter((_, index) => index !== removeIndex);
+          syncFileInput(remainingFiles);
+          refreshSelectedFiles();
+        });
+      });
+    }
+
+    async function analyzeSelectedFiles() {
+      const selectedFiles = Array.from(fileInput.files);
+      const analysis = { items: [], hasErrors: false };
+
+      renderPageAnalysis({
+        items: selectedFiles.map((file) => ({
+          name: file.name,
+          error: "Leyendo páginas del documento..."
+        }))
+      });
+
+      for (const file of selectedFiles) {
+        try {
+          const pages = await countFilePages(file);
+          analysis.items.push({ name: file.name, pages });
+        } catch (error) {
+          analysis.items.push({ name: file.name, pages: 0, error: error.message });
+          analysis.hasErrors = true;
+        }
+      }
+
+      latestPageAnalysis = analysis;
+      renderPageAnalysis(analysis);
+      return analysis;
+    }
 
     function fileToAttachment(file) {
       return new Promise((resolve, reject) => {
@@ -690,14 +1121,38 @@
     }
 
     function readSelectedAttachments() {
-      const selectedFiles = Array.from(document.getElementById("archivo").files);
+      const selectedFiles = Array.from(fileInput.files);
       return Promise.all(selectedFiles.map(fileToAttachment));
     }
+
+    fileInput.addEventListener("change", () => {
+      refreshSelectedFiles();
+    });
+
+    ["dragenter", "dragover"].forEach((eventName) => {
+      fileDropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        fileDropZone.classList.add("drag-over");
+      });
+    });
+
+    ["dragleave", "drop"].forEach((eventName) => {
+      fileDropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        fileDropZone.classList.remove("drag-over");
+      });
+    });
+
+    fileDropZone.addEventListener("drop", (event) => {
+      setSelectedFile(event.dataTransfer.files);
+    });
 
     document.getElementById("request-form").addEventListener("submit", async (event) => {
       event.preventDefault();
 
-      if (!purchasedPlan) {
+      const currentCreditSummary = getClientCreditSummary();
+
+      if (!purchasedPlan && !currentCreditSummary.totalCredits) {
         alert("Para enviar tu solicitud, primero debes elegir y comprar un plan.");
         window.location.href = "precios.html";
         return;
@@ -713,22 +1168,42 @@
         return;
       }
 
+      const pageAnalysis = latestPageAnalysis || await analyzeSelectedFiles();
+
+      if (pageAnalysis.hasErrors) {
+        alert("No se puede enviar todavía. Revisa los mensajes del archivo: hay documentos que no pudieron ser leídos automáticamente.");
+        return;
+      }
+
       const helpType = document.getElementById("tipo-ayuda").value;
       const documentType = document.getElementById("tipo-documento").value;
       const attachments = await readSelectedAttachments();
       const files = attachments.map((file) => file.name);
-      const subscription = registerSubscription(purchasedPlan, sessionStorage.getItem("oa_payment_token"));
+      const totalPages = pageAnalysis.items.reduce((sum, item) => sum + item.pages, 0);
+      const requiredCredits = totalPages * 2;
+      const updatedCreditSummary = getClientCreditSummary();
+
+      if (requiredCredits > updatedCreditSummary.availableCredits) {
+        alert(`Crédito insuficiente. Este envío requiere ${requiredCredits} crédito(s) y tienes ${updatedCreditSummary.availableCredits} disponible(s). Compra un nuevo paquete para continuar.`);
+        renderPageAnalysis(pageAnalysis);
+        return;
+      }
+
+      const subscription = purchasedPlan
+        ? registerSubscription(purchasedPlan, sessionStorage.getItem("oa_payment_token"))
+        : activeSubscription;
 
       createRequest({
-        subscriptionId: subscription.id,
-        package: purchasedPlan,
+        subscriptionId: subscription ? subscription.id : "",
+        package: requestPlan || "creditos",
         helpType: labels[helpType] || helpType,
         documentType: documentType || "Documento académico",
-        urgency: document.getElementById("urgencia").value,
+        deliveryTime: document.getElementById("hora-entrega").value,
         format: document.getElementById("formato").value,
         deadline: document.getElementById("fecha").value,
-        workCount: document.getElementById("cantidad-trabajos").value,
-        pages: document.getElementById("paginas").value,
+        workCount: files.length,
+        pages: totalPages,
+        pageDetails: pageAnalysis.items,
         instructions: document.getElementById("instrucciones").value.trim(),
         files,
         attachments

@@ -41,6 +41,10 @@
       gap: 24px;
     }
 
+    .nav-toggle {
+      display: none;
+    }
+
     .brand {
       display: flex;
       align-items: center;
@@ -212,7 +216,7 @@
     }
 
     .benefits li::before {
-      content: "✓";
+      content: "?";
       color: #2b7a68;
       font-weight: 900;
     }
@@ -373,7 +377,7 @@
     }
 
     .summary-list li::before {
-      content: "✓";
+      content: "?";
       color: #2b7a68;
       font-weight: 900;
     }
@@ -411,11 +415,74 @@
       height: 46px;
     }
 
-    @media (max-width: 980px) {
-      .nav,
+    @media (max-width: 1280px) {
+      .nav {
+        align-items: center;
+        min-height: 76px;
+        position: relative;
+      }
+
+      .brand {
+        min-width: 0;
+      }
+
+      .brand-title,
+      .brand-subtitle {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .nav-toggle {
+        align-items: center;
+        background: white;
+        border: 1px solid #d8e0e5;
+        border-radius: 10px;
+        color: #071832;
+        cursor: pointer;
+        display: inline-flex;
+        flex: 0 0 auto;
+        height: 44px;
+        justify-content: center;
+        width: 48px;
+      }
+
+      .nav-toggle svg {
+        width: 24px;
+        height: 24px;
+      }
+
       .nav-links {
-        align-items: flex-start;
-        flex-direction: column;
+        background: white;
+        border: 1px solid #dfe6ea;
+        border-radius: 14px;
+        box-shadow: 0 20px 42px rgba(7,24,50,0.12);
+        display: none;
+        gap: 8px;
+        left: 0;
+        padding: 12px;
+        position: absolute;
+        right: 0;
+        top: calc(100% + 8px);
+        z-index: 20;
+      }
+
+      .nav-links.open {
+        display: grid;
+      }
+
+      .nav-links a {
+        border-radius: 10px;
+        padding: 11px 12px;
+      }
+
+      .nav-links a:hover {
+        background: #f3f7f6;
+      }
+
+      .nav-button {
+        min-height: 46px;
+        width: 100%;
       }
 
       .checkout-layout,
@@ -431,8 +498,7 @@
 
     @media (max-width: 640px) {
       .nav {
-        min-height: auto;
-        padding: 18px 0;
+        padding: 12px 0;
       }
 
       .brand-title {
@@ -444,11 +510,6 @@
         font-size: 14px;
       }
 
-      .nav-links {
-        gap: 12px;
-      }
-
-      .nav-button,
       .btn {
         width: 100%;
       }
@@ -490,11 +551,20 @@
           </span>
         </a>
 
-        <div class="nav-links">
+        <button class="nav-toggle" type="button" aria-controls="nav-links" aria-expanded="false" aria-label="Abrir menú">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h16"></path>
+            <path d="M4 12h16"></path>
+            <path d="M4 17h16"></path>
+          </svg>
+        </button>
+
+        <div class="nav-links" id="nav-links">
           <a href="index.html#servicios">Qu&eacute; hacemos</a>
           <a href="index.html#proceso">C&oacute;mo ayudamos</a>
           <a href="precios.html">Precios</a>
           <a href="panel.html">Mi panel</a>
+          <a data-auth-link href="registro.html">Iniciar sesión / Registrarse</a>
           <a href="solicitar.html" class="nav-button">Solicitar revisi&oacute;n</a>
         </div>
       </nav>
@@ -614,8 +684,26 @@
     </div>
   </footer>
 
-  <script src="auth.js"></script>
+  <script src="auth/auth.js"></script>
   <script>
+    const navToggle = document.querySelector(".nav-toggle");
+    const navLinks = document.getElementById("nav-links");
+    setupAuthLinks();
+
+    navToggle.addEventListener("click", () => {
+      const isOpen = navLinks.classList.toggle("open");
+      navToggle.setAttribute("aria-expanded", String(isOpen));
+      navToggle.setAttribute("aria-label", isOpen ? "Cerrar menú" : "Abrir menú");
+    });
+
+    navLinks.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", () => {
+        navLinks.classList.remove("open");
+        navToggle.setAttribute("aria-expanded", "false");
+        navToggle.setAttribute("aria-label", "Abrir menú");
+      });
+    });
+
     if (isTeacherUser()) {
       window.location.replace("profesor.html");
     }
@@ -624,12 +712,14 @@
       inicial: {
         name: "Paquete Inicial",
         price: "$14.99",
-        works: "5 trabajos",
-        pages: "Hasta 5 por trabajo",
+        works: "Uso estimado: 5 trabajos",
+        pages: "Referencia: hasta 5 por trabajo",
         description: "Ideal para estudiantes que necesitan revisar varios trabajos cortos con una intervenci&oacute;n clara y cuidada.",
         benefits: [
-          "Incluye 5 trabajos acad&eacute;micos.",
-          "Hasta 5 p&aacute;ginas por trabajo.",
+          "Uso estimado de 5 trabajos acad&eacute;micos.",
+          "Referencia de hasta 5 p&aacute;ginas por trabajo.",
+          "Incluye 50 cr&eacute;ditos. 1 p&aacute;gina = 2 cr&eacute;ditos.",
+          "Puedes enviar m&aacute;s p&aacute;ginas si tus cr&eacute;ditos alcanzan.",
           "Revisi&oacute;n de similitud general.",
           "Redacci&oacute;n m&aacute;s clara y natural.",
           "Humanizaci&oacute;n b&aacute;sica del contenido.",
@@ -639,12 +729,14 @@
       academico: {
         name: "Paquete Acad&eacute;mico",
         price: "$21.99",
-        works: "5 trabajos",
-        pages: "Hasta 10 por trabajo",
+        works: "Uso estimado: 5 trabajos",
+        pages: "Referencia: hasta 10 por trabajo",
         description: "La opci&oacute;n m&aacute;s equilibrada para trabajos largos que necesitan humanizaci&oacute;n y reducci&oacute;n de similitud.",
         benefits: [
-          "Incluye 5 trabajos acad&eacute;micos.",
-          "Hasta 10 p&aacute;ginas por trabajo.",
+          "Uso estimado de 5 trabajos acad&eacute;micos.",
+          "Referencia de hasta 10 p&aacute;ginas por trabajo.",
+          "Incluye 100 cr&eacute;ditos. 1 p&aacute;gina = 2 cr&eacute;ditos.",
+          "Puedes enviar m&aacute;s p&aacute;ginas si tus cr&eacute;ditos alcanzan.",
           "Revisi&oacute;n m&aacute;s detallada de similitud.",
           "Humanizaci&oacute;n de texto generado por IA.",
           "Mejora de coherencia y estructura.",
@@ -654,12 +746,14 @@
       premium: {
         name: "Paquete Premium",
         price: "$36.99",
-        works: "10 trabajos",
-        pages: "Hasta 10 por trabajo",
+        works: "Uso estimado: 10 trabajos",
+        pages: "Referencia: hasta 10 por trabajo",
         description: "Perfecto para quienes manejan m&aacute;s entregas y quieren una soluci&oacute;n completa para varios documentos.",
         benefits: [
-          "Incluye 10 trabajos acad&eacute;micos.",
-          "Hasta 10 p&aacute;ginas por trabajo.",
+          "Uso estimado de 10 trabajos acad&eacute;micos.",
+          "Referencia de hasta 10 p&aacute;ginas por trabajo.",
+          "Incluye 200 cr&eacute;ditos. 1 p&aacute;gina = 2 cr&eacute;ditos.",
+          "Puedes enviar m&aacute;s p&aacute;ginas si tus cr&eacute;ditos alcanzan.",
           "Intervenci&oacute;n avanzada del contenido.",
           "Humanizaci&oacute;n completa del documento.",
           "Apoyo con citas y referencias.",

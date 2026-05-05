@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Panel del profesor - Originalidad Académica</title>
-  <link rel="stylesheet" href="notifications.css" />
+  <link rel="stylesheet" href="css/notifications.css" />
   <style>
     * {
       margin: 0;
@@ -204,10 +204,38 @@
     }
 
     .work-card {
+      position: relative;
       display: grid;
       grid-template-columns: 1fr auto;
       gap: 16px;
       padding: 18px;
+    }
+
+    .countdown-badge {
+      background: #071832;
+      border-radius: 12px;
+      color: white;
+      display: grid;
+      font-weight: 800;
+      gap: 2px;
+      justify-items: end;
+      min-width: 170px;
+      padding: 10px 12px;
+      position: absolute;
+      right: 18px;
+      top: 18px;
+      z-index: 1;
+    }
+
+    .countdown-badge small {
+      color: #dbe7e6;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .countdown-badge.is-due {
+      background: #9f1239;
     }
 
     .work-card h3 {
@@ -280,6 +308,7 @@
       color: #11493f;
       font-size: 13px;
       font-weight: 800;
+      margin-top: 62px;
       padding: 8px 12px;
     }
 
@@ -407,6 +436,17 @@
       .work-card {
         grid-template-columns: 1fr;
       }
+
+      .countdown-badge {
+        justify-items: start;
+        margin-bottom: 10px;
+        position: static;
+        width: fit-content;
+      }
+
+      .status-select {
+        margin-top: 0;
+      }
     }
 
     @media (max-width: 640px) {
@@ -494,8 +534,8 @@
     </div>
   </main>
 
-  <script src="auth.js"></script>
-  <script src="notifications.js"></script>
+  <script src="auth/auth.js"></script>
+  <script src="js/notifications.js"></script>
   <script>
     const currentUser = getCurrentUser();
 
@@ -516,6 +556,7 @@
     const teacherAlert = document.getElementById("teacher-alert");
     const workTabs = document.querySelectorAll(".work-tab");
     let activeView = "new";
+    let countdownTimer = null;
 
     function escapeHTML(value) {
       return String(value || "")
@@ -544,6 +585,53 @@
       }
 
       return bytes < 1048576 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
+    }
+
+    function getDeadlineDate(request) {
+      if (!request.deadline) {
+        return null;
+      }
+
+      const time = request.deliveryTime || "23:59";
+      const deadline = new Date(`${request.deadline}T${time}`);
+      return Number.isNaN(deadline.getTime()) ? null : deadline;
+    }
+
+    function formatCountdown(deadline) {
+      if (!deadline) {
+        return { text: "Sin fecha", due: false };
+      }
+
+      const remaining = deadline.getTime() - Date.now();
+
+      if (remaining <= 0) {
+        return { text: "Vencido", due: true };
+      }
+
+      const days = Math.floor(remaining / 86400000);
+      const hours = Math.floor((remaining % 86400000) / 3600000);
+      const minutes = Math.floor((remaining % 3600000) / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+
+      return {
+        text: `${days}d ${hours}h ${minutes}m ${seconds}s`,
+        due: false
+      };
+    }
+
+    function updateCountdowns() {
+      document.querySelectorAll("[data-countdown-target]").forEach((badge) => {
+        const deadline = badge.dataset.countdownTarget ? new Date(badge.dataset.countdownTarget) : null;
+        const countdown = formatCountdown(deadline);
+        badge.querySelector("[data-countdown-text]").textContent = countdown.text;
+        badge.classList.toggle("is-due", countdown.due);
+      });
+    }
+
+    function startCountdowns() {
+      clearInterval(countdownTimer);
+      updateCountdowns();
+      countdownTimer = setInterval(updateCountdowns, 1000);
     }
 
     function isDeliverySaved(requestId) {
@@ -710,11 +798,13 @@
       const visibleRequests = activeView === "clients" ? requests : getVisibleRequests(requests);
 
       if (activeView === "clients") {
+        clearInterval(countdownTimer);
         renderClientHistory(requests);
         return;
       }
 
       if (!visibleRequests.length) {
+        clearInterval(countdownTimer);
         worksList.innerHTML = `
           <div class="empty-state">
             <h3>${getEmptyMessage()}</h3>
@@ -727,12 +817,17 @@
       worksList.innerHTML = visibleRequests.map((request) => {
         const customer = request.user || {};
         const files = renderAttachments(request);
+        const deadlineDate = getDeadlineDate(request);
         const selectedOptions = statusOptions.map((status) => `
           <option value="${status}" ${request.status === status ? "selected" : ""}>${status}</option>
         `).join("");
 
         return `
           <article class="work-card">
+            <div class="countdown-badge" data-countdown-target="${deadlineDate ? deadlineDate.toISOString() : ""}">
+              <small>Tiempo restante</small>
+              <span data-countdown-text>Calculando...</span>
+            </div>
             <div>
               <h3>${escapeHTML(request.documentType || "Documento académico")}</h3>
               <p class="muted">Cliente: ${escapeHTML(customer.name || "Sin nombre")} · ${escapeHTML(customer.email || "Sin correo")}</p>
@@ -741,7 +836,7 @@
                 <span>${escapeHTML(request.helpType || "Ayuda no indicada")}</span>
                 <span>Vence: ${escapeHTML(request.deadline || "-")}</span>
                 <span>${escapeHTML(request.pages || "-")} páginas</span>
-                <span>${escapeHTML(request.urgency || "-")}</span>
+                <span>Hora: ${escapeHTML(request.deliveryTime || "-")}</span>
               </div>
               <details class="work-details">
                 <summary>Ver detalles, archivo e instrucciones</summary>
@@ -750,7 +845,7 @@
                 <div class="meta-item"><strong>Fecha límite</strong>${escapeHTML(request.deadline || "-")}</div>
                 <div class="meta-item"><strong>Trabajos</strong>${escapeHTML(request.workCount || "-")}</div>
                 <div class="meta-item"><strong>Páginas</strong>${escapeHTML(request.pages || "-")}</div>
-                <div class="meta-item"><strong>Urgencia</strong>${escapeHTML(request.urgency || "-")}</div>
+                <div class="meta-item"><strong>Hora de entrega</strong>${escapeHTML(request.deliveryTime || "-")}</div>
                 <div class="meta-item"><strong>Formato</strong>${escapeHTML(request.format || "-")}</div>
                 <div class="meta-item notes"><strong>Archivos</strong>${files}</div>
                 <div class="meta-item notes"><strong>Instrucciones</strong>${escapeHTML(request.instructions || "Sin instrucciones adicionales")}</div>
@@ -842,6 +937,8 @@
           }
         });
       });
+
+      startCountdowns();
     }
 
     function syncTabs() {

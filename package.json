@@ -2,12 +2,13 @@
   "name": "evitar-el-plagio",
   "version": "1.0.0",
   "description": "",
-  "main": "auth.js",
+  "main": "server/server.js",
   "scripts": {
-    "dev": "node server.js",
-    "vite": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "node server/server.js",
+    "reset": "node server/utils/reset-data.js",
+    "vite": "vite client",
+    "build": "vite build client --outDir ../dist --emptyOutDir",
+    "preview": "vite preview --outDir dist"
   },
   "keywords": [],
   "author": "",
@@ -15,5 +16,8 @@
   "type": "commonjs",
   "devDependencies": {
     "vite": "^8.0.10"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
   }
 }

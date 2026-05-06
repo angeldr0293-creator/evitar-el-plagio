@@ -1,10 +1,10 @@
 <!DOCTYPE html>
+
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Administración - Originalidad Académica</title>
-  <link rel="stylesheet" href="css/notifications.css" />
   <style>
     * {
       margin: 0;
@@ -170,34 +170,6 @@
       padding: 24px;
     }
 
-    .admin-tabs {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 18px;
-    }
-
-    .admin-tab {
-      background: white;
-      border: 1px solid #d8e0e5;
-      border-radius: 999px;
-      color: #071832;
-      cursor: pointer;
-      font-weight: 800;
-      min-height: 42px;
-      padding: 9px 16px;
-    }
-
-    .admin-tab.active {
-      background: #071832;
-      border-color: #071832;
-      color: white;
-    }
-
-    .admin-section[hidden] {
-      display: none;
-    }
-
     .panel-head {
       display: flex;
       align-items: end;
@@ -256,116 +228,10 @@
       background: #f8faf9;
       border: 1px solid #e8eef1;
       border-radius: 14px;
-      padding: 14px;
-    }
-
-    .teacher-row[open] {
-      background: white;
-      border-color: #cfe2dc;
-    }
-
-    .teacher-summary {
-      align-items: center;
-      cursor: pointer;
       display: grid;
-      gap: 12px;
       grid-template-columns: 1fr auto;
-      list-style: none;
-    }
-
-    .teacher-summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .teacher-info {
-      display: grid;
-      gap: 6px;
-      min-width: 0;
-    }
-
-    .teacher-secret {
-      align-items: center;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .teacher-actions {
-      align-items: center;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-
-    .teacher-work-list {
-      border-top: 1px solid #e8eef1;
-      display: grid;
-      gap: 10px;
-      margin-top: 14px;
-      padding-top: 14px;
-    }
-
-    .teacher-work-card {
-      background: #f8faf9;
-      border: 1px solid #e8eef1;
-      border-radius: 14px;
-      overflow: hidden;
-    }
-
-    .teacher-work-head {
-      align-items: center;
-      display: grid;
       gap: 12px;
-      grid-template-columns: 1.1fr 1fr auto auto;
-      padding: 12px 14px;
-    }
-
-    .teacher-work-head h3 {
-      font-size: 16px;
-      line-height: 1.25;
-    }
-
-    .teacher-work-main {
-      min-width: 0;
-    }
-
-    .teacher-work-main p {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .teacher-work-summary {
-      color: #475569;
-      display: grid;
-      font-size: 13px;
-      gap: 2px;
-      min-width: 0;
-    }
-
-    .teacher-work-summary strong {
-      color: #071832;
-    }
-
-    .teacher-work-more {
-      background: white;
-      border: 1px solid #d8e0e5;
-      border-radius: 999px;
-      color: #071832;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 800;
-      padding: 8px 12px;
-    }
-
-    .teacher-work-detail {
-      border-top: 1px solid #e8eef1;
-      padding: 0 14px 14px;
-    }
-
-    .teacher-work-detail[hidden] {
-      display: none;
+      padding: 14px;
     }
 
     .credential-box {
@@ -385,17 +251,6 @@
 
     .credential-box strong {
       color: #071832;
-    }
-
-    .credential-secret {
-      background: white;
-      border: 1px solid #cfe2dc;
-      border-radius: 8px;
-      display: inline-block;
-      font-family: Consolas, "Courier New", monospace;
-      font-weight: 800;
-      margin-top: 6px;
-      padding: 4px 8px;
     }
 
     .clients {
@@ -535,12 +390,6 @@
       margin-bottom: 2px;
     }
 
-    .profile-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
     .section-title {
       font-family: Georgia, "Times New Roman", serif;
       font-size: 22px;
@@ -548,114 +397,9 @@
     }
 
     .subscription-list,
-    .works-list,
-    .work-board {
+    .works-list {
       display: grid;
       gap: 12px;
-    }
-
-    .work-board {
-      grid-template-columns: repeat(3, 1fr);
-    }
-
-    .work-column {
-      background: #f8faf9;
-      border: 1px solid #e8eef1;
-      border-radius: 16px;
-      padding: 14px;
-    }
-
-    .work-column h3 {
-      font-size: 16px;
-      margin-bottom: 10px;
-    }
-
-    .work-mini-card {
-      background: white;
-      border: 1px solid #e2e9ec;
-      border-radius: 14px;
-      display: grid;
-      gap: 8px;
-      padding: 12px;
-    }
-
-    .work-mini-card + .work-mini-card {
-      margin-top: 10px;
-    }
-
-    .work-mini-card strong {
-      display: block;
-    }
-
-    .board-work-panel {
-      border-top: 1px solid #e8eef1;
-      display: grid;
-      gap: 12px;
-      padding-top: 10px;
-    }
-
-    .board-work-panel[hidden] {
-      display: none;
-    }
-
-    .board-controls {
-      display: grid;
-      gap: 10px;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-    }
-
-    .board-confirm {
-      background: #071832;
-      border: 1px solid #071832;
-      border-radius: 12px;
-      color: white;
-      cursor: pointer;
-      font-weight: 800;
-      padding: 9px 12px;
-    }
-
-    .pending-list,
-    .work-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
-    }
-
-    .pending-link,
-    .mini-action {
-      background: white;
-      border: 1px solid #d8e0e5;
-      border-radius: 999px;
-      color: #071832;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 800;
-      padding: 8px 12px;
-      text-decoration: none;
-    }
-
-    .pending-link {
-      border-color: #fecdd3;
-      color: #9f1239;
-    }
-
-    .client-alert {
-      background: #fff1f2;
-      border: 1px solid #fecdd3;
-      border-radius: 999px;
-      color: #9f1239;
-      display: inline-flex;
-      font-size: 12px;
-      font-weight: 800;
-      margin-left: 8px;
-      padding: 3px 8px;
-      vertical-align: middle;
-      white-space: nowrap;
-    }
-
-    .client-folder.has-pending {
-      border-color: #fecdd3;
     }
 
     .subscription-row,
@@ -668,11 +412,6 @@
 
     .work-card {
       align-items: center;
-    }
-
-    .work-card.highlight-work {
-      border-color: #2b7a68;
-      box-shadow: 0 0 0 4px rgba(43,122,104,0.12);
     }
 
     .work-details {
@@ -761,17 +500,8 @@
       .stats,
       .detail-grid,
       .admin-form,
-      .work-board,
       .work-meta {
         grid-template-columns: 1fr 1fr;
-      }
-
-      .teacher-work-head {
-        grid-template-columns: 1fr;
-      }
-
-      .teacher-work-main p {
-        white-space: normal;
       }
 
       .folder-summary {
@@ -807,21 +537,10 @@
       .detail-grid,
       .admin-form,
       .teacher-row,
-      .teacher-summary,
-      .teacher-work-head,
       .subscription-row,
       .work-card,
-      .work-board,
       .work-meta {
         grid-template-columns: 1fr;
-      }
-
-      .teacher-actions {
-        justify-content: flex-start;
-      }
-
-      .teacher-work-head {
-        display: grid;
       }
     }
   </style>
@@ -880,13 +599,7 @@
 
       <div id="admin-alert"></div>
 
-      <div class="admin-tabs" aria-label="Secciones de administración">
-        <button class="admin-tab active" type="button" data-admin-view="clients">Clientes</button>
-        <button class="admin-tab" type="button" data-admin-view="works">Trabajos <span id="works-tab-count" class="pill">0</span></button>
-        <button class="admin-tab" type="button" data-admin-view="teachers">Profesores</button>
-      </div>
-
-      <section id="admin-teachers-section" class="panel admin-section" hidden>
+      <section class="panel">
         <div class="panel-head">
           <div>
             <h2>Profesores</h2>
@@ -908,17 +621,7 @@
         <div id="teacher-list" class="teacher-list"></div>
       </section>
 
-      <section id="admin-works-section" class="panel admin-section" hidden>
-        <div class="panel-head">
-          <div>
-            <h2>Trabajos</h2>
-            <p>Vista rápida por estado para revisar asignación, proceso y entregas sin abrir cada carpeta.</p>
-          </div>
-        </div>
-        <div id="admin-work-board" class="work-board"></div>
-      </section>
-
-      <section id="admin-clients-section" class="panel admin-section">
+      <section class="panel">
         <div class="panel-head">
           <div>
             <h2>Carpetas de clientes</h2>
@@ -932,9 +635,7 @@
     </div>
   </main>
 
-  <script src="auth/auth.js"></script>
-  <script src="js/i18n.js"></script>
-  <script src="js/notifications.js"></script>
+  <script src="auth.js"></script>
   <script>
     const user = getCurrentUser();
 
@@ -958,15 +659,6 @@
     const teacherCredentials = document.getElementById("teacher-credentials");
     const teacherPassword = document.getElementById("teacher-password");
     const generatePassword = document.getElementById("generate-password");
-    const adminTabs = document.querySelectorAll(".admin-tab");
-    const adminSections = {
-      clients: document.getElementById("admin-clients-section"),
-      works: document.getElementById("admin-works-section"),
-      teachers: document.getElementById("admin-teachers-section")
-    };
-    const adminWorkBoard = document.getElementById("admin-work-board");
-    let activeAdminView = "clients";
-    let clientCredentialMessage = null;
 
     function escapeHTML(value) {
       return String(value || "")
@@ -1011,14 +703,6 @@
       return "Sin archivos registrados";
     }
 
-    function renderDelivery(request) {
-      if (!request.delivery || !request.delivery.dataUrl) {
-        return "Sin entrega del profesor";
-      }
-
-      return `<a href="${request.delivery.dataUrl}" download="${escapeHTML(request.delivery.name)}">${escapeHTML(request.delivery.name)} ${formatFileSize(request.delivery.size)}</a>`;
-    }
-
     function daysUntil(value) {
       if (!value) {
         return "-";
@@ -1038,61 +722,12 @@
       return `${days} día(s) restantes`;
     }
 
-    function getRequestDeadline(request) {
-      if (!request.deadline) {
-        return null;
-      }
-
-      const deadline = new Date(`${request.deadline}T${request.deliveryTime || "23:59"}`);
-      return Number.isNaN(deadline.getTime()) ? null : deadline;
-    }
-
-    function formatRequestTimeLeft(request) {
-      const deadline = getRequestDeadline(request);
-
-      if (!deadline) {
-        return "Sin fecha limite";
-      }
-
-      const remaining = deadline.getTime() - Date.now();
-
-      if (remaining <= 0) {
-        return "Vencido";
-      }
-
-      const days = Math.floor(remaining / 86400000);
-      const hours = Math.floor((remaining % 86400000) / 3600000);
-      const minutes = Math.floor((remaining % 3600000) / 60000);
-
-      if (days > 0) {
-        return `${days} d ${hours} h restantes`;
-      }
-
-      if (hours > 0) {
-        return `${hours} h ${minutes} min restantes`;
-      }
-
-      return `${minutes} min restantes`;
-    }
-
     function isSubscriptionActive(subscription) {
       return Boolean(subscription && subscription.status === "Activa" && new Date(subscription.expiresAt) >= new Date());
     }
 
     function createTemporaryPassword() {
-      const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-      const randomValues = new Uint32Array(12);
-
-      if (window.crypto && crypto.getRandomValues) {
-        crypto.getRandomValues(randomValues);
-      } else {
-        randomValues.forEach((_, index) => {
-          randomValues[index] = Math.floor(Math.random() * alphabet.length);
-        });
-      }
-
-      const chars = Array.from(randomValues, (value) => alphabet[value % alphabet.length]).join("");
-      return `OA-${chars.slice(0, 4)}-${chars.slice(4, 8)}-${chars.slice(8, 12)}`;
+      return `Prof-${Math.random().toString(36).slice(2, 8)}${Math.floor(100 + Math.random() * 900)}`;
     }
 
     function renderStats(clients) {
@@ -1106,85 +741,19 @@
     }
 
     function renderAdminAlert(clients) {
-      const unassigned = clients.flatMap((client) => (
-        client.requests.filter((request) => !request.teacherId).map((request) => ({ ...request, client }))
-      ));
-      const clientsWithPending = new Set(unassigned.map((request) => request.client.id)).size;
+      const unassigned = clients.flatMap((client) => client.requests).filter((request) => !request.teacherId);
 
       adminAlert.innerHTML = `
         <div class="alert-banner ${unassigned.length ? "" : "ok"}">
           ${unassigned.length
-            ? `
-              <strong>${unassigned.length} trabajo(s) pendiente(s) de asignar en ${clientsWithPending} cliente(s).</strong>
-              <span class="muted">Revisa la bandeja de trabajos para abrir, asignar y dar seguimiento.</span>
-              <div class="pending-list">
-                <button class="pending-link open-works-board" type="button">Abrir bandeja de trabajos</button>
-              </div>
-            `
+            ? `${unassigned.length} trabajo(s) en espera de asignación.`
             : "No hay trabajos pendientes de asignar."}
-        </div>
-      `;
-
-      adminAlert.querySelector(".open-works-board")?.addEventListener("click", openWorksBoard);
-    }
-
-    function renderTeacherAssignments(assignedRequests) {
-      const activeRequests = assignedRequests.filter((request) => !isCompletedWork(request));
-
-      if (!activeRequests.length) {
-        return `
-          <div class="empty-state">
-            <h3>Sin trabajos a realizar</h3>
-            <p>Este profesor no tiene trabajos activos en este momento.</p>
-          </div>
-        `;
-      }
-
-      return `
-        <div class="teacher-work-list">
-          ${activeRequests.map((request) => {
-            const client = request.user || {};
-            const deadlineText = request.deadline
-              ? `${formatDate(request.deadline)} - ${escapeHTML(request.deliveryTime || "Sin hora")}`
-              : "Sin fecha limite";
-
-            return `
-              <article class="teacher-work-card">
-                <div class="teacher-work-head">
-                  <div class="teacher-work-main">
-                    <h3>${escapeHTML(request.documentType || "Documento academico")}</h3>
-                    <p class="muted">Cliente: ${escapeHTML(client.name || "Cliente")} - ${escapeHTML(client.email || "Sin correo")}</p>
-                  </div>
-                  <div class="teacher-work-summary">
-                    <span><strong>Entrega:</strong> ${escapeHTML(deadlineText)}</span>
-                    <span><strong>Falta:</strong> ${escapeHTML(formatRequestTimeLeft(request))}</span>
-                  </div>
-                  <span class="pill ${request.status === "Entregada" ? "active" : ""}">${escapeHTML(request.status || "Recibida")}</span>
-                  <button class="teacher-work-more" type="button">Ver mas informacion</button>
-                </div>
-
-                <div class="teacher-work-detail" hidden>
-                <div class="work-meta">
-                  <div class="meta-item"><strong>Tiempo restante</strong>${escapeHTML(formatRequestTimeLeft(request))}</div>
-                  <div class="meta-item"><strong>Fecha limite</strong>${escapeHTML(deadlineText)}</div>
-                  <div class="meta-item"><strong>Plan</strong>${escapeHTML(packageNames[request.package] || request.package || "-")}</div>
-                  <div class="meta-item"><strong>Ayuda</strong>${escapeHTML(request.helpType || "-")}</div>
-                  <div class="meta-item"><strong>Trabajos</strong>${escapeHTML(request.workCount || "-")}</div>
-                  <div class="meta-item"><strong>Paginas</strong>${escapeHTML(request.pages || "-")}</div>
-                  <div class="meta-item notes"><strong>Archivos</strong>${renderAttachments(request)}</div>
-                  <div class="meta-item notes"><strong>Instrucciones</strong>${escapeHTML(request.instructions || "Sin instrucciones adicionales")}</div>
-                </div>
-                </div>
-              </article>
-            `;
-          }).join("")}
         </div>
       `;
     }
 
     function renderTeachers() {
       const teachers = getTeachers();
-      const adminRequests = getAdminRequests();
 
       if (!teachers.length) {
         teacherList.innerHTML = `
@@ -1197,35 +766,24 @@
       }
 
       teacherList.innerHTML = teachers.map((teacher) => {
-        const assignedRequests = adminRequests.filter((request) => request.teacherId === teacher.id);
-        const activeCount = assignedRequests.filter((request) => !isCompletedWork(request)).length;
+        const assignedCount = getAdminRequests().filter((request) => request.teacherId === teacher.id).length;
 
         return `
-          <details class="teacher-row">
-            <summary class="teacher-summary">
-            <div class="teacher-info">
+          <div class="teacher-row">
+            <div>
               <strong>${escapeHTML(teacher.name)}</strong>
-              <p class="teacher-secret">
-                <span class="muted">Contrasena:</span>
-                <span class="credential-secret">${escapeHTML(teacher.password || "Sin clave registrada")}</span>
-              </p>
               <p class="muted">${escapeHTML(teacher.email)}${teacher.phone ? ` · ${escapeHTML(teacher.phone)}` : ""}</p>
             </div>
-            <div class="teacher-actions">
-              <span class="pill">${assignedRequests.length} trabajo(s)</span>
-              <span class="pill ${activeCount ? "active" : ""}">${activeCount} por realizar</span>
+            <div>
+              <span class="pill">${assignedCount} trabajo(s)</span>
               <button class="ghost-btn reset-teacher-password" type="button" data-teacher-id="${escapeHTML(teacher.id)}" data-teacher-email="${escapeHTML(teacher.email)}">Resetear clave</button>
             </div>
-            </summary>
-            ${renderTeacherAssignments(assignedRequests)}
-          </details>
+          </div>
         `;
       }).join("");
 
       document.querySelectorAll(".reset-teacher-password").forEach((button) => {
         button.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
           const newPassword = createTemporaryPassword();
           resetTeacherPassword(event.currentTarget.dataset.teacherId, newPassword);
           teacherCredentials.innerHTML = `
@@ -1235,21 +793,6 @@
             Panel: profesor.html
           `;
           teacherCredentials.classList.add("show");
-          renderTeachers();
-        });
-      });
-
-      document.querySelectorAll(".teacher-work-more").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-
-          const card = event.currentTarget.closest(".teacher-work-card");
-          const detail = card.querySelector(".teacher-work-detail");
-          const isOpening = detail.hidden;
-
-          detail.hidden = !isOpening;
-          event.currentTarget.textContent = isOpening ? "Ver menos" : "Ver mas informacion";
         });
       });
     }
@@ -1285,191 +828,7 @@
       return request.status === "Lista" || request.status === "Entregada";
     }
 
-    function syncAdminSections() {
-      adminTabs.forEach((tab) => {
-        tab.classList.toggle("active", tab.dataset.adminView === activeAdminView);
-      });
-
-      Object.entries(adminSections).forEach(([name, section]) => {
-        section.hidden = name !== activeAdminView;
-      });
-    }
-
-    function openClientWork(clientId, requestId = "") {
-      activeAdminView = "clients";
-      syncAdminSections();
-
-      if (clientSearch.value.trim()) {
-        clientSearch.value = "";
-        renderClients();
-      }
-
-      const clientFolder = document.querySelector(`[data-client-id="${CSS.escape(clientId)}"]`);
-
-      if (!clientFolder) {
-        return;
-      }
-
-      clientFolder.open = true;
-
-      const newWorks = clientFolder.querySelector("[data-subfolder='new-works']");
-      if (newWorks) {
-        newWorks.open = true;
-      }
-
-      const workCard = requestId
-        ? clientFolder.querySelector(`[data-request-id="${CSS.escape(requestId)}"]`)
-        : newWorks?.querySelector(".work-card");
-
-      if (workCard) {
-        workCard.querySelector(".work-details")?.setAttribute("open", "");
-        workCard.scrollIntoView({ behavior: "smooth", block: "center" });
-        workCard.classList.add("highlight-work");
-        setTimeout(() => workCard.querySelector(".assign-select")?.focus(), 350);
-        setTimeout(() => workCard.classList.remove("highlight-work"), 1600);
-      } else {
-        clientFolder.scrollIntoView({ behavior: "smooth", block: "center" });
-      }
-    }
-
-    function openWorksBoard() {
-      activeAdminView = "works";
-      syncAdminSections();
-      adminSections.works.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-
-    function renderAdminWorkBoard() {
-      const requests = getAdminRequests();
-      const pendingCount = requests.filter((request) => request.status === "Recibida" || !request.teacherId).length;
-      document.getElementById("works-tab-count").textContent = pendingCount;
-      const groups = [
-        {
-          title: "Nuevos / por asignar",
-          items: requests.filter((request) => request.status === "Recibida" || !request.teacherId)
-        },
-        {
-          title: "En proceso",
-          items: requests.filter((request) => request.status === "En proceso")
-        },
-        {
-          title: "Entregados",
-          items: requests.filter((request) => request.status === "Entregada" || request.status === "Lista")
-        }
-      ];
-
-      adminWorkBoard.innerHTML = groups.map((group) => `
-        <section class="work-column">
-          <h3>${group.title} <span class="pill">${group.items.length}</span></h3>
-          ${group.items.length ? group.items.map((request) => {
-            const customer = request.user || {};
-            const files = renderAttachments(request);
-            const selectedOptions = statusOptions.map((status) => `
-              <option value="${status}" ${request.status === status ? "selected" : ""}>${status}</option>
-            `).join("");
-            const teacherOptions = getTeachers().map((teacher) => `
-              <option value="${teacher.id}" ${request.teacherId === teacher.id ? "selected" : ""}>${escapeHTML(teacher.name)}</option>
-            `).join("");
-            return `
-              <article class="work-mini-card" data-board-request-id="${escapeHTML(request.id)}">
-                <div>
-                  <strong>${escapeHTML(request.documentType || "Documento académico")}</strong>
-                  <p class="muted">${escapeHTML(customer.name || "Cliente")} · ${formatDate(request.createdAt)}</p>
-                </div>
-                <span class="pill ${request.status === "Entregada" ? "active" : ""}">${escapeHTML(request.status || "Recibida")}</span>
-                <p class="muted">Profesor: ${escapeHTML(request.teacherName || "Sin profesor")}</p>
-                ${request.delivery ? `<p class="muted">Entrega final: ${renderDelivery(request)}</p>` : ""}
-                <div class="work-actions">
-                  <button class="mini-action toggle-board-work" type="button" data-request-id="${escapeHTML(request.id)}">Abrir trabajo</button>
-                </div>
-                <div class="board-work-panel" data-board-detail="${escapeHTML(request.id)}" hidden>
-                  <div class="board-controls">
-                    <select class="board-assign-select" data-request-id="${escapeHTML(request.id)}" aria-label="Asignar profesor">
-                      <option value="">Sin profesor</option>
-                      ${teacherOptions}
-                    </select>
-                    <select class="board-status-select" data-request-id="${escapeHTML(request.id)}" aria-label="Cambiar estado">
-                      ${selectedOptions}
-                    </select>
-                    <button class="board-confirm" type="button" data-request-id="${escapeHTML(request.id)}">Aceptar</button>
-                  </div>
-                  <div class="work-meta">
-                    <div class="meta-item"><strong>Cliente</strong>${escapeHTML(customer.name || "Cliente")}</div>
-                    <div class="meta-item"><strong>Correo</strong>${escapeHTML(customer.email || "-")}</div>
-                    <div class="meta-item"><strong>Plan</strong>${escapeHTML(packageNames[request.package] || request.package || "-")}</div>
-                    <div class="meta-item"><strong>Ayuda</strong>${escapeHTML(request.helpType || "-")}</div>
-                    <div class="meta-item"><strong>Fecha límite</strong>${escapeHTML(request.deadline || "-")}</div>
-                    <div class="meta-item"><strong>Hora de entrega</strong>${escapeHTML(request.deliveryTime || "-")}</div>
-                    <div class="meta-item"><strong>Páginas</strong>${escapeHTML(request.pages || "-")}</div>
-                    <div class="meta-item"><strong>Formato</strong>${escapeHTML(request.format || "-")}</div>
-                    <div class="meta-item notes"><strong>Archivos</strong>${files}</div>
-                    <div class="meta-item notes"><strong>Instrucciones</strong>${escapeHTML(request.instructions || "Sin instrucciones adicionales")}</div>
-                  </div>
-                </div>
-              </article>
-            `;
-          }).join("") : `
-            <div class="empty-state">
-              <h3>Sin trabajos</h3>
-              <p>No hay elementos en esta sección.</p>
-            </div>
-          `}
-        </section>
-      `).join("");
-
-      adminWorkBoard.querySelectorAll(".toggle-board-work").forEach((button) => {
-        button.addEventListener("click", () => {
-          const card = button.closest(".work-mini-card");
-          const detail = card.querySelector(".board-work-panel");
-          const isOpening = detail.hidden;
-
-          detail.hidden = !isOpening;
-          button.textContent = isOpening ? "Cerrar trabajo" : "Abrir trabajo";
-
-          if (isOpening) {
-            card.scrollIntoView({ behavior: "smooth", block: "center" });
-            setTimeout(() => card.querySelector(".board-assign-select")?.focus(), 250);
-          }
-        });
-      });
-
-      adminWorkBoard.querySelectorAll(".board-confirm").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          const requestId = event.currentTarget.dataset.requestId;
-          const card = event.currentTarget.closest(".work-mini-card");
-          const teacherId = card.querySelector(".board-assign-select").value;
-          const status = card.querySelector(".board-status-select").value;
-          const currentRequest = getAdminRequests().find((request) => request.id === requestId);
-
-          if (currentRequest && currentRequest.teacherId !== teacherId) {
-            assignRequestToTeacher(requestId, teacherId);
-          }
-
-          if (currentRequest && currentRequest.status !== status) {
-            updateRequestStatus(requestId, status);
-          }
-
-          window.refreshNotifications?.();
-          renderTeachers();
-          renderClients();
-
-          event.currentTarget.textContent = "Guardado";
-          setTimeout(() => {
-            event.currentTarget.textContent = "Aceptar";
-          }, 1200);
-        });
-      });
-    }
-
     function renderProfile(client, planName, expiryText) {
-      const credentialBox = clientCredentialMessage && clientCredentialMessage.clientId === client.id ? `
-        <div class="credential-box show">
-          <strong>Nueva clave del cliente:</strong><br />
-          Correo: ${escapeHTML(clientCredentialMessage.email)}<br />
-          Contraseña temporal:<br />
-          <span class="credential-secret">${escapeHTML(clientCredentialMessage.password)}</span>
-        </div>
-      ` : "";
-
       return `
         <div class="detail-grid">
           <div class="detail-card"><strong>Nombre</strong>${escapeHTML(client.name)}</div>
@@ -1481,11 +840,7 @@
           <div class="detail-card"><strong>Veces suscrito</strong>${client.subscriptions.length}</div>
           <div class="detail-card"><strong>Cliente desde</strong>${formatDate(client.createdAt)}</div>
         </div>
-        <div class="profile-actions">
-          <button class="ghost-btn reset-client-password" type="button" data-client-id="${escapeHTML(client.id)}" data-client-email="${escapeHTML(client.email)}">Resetear clave</button>
-          ${client.teacher ? `<button class="ghost-btn clear-client-teacher" type="button" data-client-id="${escapeHTML(client.id)}">Quitar profesor fijo</button>` : ""}
-        </div>
-        ${credentialBox}
+        ${client.teacher ? `<button class="ghost-btn clear-client-teacher" type="button" data-client-id="${escapeHTML(client.id)}">Quitar profesor fijo</button>` : ""}
       `;
     }
 
@@ -1513,7 +868,7 @@
             `).join("");
 
             return `
-              <article class="work-card" data-request-id="${escapeHTML(request.id)}">
+              <article class="work-card">
                 <div>
                   <h3>${escapeHTML(request.documentType || "Documento académico")}</h3>
                   <p class="muted">Recibido: ${formatDate(request.createdAt)} · Profesor: ${escapeHTML(request.teacherName || "Sin profesor")}</p>
@@ -1535,10 +890,9 @@
                     <div class="meta-item"><strong>Fecha límite</strong>${escapeHTML(request.deadline || "-")}</div>
                     <div class="meta-item"><strong>Trabajos</strong>${escapeHTML(request.workCount || "-")}</div>
                     <div class="meta-item"><strong>Páginas</strong>${escapeHTML(request.pages || "-")}</div>
-                    <div class="meta-item"><strong>Hora de entrega</strong>${escapeHTML(request.deliveryTime || "-")}</div>
+                    <div class="meta-item"><strong>Urgencia</strong>${escapeHTML(request.urgency || "-")}</div>
                     <div class="meta-item"><strong>Formato</strong>${escapeHTML(request.format || "-")}</div>
                     <div class="meta-item notes"><strong>Archivos</strong>${files}</div>
-                    <div class="meta-item notes"><strong>Entrega final</strong>${renderDelivery(request)}</div>
                     <div class="meta-item notes"><strong>Instrucciones</strong>${escapeHTML(request.instructions || "Sin instrucciones adicionales")}</div>
                   </div>
                 </details>
@@ -1575,16 +929,15 @@
         const planName = subscription ? packageNames[subscription.plan] || subscription.plan : "Sin plan";
         const statusLabel = client.activeSubscription ? "Activa" : "Sin suscripción activa";
         const expiryText = subscription ? `${formatDate(subscription.expiresAt)} · ${daysUntil(subscription.expiresAt)}` : "-";
-        const pendingCount = client.requests.filter((request) => !request.teacherId || request.status === "Recibida").length;
 
         return `
-          <details class="client-folder ${pendingCount ? "has-pending" : ""}" data-client-id="${escapeHTML(client.id)}">
+          <details class="client-folder">
             <summary class="folder-summary">
               <span class="folder-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24"><path d="M4 6h6l2 2h8v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"></path></svg>
               </span>
               <span>
-                <strong class="client-name">${escapeHTML(client.name)}${pendingCount ? ` <span class="client-alert">${pendingCount} nuevo(s)</span>` : ""}</strong>
+                <strong class="client-name">${escapeHTML(client.name)}</strong>
                 <span class="muted">${escapeHTML(client.email)}</span>
               </span>
               <span class="pill ${client.activeSubscription ? "active" : ""}">${escapeHTML(planName)}</span>
@@ -1593,12 +946,12 @@
             </summary>
 
             <div class="folder-body">
-              <details class="subfolder">
+              <details class="subfolder" open>
                 <summary><strong>Perfil de la persona</strong><span class="pill">${escapeHTML(client.teacher ? client.teacher.name : "Sin profesor fijo")}</span></summary>
                 <div class="subfolder-body">${renderProfile(client, planName, expiryText)}</div>
               </details>
 
-              <details class="subfolder" data-subfolder="new-works">
+              <details class="subfolder">
                 <summary><strong>Nuevos trabajos</strong><span class="pill">${client.requests.filter((request) => !isCompletedWork(request)).length}</span></summary>
                 <div class="subfolder-body">${renderWorks(client, false)}</div>
               </details>
@@ -1620,8 +973,6 @@
       document.querySelectorAll(".status-select").forEach((select) => {
         select.addEventListener("change", (event) => {
           updateRequestStatus(event.currentTarget.dataset.requestId, event.currentTarget.value);
-          window.refreshNotifications?.();
-          renderAdminWorkBoard();
           renderClients();
         });
       });
@@ -1629,9 +980,7 @@
       document.querySelectorAll(".assign-select").forEach((select) => {
         select.addEventListener("change", (event) => {
           assignRequestToTeacher(event.currentTarget.dataset.requestId, event.currentTarget.value);
-          window.refreshNotifications?.();
           renderTeachers();
-          renderAdminWorkBoard();
           renderClients();
         });
       });
@@ -1642,32 +991,11 @@
           renderClients();
         });
       });
-
-      document.querySelectorAll(".reset-client-password").forEach((button) => {
-        button.addEventListener("click", (event) => {
-          const newPassword = createTemporaryPassword();
-          resetClientPassword(event.currentTarget.dataset.clientId, newPassword);
-          clientCredentialMessage = {
-            clientId: event.currentTarget.dataset.clientId,
-            email: event.currentTarget.dataset.clientEmail,
-            password: newPassword
-          };
-          renderClients();
-        });
-      });
     }
 
     if (isAdminUser(user)) {
-      syncAdminSections();
       renderTeachers();
-      renderAdminWorkBoard();
       renderClients();
-      adminTabs.forEach((tab) => {
-        tab.addEventListener("click", () => {
-          activeAdminView = tab.dataset.adminView;
-          syncAdminSections();
-        });
-      });
       clientSearch.addEventListener("input", renderClients);
       teacherForm.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -1692,7 +1020,6 @@
           teacherCredentials.classList.add("show");
           teacherForm.reset();
           renderTeachers();
-          renderAdminWorkBoard();
           renderClients();
         } catch (error) {
           teacherMessage.textContent = error.message;

@@ -59,28 +59,6 @@ function saveSharedState(state) {
   return false;
 }
 
-function mergeSharedArray(serverItems, localItems) {
-  const merged = Array.isArray(serverItems) ? [...serverItems] : [];
-  const localArray = Array.isArray(localItems) ? localItems : [];
-
-  localArray.forEach((localItem) => {
-    const exists = merged.some((serverItem) => (
-      (localItem.id && serverItem.id === localItem.id)
-      || (
-        localItem.email
-        && serverItem.email
-        && serverItem.email.toLowerCase() === localItem.email.toLowerCase()
-      )
-    ));
-
-    if (!exists) {
-      merged.push(localItem);
-    }
-  });
-
-  return merged;
-}
-
 function getSharedItem(key) {
   const state = getSharedState();
   const fallback = JSON.parse(localStorage.getItem(key) || JSON.stringify(getDefaultSharedValue(key)));
@@ -89,15 +67,8 @@ function getSharedItem(key) {
     return fallback;
   }
 
-  if (Array.isArray(state[key]) && Array.isArray(fallback) && fallback.length) {
-    const merged = mergeSharedArray(state[key], fallback);
-    if (merged.length !== state[key].length) {
-      state[key] = merged;
-      saveSharedState(state);
-    }
-  } else if ((!state[key] || !state[key].length) && fallback && fallback.length) {
-    state[key] = fallback;
-    saveSharedState(state);
+  if (!Array.isArray(state[key]) && fallback) {
+    return fallback;
   }
 
   return state[key] || getDefaultSharedValue(key);
@@ -177,17 +148,21 @@ function logout() {
   window.location.href = "index.html";
 }
 
+function authText(text) {
+  return window.OAI18N ? window.OAI18N.t(text) : text;
+}
+
 function setupAuthLinks() {
   document.querySelectorAll("[data-auth-link]").forEach((link) => {
     const user = getCurrentUser();
 
     if (!user) {
-      link.textContent = "Iniciar sesión / Registrarse";
+      link.textContent = authText("Iniciar sesión / Registrarse");
       link.href = "registro.html";
       return;
     }
 
-    link.textContent = "Cerrar sesión";
+    link.textContent = authText("Cerrar sesión");
     link.href = "#";
     link.addEventListener("click", (event) => {
       event.preventDefault();
@@ -296,7 +271,7 @@ function setupCreditBadges() {
     }
   }
 
-  badge.querySelector(".header-credits-count").textContent = `${summary.availableCredits} créditos`;
+  badge.querySelector(".header-credits-count").textContent = authText(`${summary.availableCredits} créditos`);
 }
 
 function isAdminUser(user = getCurrentUser()) {

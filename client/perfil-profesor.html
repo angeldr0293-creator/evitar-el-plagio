@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Perfil del profesor - Originalidad Académica</title>
+  <link rel="stylesheet" href="css/notifications.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #f7faf9; color: #071832; font-family: Arial, Helvetica, sans-serif; line-height: 1.6; }
+    .container { width: min(92%, 1120px); margin: 0 auto; }
+    .site-header { background: rgba(255,255,255,0.95); border-bottom: 1px solid #dfe6ea; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px); }
+    .nav { min-height: 66px; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+    .brand { color: #071832; display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .brand-mark { color: #071832; display: inline-flex; height: 38px; width: 38px; }
+    .brand-mark svg, svg { fill: none; height: 100%; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; width: 100%; }
+    .brand-title { display: block; font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 700; line-height: 1.1; }
+    .brand-subtitle { color: #475569; display: block; font-size: 13px; }
+    .nav-actions { display: flex; align-items: center; gap: 10px; }
+    .btn, .ghost-btn { border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; min-height: 44px; padding: 10px 16px; text-decoration: none; }
+    .btn { background: #071832; border: 1px solid #071832; color: white; }
+    .ghost-btn { background: white; border: 1px solid #d8e0e5; color: #071832; }
+    main { padding: 34px 0 72px; }
+    .hero { background: linear-gradient(135deg, #071832, #123c43); border-radius: 22px; color: white; margin-bottom: 24px; padding: 30px; }
+    .hero h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(34px, 4vw, 50px); line-height: 1.08; }
+    .hero p { color: #dbe7e6; margin-top: 8px; }
+    .grid { display: grid; gap: 18px; grid-template-columns: 1fr 1fr; }
+    .panel { background: white; border: 1px solid #e2e9ec; border-radius: 18px; box-shadow: 0 14px 34px rgba(7,24,50,0.05); padding: 24px; }
+    .panel h2 { font-family: Georgia, "Times New Roman", serif; font-size: 28px; line-height: 1.2; margin-bottom: 14px; }
+    .detail-grid { display: grid; gap: 12px; grid-template-columns: repeat(2, 1fr); }
+    .detail-card, .history-row { background: #f8faf9; border: 1px solid #e8eef1; border-radius: 14px; color: #475569; padding: 14px; }
+    .detail-card strong, .history-row strong { color: #071832; display: block; margin-bottom: 3px; }
+    .history-list { display: grid; gap: 10px; }
+    .bar-row { display: grid; gap: 6px; margin-top: 8px; }
+    .bar-track { background: #e8eef1; border-radius: 999px; height: 10px; overflow: hidden; }
+    .bar-fill { background: #2b7a68; display: block; height: 100%; }
+    .password-form { display: grid; gap: 12px; }
+    .password-form input { border: 1px solid #d8e0e5; border-radius: 12px; color: #071832; font: inherit; padding: 12px; width: 100%; }
+    .message { color: #11493f; font-size: 13px; font-weight: 800; }
+    @media (max-width: 760px) {
+      .grid, .detail-grid { grid-template-columns: 1fr; }
+      .brand-subtitle { display: none; }
+      .nav-actions { gap: 6px; }
+      .ghost-btn, .btn { font-size: 13px; padding: 8px 10px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="nav">
+        <a href="profesor.html" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48"><path d="M24 4 40 10v12c0 11-6.8 18.2-16 22C14.8 40.2 8 33 8 22V10l16-6Z"></path><path d="M16 17h16"></path><path d="M16 24h16"></path><path d="M16 31h10"></path></svg>
+          </span>
+          <span><span class="brand-title">Originalidad Académica</span><span class="brand-subtitle">Perfil del profesor</span></span>
+        </a>
+        <div class="nav-actions">
+          <a class="ghost-btn" href="profesor.html">Panel</a>
+          <button class="ghost-btn" type="button" onclick="logout()">Cerrar sesión</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <section class="hero">
+        <h1>Mi perfil</h1>
+        <p>Consulta tus datos internos, actividad asignada y seguridad de cuenta.</p>
+      </section>
+
+      <div class="grid">
+        <section class="panel">
+          <h2>Datos de cuenta</h2>
+          <div class="detail-grid">
+            <div class="detail-card"><strong>Nombre</strong><span id="profile-name">-</span></div>
+            <div class="detail-card"><strong>Correo de acceso</strong><span id="profile-email">-</span></div>
+            <div class="detail-card"><strong>Teléfono</strong><span id="profile-phone">-</span></div>
+            <div class="detail-card"><strong>Especialidad</strong><span id="profile-specialty">-</span></div>
+            <div class="detail-card"><strong>Clientes trabajados</strong><span id="profile-clients">0</span></div>
+            <div class="detail-card"><strong>Trabajos asignados</strong><span id="profile-works">0</span></div>
+            <div class="detail-card"><strong>Entregados este mes</strong><span id="profile-month-works">0</span></div>
+            <div class="detail-card"><strong>Total del mes</strong><span id="profile-month-pay">$0.00</span></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Seguridad</h2>
+          <form id="password-form" class="password-form">
+            <input id="current-password" type="password" placeholder="Contraseña actual" required />
+            <input id="new-password" type="password" placeholder="Nueva contraseña" minlength="6" required />
+            <button class="btn" type="submit">Cambiar contraseña</button>
+            <span id="password-message" class="message"></span>
+          </form>
+        </section>
+
+        <section class="panel">
+          <h2>Corte mensual</h2>
+          <div id="earnings-history" class="history-list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Clientes trabajados</h2>
+          <div id="client-history" class="history-list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Trabajos recientes</h2>
+          <div id="work-history" class="history-list"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="auth/auth.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    const user = getCurrentUser();
+
+    if (!user) {
+      window.location.href = "registro.html?next=perfil-profesor.html";
+    }
+
+    if (isAdminUser(user)) {
+      window.location.href = "admin.html";
+    }
+
+    if (user && !isTeacherUser(user)) {
+      window.location.href = "panel.html";
+    }
+
+    function escapeHTML(value) {
+      return String(value || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+    }
+
+    function formatDate(value) {
+      if (!value) return "-";
+      return new Intl.DateTimeFormat("es", { year: "numeric", month: "short", day: "numeric" }).format(new Date(value));
+    }
+
+    function renderProfile() {
+      const requests = getTeacherRequests();
+      const clients = requests.reduce((result, request) => {
+        const code = request.user?.subscriberId || getSubscriberId(request.user) || "Sin código";
+        if (!result[code]) {
+          result[code] = { code, total: 0, done: 0, latest: request.createdAt };
+        }
+        result[code].total += 1;
+        result[code].done += request.status === "Lista" || request.status === "Entrega subida" || request.status === "Entregada" ? 1 : 0;
+        result[code].latest = new Date(request.createdAt) > new Date(result[code].latest) ? request.createdAt : result[code].latest;
+        return result;
+      }, {});
+      const rows = Object.values(clients);
+      const deliveredThisMonth = getDeliveredRequestsForMonth(requests, getMonthKey());
+      const monthSummary = summarizeDeliveredRequests(deliveredThisMonth);
+      const monthlyGroups = requests.filter(isRequestDelivered).reduce((result, request) => {
+        const key = getMonthKey(getRequestDeliveredAt(request));
+        if (!key) return result;
+        result[key] = result[key] || [];
+        result[key].push(request);
+        return result;
+      }, {});
+      const monthRows = Object.entries(monthlyGroups)
+        .sort(([a], [b]) => b.localeCompare(a))
+        .map(([month, items]) => ({ month, ...summarizeDeliveredRequests(items) }));
+
+      document.getElementById("profile-name").textContent = user.name || "-";
+      document.getElementById("profile-email").textContent = user.email || "-";
+      document.getElementById("profile-phone").textContent = user.phone || "Sin teléfono";
+      document.getElementById("profile-specialty").textContent = user.specialty || "Sin especialidad";
+      document.getElementById("profile-clients").textContent = rows.length;
+      document.getElementById("profile-works").textContent = requests.length;
+      document.getElementById("profile-month-works").textContent = monthSummary.works;
+      document.getElementById("profile-month-pay").textContent = formatMoney(monthSummary.teacherTotal);
+      document.getElementById("earnings-history").innerHTML = monthRows.length
+        ? monthRows.map((row) => `
+          <article class="history-row">
+            <strong>${escapeHTML(row.month)}</strong>
+            Estado de pago: pendiente<br />
+            Trabajos entregados: ${row.works}<br />
+            Páginas trabajadas: ${row.pages}<br />
+            Total a pagar: ${formatMoney(row.teacherTotal)}<br />
+            Cálculo: 50% del valor por página prorrateado del plan
+          </article>
+        `).join("")
+        : `<div class="history-row">Sin entregas listas para pago mensual.</div>`;
+      document.getElementById("client-history").innerHTML = rows.length
+        ? rows.map((client) => `
+          <article class="history-row">
+            <strong>${escapeHTML(client.code)}</strong>
+            Trabajos: ${client.total}<br />
+            Entregados: ${client.done}<br />
+            Último trabajo: ${formatDate(client.latest)}
+          </article>
+        `).join("")
+        : `<div class="history-row">Sin clientes asignados todavía.</div>`;
+      document.getElementById("work-history").innerHTML = requests.length
+        ? requests.slice(0, 8).map((request) => `
+          <article class="history-row">
+            <strong>${escapeHTML(request.documentType || "Documento académico")}</strong>
+            Suscriptor: ${escapeHTML(request.user?.subscriberId || getSubscriberId(request.user) || "Sin código")}<br />
+            Estado: ${escapeHTML(getTeacherRequestStatusLabel(request.status))}<br />
+            ${(() => {
+              const finance = getRequestFinance(request);
+              return `Páginas: ${finance.pages} · Pago/página: ${formatMoney(finance.teacherPerPage)} · Total: ${formatMoney(finance.teacherTotal)}<br />`;
+            })()}
+            Fecha: ${formatDate(request.createdAt)}
+          </article>
+        `).join("")
+        : `<div class="history-row">Sin trabajos asignados todavía.</div>`;
+    }
+
+    document.getElementById("password-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const message = document.getElementById("password-message");
+      try {
+        changeOwnPassword(document.getElementById("current-password").value, document.getElementById("new-password").value);
+        event.currentTarget.reset();
+        message.textContent = "Contraseña actualizada.";
+      } catch (error) {
+        message.textContent = error.message || "No se pudo cambiar la contraseña.";
+      }
+    });
+
+    renderProfile();
+  </script>
+</body>
+</html>

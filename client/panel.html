@@ -35,33 +35,41 @@
     }
 
     .nav {
-      min-height: 86px;
+      min-height: 64px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 24px;
-      flex-wrap: wrap;
+      gap: 12px;
+      flex-wrap: nowrap;
+      position: relative;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 10px;
       text-decoration: none;
       color: #071832;
+      min-width: 0;
     }
 
     .brand-mark {
-      width: 46px;
-      height: 46px;
+      width: 38px;
+      height: 38px;
       color: #071832;
       display: inline-flex;
+      flex: 0 0 auto;
+    }
+
+    .brand-mark svg {
+      height: 100%;
+      width: 100%;
     }
 
     .brand-title {
       display: block;
       font-family: Georgia, "Times New Roman", serif;
-      font-size: 24px;
+      font-size: clamp(19px, 3vw, 24px);
       font-weight: 700;
       line-height: 1.1;
     }
@@ -69,16 +77,67 @@
     .brand-subtitle {
       color: #475569;
       display: block;
-      font-size: 15px;
+      font-size: 13px;
       margin-top: 2px;
     }
 
-    .nav-actions {
+    .nav-tools {
       display: flex;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 14px;
-      justify-content: flex-end;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .nav-actions {
+      align-items: stretch;
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 16px;
+      box-shadow: 0 18px 42px rgba(7,24,50,0.14);
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 10px);
+      width: min(280px, 92vw);
+      z-index: 30;
+    }
+
+    .nav.is-menu-open .nav-actions {
+      display: flex;
+    }
+
+    .panel-menu-toggle {
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 999px;
+      color: #071832;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+      font-weight: 800;
+      min-height: 42px;
+      padding: 9px 14px;
+    }
+
+    .panel-menu-toggle svg {
+      height: 20px;
+      width: 20px;
+    }
+
+    .nav.is-menu-open .panel-menu-toggle {
+      background: #071832;
+      border-color: #071832;
+      color: white;
+    }
+
+    .nav-actions .ghost-btn,
+    .nav-actions .language-switcher {
+      width: 100%;
     }
 
     .btn,
@@ -89,10 +148,11 @@
       align-items: center;
       justify-content: center;
       font-weight: 800;
-      min-height: 48px;
-      padding: 12px 18px;
+      min-height: 42px;
+      padding: 9px 13px;
       text-decoration: none;
       transition: 0.2s ease;
+      white-space: nowrap;
     }
 
     .btn {
@@ -114,7 +174,7 @@
     }
 
     main {
-      padding: 56px 0 76px;
+      padding: 28px 0 76px;
     }
 
     .welcome {
@@ -407,12 +467,6 @@
     }
 
     @media (max-width: 900px) {
-      .nav,
-      .nav-actions {
-        align-items: flex-start;
-        flex-direction: column;
-      }
-
       .header-credits {
         align-self: flex-start;
       }
@@ -437,16 +491,43 @@
     }
 
     @media (max-width: 640px) {
-      .nav {
-        min-height: auto;
-        padding: 18px 0;
+      .container {
+        width: min(96%, 1180px);
       }
 
-      .nav-actions,
+      .nav {
+        min-height: auto;
+        padding: 10px 0;
+      }
+
       .header-credits,
+      .filter {
+        width: 100%;
+      }
+
+      .brand-subtitle {
+        display: none;
+      }
+
+      .brand-title {
+        display: none;
+      }
+
+      .nav-tools,
+      .nav-actions {
+        gap: 6px;
+      }
+
+      .panel-menu-toggle {
+        min-height: 40px;
+        padding: 8px 12px;
+      }
+
       .btn,
       .ghost-btn {
-        width: 100%;
+        font-size: 13px;
+        min-height: 40px;
+        padding: 8px 9px;
       }
 
       .header-credits {
@@ -485,9 +566,24 @@
           </span>
         </a>
 
-        <div class="nav-actions">
-          <a class="ghost-btn" href="precios.html">Ver paquetes</a>
+        <div class="nav-tools" aria-label="Herramientas del panel">
+          <span class="notification-target"></span>
           <a class="btn" data-request-action href="formulario.html">Nueva solicitud</a>
+          <span class="credits-target"></span>
+          <button class="panel-menu-toggle" type="button" aria-expanded="false" aria-controls="panel-menu-actions">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16"></path>
+              <path d="M4 12h16"></path>
+              <path d="M4 17h16"></path>
+            </svg>
+            <span>Menu</span>
+          </button>
+        </div>
+
+        <div class="nav-actions" id="panel-menu-actions">
+          <a class="ghost-btn" href="perfil.html">Perfil</a>
+          <a class="ghost-btn" href="precios.html">Ver paquetes</a>
+          <span class="language-target"></span>
           <button class="ghost-btn" type="button" onclick="logout()">Cerrar sesión</button>
         </div>
       </nav>
@@ -548,7 +644,7 @@
 
           <ul class="info-list">
             <li><strong>Privacidad</strong>Tus solicitudes quedan guardadas en tu espacio personal.</li>
-            <li><strong>Seguimiento</strong>El estado inicial será “Recibida” hasta que se conecte el flujo interno.</li>
+            <li><strong>Seguimiento</strong>Verás estados claros: pendiente de pago, recibido, asignado, en proceso, listo o entregado.</li>
             <li><strong>Próximo paso</strong>Envía un nuevo trabajo desde el formulario para verlo aquí.</li>
           </ul>
 
@@ -575,6 +671,21 @@
     if (isTeacherUser(user)) {
       window.location.href = "profesor.html";
     }
+
+    const panelNav = document.querySelector(".nav");
+    const panelMenuToggle = document.querySelector(".panel-menu-toggle");
+
+    panelMenuToggle?.addEventListener("click", () => {
+      const isOpen = panelNav.classList.toggle("is-menu-open");
+      panelMenuToggle.setAttribute("aria-expanded", String(isOpen));
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!panelNav?.contains(event.target)) {
+        panelNav?.classList.remove("is-menu-open");
+        panelMenuToggle?.setAttribute("aria-expanded", "false");
+      }
+    });
 
     const packageNames = {
       inicial: "Inicial",
@@ -615,7 +726,7 @@
     function renderAttachments(request) {
       if (Array.isArray(request.attachments) && request.attachments.length) {
         return request.attachments.map((file) => `
-          <a href="${file.dataUrl}" download="${escapeHTML(file.name)}">${escapeHTML(file.name)} ${formatFileSize(file.size)}</a>
+          <a href="${file.url || file.dataUrl}" download="${escapeHTML(file.name)}">${escapeHTML(file.name)} ${formatFileSize(file.size)}</a>
         `).join("<br>");
       }
 
@@ -627,14 +738,14 @@
     }
 
     function renderDelivery(request) {
-      if (!request.delivery || !request.delivery.dataUrl) {
+      if (!request.delivery || !(request.delivery.url || request.delivery.dataUrl)) {
         return "";
       }
 
       return `
         <div class="delivery-card">
           <strong>Trabajo final listo</strong>
-          <a href="${request.delivery.dataUrl}" download="${escapeHTML(request.delivery.name)}">${escapeHTML(request.delivery.name)} ${formatFileSize(request.delivery.size)}</a>
+          <a href="${request.delivery.url || request.delivery.dataUrl}" download="${escapeHTML(request.delivery.name)}">${escapeHTML(request.delivery.name)} ${formatFileSize(request.delivery.size)}</a>
           <span>Entrega subida por el profesor: ${formatDate(request.deliveredAt || request.updatedAt)}</span>
         </div>
       `;
@@ -693,7 +804,7 @@
       document.getElementById("welcome-title").textContent = `Hola, ${user.name}`;
       document.getElementById("account-email").textContent = user.email;
       document.getElementById("total-requests").textContent = requests.length;
-      document.getElementById("received-requests").textContent = requests.filter((item) => item.status === "Recibida").length;
+      document.getElementById("received-requests").textContent = requests.filter((item) => getClientRequestStatusLabel(item) === "Recibido").length;
       document.getElementById("latest-package").textContent = requests[0] ? packageNames[requests[0].package] : "-";
       document.getElementById("available-credits").textContent = `${creditSummary.availableCredits} créditos`;
       document.getElementById("credits-detail").textContent = creditSummary.totalCredits
@@ -732,7 +843,7 @@
               <h3>${request.documentType || "Documento académico"}</h3>
               <p>${formatDate(request.createdAt)}</p>
             </div>
-            <span class="status">${request.status}</span>
+            <span class="status">${getClientRequestStatusLabel(request)}</span>
           </div>
           <div class="request-meta">
             <span><strong>Paquete:</strong> ${packageNames[request.package] || request.package}</span>

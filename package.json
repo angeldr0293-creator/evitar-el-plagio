@@ -3,9 +3,14 @@
   "version": "1.0.0",
   "description": "",
   "main": "server/server.js",
+  "engines": {
+    "node": ">=22.5.0"
+  },
   "scripts": {
-    "dev": "node server/server.js",
-    "reset": "node server/utils/reset-data.js",
+    "start": "node --no-warnings server/server.js",
+    "dev": "node --no-warnings server/server.js",
+    "reset": "node --no-warnings server/utils/reset-data.js",
+    "backup": "node --no-warnings server/utils/backup-data.js",
     "vite": "vite client",
     "build": "vite build client --outDir ../dist --emptyOutDir",
     "preview": "vite preview --outDir dist"

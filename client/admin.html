@@ -35,32 +35,40 @@
     }
 
     .nav {
-      min-height: 86px;
+      min-height: 64px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 24px;
+      gap: 16px;
+      position: relative;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 10px;
       color: #071832;
       text-decoration: none;
+      min-width: 0;
     }
 
     .brand-mark {
-      width: 46px;
-      height: 46px;
+      width: 38px;
+      height: 38px;
       color: #071832;
       display: inline-flex;
+      flex: 0 0 auto;
+    }
+
+    .brand-mark svg {
+      height: 100%;
+      width: 100%;
     }
 
     .brand-title {
       display: block;
       font-family: Georgia, "Times New Roman", serif;
-      font-size: 24px;
+      font-size: clamp(20px, 3vw, 24px);
       font-weight: 700;
       line-height: 1.1;
     }
@@ -68,14 +76,62 @@
     .brand-subtitle {
       color: #475569;
       display: block;
-      font-size: 15px;
+      font-size: 13px;
       margin-top: 2px;
     }
 
     .nav-actions {
+      align-items: stretch;
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 16px;
+      box-shadow: 0 18px 42px rgba(7,24,50,0.14);
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 10px);
+      width: min(280px, 92vw);
+      z-index: 30;
+    }
+
+    .nav-tools {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
+      margin-left: auto;
+    }
+
+    .nav.is-menu-open .nav-actions {
+      display: flex;
+    }
+
+    .admin-menu-toggle {
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 999px;
+      color: #071832;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex: 0 0 auto;
+      font-weight: 800;
+      min-height: 42px;
+      padding: 9px 14px;
+    }
+
+    .admin-menu-toggle svg {
+      height: 20px;
+      width: 20px;
+    }
+
+    .nav.is-menu-open .admin-menu-toggle {
+      background: #071832;
+      border-color: #071832;
+      color: white;
     }
 
     .btn,
@@ -92,6 +148,10 @@
       transition: 0.2s ease;
     }
 
+    .nav-actions .ghost-btn {
+      width: 100%;
+    }
+
     .btn {
       background: #071832;
       border: 1px solid transparent;
@@ -106,7 +166,7 @@
     }
 
     main {
-      padding: 48px 0 72px;
+      padding: 28px 0 72px;
     }
 
     .hero {
@@ -235,7 +295,9 @@
       margin-top: 18px;
     }
 
-    .admin-form input {
+    .admin-form input,
+    .admin-form select,
+    .urgent-email-form textarea {
       border: 1px solid #d8e0e5;
       border-radius: 12px;
       color: #071832;
@@ -243,6 +305,27 @@
       min-height: 48px;
       padding: 10px 12px;
       width: 100%;
+    }
+
+    .urgent-email-form {
+      background: #f8faf9;
+      border: 1px solid #e8eef1;
+      border-radius: 14px;
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+      padding: 14px;
+    }
+
+    .urgent-email-form textarea {
+      min-height: 86px;
+      resize: vertical;
+    }
+
+    .urgent-email-message {
+      color: #2b7a68;
+      font-size: 13px;
+      font-weight: 800;
     }
 
     .teacher-list {
@@ -751,8 +834,6 @@
     }
 
     @media (max-width: 980px) {
-      .nav,
-      .nav-actions,
       .panel-head {
         align-items: flex-start;
         flex-direction: column;
@@ -788,14 +869,30 @@
     @media (max-width: 640px) {
       .nav {
         min-height: auto;
-        padding: 18px 0;
+        padding: 10px 0;
       }
 
-      .nav-actions,
       .btn,
       .ghost-btn,
       .filter {
         width: 100%;
+      }
+
+      .brand-subtitle {
+        display: none;
+      }
+
+      .brand-title {
+        display: none;
+      }
+
+      .nav-tools {
+        gap: 6px;
+      }
+
+      .admin-menu-toggle {
+        min-height: 40px;
+        padding: 8px 12px;
       }
 
       .hero,
@@ -844,7 +941,19 @@
           </span>
         </a>
 
-        <div class="nav-actions">
+        <div class="nav-tools" aria-label="Herramientas de administración"></div>
+
+        <button class="admin-menu-toggle" type="button" aria-expanded="false" aria-controls="admin-menu-actions">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h16"></path>
+            <path d="M4 12h16"></path>
+            <path d="M4 17h16"></path>
+          </svg>
+          <span>Menu</span>
+        </button>
+
+        <div class="nav-actions" id="admin-menu-actions">
+          <a class="ghost-btn" href="estadisticas.html">Estadística</a>
           <a class="ghost-btn" href="index.html">Ver sitio</a>
           <button class="ghost-btn" type="button" onclick="logout()">Cerrar sesión</button>
         </div>
@@ -883,6 +992,7 @@
       <div class="admin-tabs" aria-label="Secciones de administración">
         <button class="admin-tab active" type="button" data-admin-view="clients">Clientes</button>
         <button class="admin-tab" type="button" data-admin-view="works">Trabajos <span id="works-tab-count" class="pill">0</span></button>
+        <button class="admin-tab" type="button" data-admin-view="payments">Pagos</button>
         <button class="admin-tab" type="button" data-admin-view="teachers">Profesores</button>
       </div>
 
@@ -918,6 +1028,35 @@
         <div id="admin-work-board" class="work-board"></div>
       </section>
 
+      <section id="admin-payments-section" class="panel admin-section" hidden>
+        <div class="panel-head">
+          <div>
+            <h2>Pagos y suscripciones</h2>
+            <p>Registra pagos manuales, cambia plan, estado y vencimiento sin editar la base de datos.</p>
+          </div>
+        </div>
+
+        <form id="payment-admin-form" class="admin-form">
+          <select id="payment-client" required></select>
+          <select id="payment-plan" required>
+            <option value="inicial">Paquete Inicial</option>
+            <option value="academico">Paquete Académico</option>
+            <option value="premium">Paquete Premium</option>
+          </select>
+          <select id="payment-status" required>
+            <option value="Activa">Activa</option>
+            <option value="Pendiente">Pendiente</option>
+            <option value="Cancelada">Cancelada</option>
+            <option value="Expirada">Expirada</option>
+          </select>
+          <input id="payment-expires" type="date" required />
+          <input id="payment-token" type="text" placeholder="Referencia de pago opcional" />
+          <button class="btn" type="submit">Registrar pago</button>
+        </form>
+
+        <div id="payments-list" class="subscription-list"></div>
+      </section>
+
       <section id="admin-clients-section" class="panel admin-section">
         <div class="panel-head">
           <div>
@@ -942,16 +1081,36 @@
       window.location.href = `registro.html?next=${encodeURIComponent("admin.html")}`;
     }
 
+    const adminNav = document.querySelector(".nav");
+    const adminMenuToggle = document.querySelector(".admin-menu-toggle");
+
+    adminMenuToggle?.addEventListener("click", () => {
+      const isOpen = adminNav.classList.toggle("is-menu-open");
+      adminMenuToggle.setAttribute("aria-expanded", String(isOpen));
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!adminNav?.contains(event.target)) {
+        adminNav?.classList.remove("is-menu-open");
+        adminMenuToggle?.setAttribute("aria-expanded", "false");
+      }
+    });
+
     const packageNames = {
       inicial: "Inicial",
       academico: "Académico",
       premium: "Premium"
     };
 
-    const statusOptions = ["Recibida", "En proceso", "Lista", "Entregada"];
+    const statusOptions = ["Pendiente de pago", "Recibida", "Asignada", "Visto", "Trabajando", "En proceso", "Lista", "Entrega subida", "Entregada"];
+    const subscriptionStatusOptions = ["Activa", "Pendiente", "Cancelada", "Expirada"];
     const clientsList = document.getElementById("clients-list");
     const clientSearch = document.getElementById("client-search");
     const adminAlert = document.getElementById("admin-alert");
+    const paymentAdminForm = document.getElementById("payment-admin-form");
+    const paymentClient = document.getElementById("payment-client");
+    const paymentExpires = document.getElementById("payment-expires");
+    const paymentsList = document.getElementById("payments-list");
     const teacherForm = document.getElementById("teacher-form");
     const teacherList = document.getElementById("teacher-list");
     const teacherMessage = document.getElementById("teacher-message");
@@ -962,6 +1121,7 @@
     const adminSections = {
       clients: document.getElementById("admin-clients-section"),
       works: document.getElementById("admin-works-section"),
+      payments: document.getElementById("admin-payments-section"),
       teachers: document.getElementById("admin-teachers-section")
     };
     const adminWorkBoard = document.getElementById("admin-work-board");
@@ -989,6 +1149,22 @@
       }).format(new Date(value));
     }
 
+    function formatDateInput(value) {
+      const date = value ? new Date(value) : new Date();
+
+      if (Number.isNaN(date.getTime())) {
+        return "";
+      }
+
+      return date.toISOString().slice(0, 10);
+    }
+
+    function getDefaultExpiryDate() {
+      const date = new Date();
+      date.setDate(date.getDate() + 30);
+      return formatDateInput(date.toISOString());
+    }
+
     function formatFileSize(bytes) {
       if (!bytes) {
         return "";
@@ -1000,7 +1176,7 @@
     function renderAttachments(request) {
       if (Array.isArray(request.attachments) && request.attachments.length) {
         return request.attachments.map((file) => `
-          <a href="${file.dataUrl}" download="${escapeHTML(file.name)}">${escapeHTML(file.name)} ${formatFileSize(file.size)}</a>
+          <a href="${file.url || file.dataUrl}" download="${escapeHTML(file.name)}">${escapeHTML(file.name)} ${formatFileSize(file.size)}</a>
         `).join("<br>");
       }
 
@@ -1012,11 +1188,11 @@
     }
 
     function renderDelivery(request) {
-      if (!request.delivery || !request.delivery.dataUrl) {
+      if (!request.delivery || !(request.delivery.url || request.delivery.dataUrl)) {
         return "Sin entrega del profesor";
       }
 
-      return `<a href="${request.delivery.dataUrl}" download="${escapeHTML(request.delivery.name)}">${escapeHTML(request.delivery.name)} ${formatFileSize(request.delivery.size)}</a>`;
+      return `<a href="${request.delivery.url || request.delivery.dataUrl}" download="${escapeHTML(request.delivery.name)}">${escapeHTML(request.delivery.name)} ${formatFileSize(request.delivery.size)}</a>`;
     }
 
     function daysUntil(value) {
@@ -1159,7 +1335,7 @@
                     <span><strong>Entrega:</strong> ${escapeHTML(deadlineText)}</span>
                     <span><strong>Falta:</strong> ${escapeHTML(formatRequestTimeLeft(request))}</span>
                   </div>
-                  <span class="pill ${request.status === "Entregada" ? "active" : ""}">${escapeHTML(request.status || "Recibida")}</span>
+                    <span class="pill ${request.status === "Entrega subida" || request.status === "Entregada" ? "active" : ""}">${escapeHTML(request.status || "Recibida")}</span>
                   <button class="teacher-work-more" type="button">Ver mas informacion</button>
                 </div>
 
@@ -1206,8 +1382,8 @@
             <div class="teacher-info">
               <strong>${escapeHTML(teacher.name)}</strong>
               <p class="teacher-secret">
-                <span class="muted">Contrasena:</span>
-                <span class="credential-secret">${escapeHTML(teacher.password || "Sin clave registrada")}</span>
+                <span class="muted">Clave:</span>
+                <span class="credential-secret">Protegida</span>
               </p>
               <p class="muted">${escapeHTML(teacher.email)}${teacher.phone ? ` · ${escapeHTML(teacher.phone)}` : ""}</p>
             </div>
@@ -1255,16 +1431,34 @@
     }
 
     function renderSubscriptions(client) {
+      const paymentForm = `
+        <form class="admin-form client-payment-form" data-client-id="${escapeHTML(client.id)}">
+          <select name="plan" required>
+            <option value="inicial">Paquete Inicial</option>
+            <option value="academico">Paquete Académico</option>
+            <option value="premium">Paquete Premium</option>
+          </select>
+          <select name="status" required>
+            ${subscriptionStatusOptions.map((status) => `<option value="${status}">${status}</option>`).join("")}
+          </select>
+          <input name="expiresAt" type="date" value="${getDefaultExpiryDate()}" required />
+          <input name="paymentToken" type="text" placeholder="Referencia opcional" />
+          <button class="btn" type="submit">Registrar pago</button>
+        </form>
+      `;
+
       if (!client.subscriptions.length) {
         return `
+          ${paymentForm}
           <div class="empty-state">
             <h3>Sin suscripciones guardadas</h3>
-            <p>Cuando este cliente pague un plan y envíe su solicitud, aparecerá aquí.</p>
+            <p>Registra un pago manual o espera a que el cliente pague un plan desde la plataforma.</p>
           </div>
         `;
       }
 
       return `
+        ${paymentForm}
         <div class="subscription-list">
           ${client.subscriptions.map((subscription) => `
             <div class="subscription-row">
@@ -1272,9 +1466,16 @@
                 <strong>${escapeHTML(packageNames[subscription.plan] || subscription.plan)}</strong>
                 <p class="muted">Inicio: ${formatDate(subscription.startsAt)} · Vence: ${formatDate(subscription.expiresAt)}</p>
               </div>
-              <span class="pill ${isSubscriptionActive(subscription) ? "active" : ""}">
-                ${isSubscriptionActive(subscription) ? "Activa" : "Vencida"}
-              </span>
+              <div class="work-actions">
+                <select class="subscription-plan-select" data-subscription-id="${escapeHTML(subscription.id)}" ${subscription.inferred ? "disabled" : ""}>
+                  ${Object.entries(packageNames).map(([plan, name]) => `<option value="${plan}" ${subscription.plan === plan ? "selected" : ""}>${escapeHTML(name)}</option>`).join("")}
+                </select>
+                <select class="subscription-status-select" data-subscription-id="${escapeHTML(subscription.id)}" ${subscription.inferred ? "disabled" : ""}>
+                  ${subscriptionStatusOptions.map((status) => `<option value="${status}" ${subscription.status === status ? "selected" : ""}>${status}</option>`).join("")}
+                </select>
+                <input class="subscription-expiry-input" data-subscription-id="${escapeHTML(subscription.id)}" type="date" value="${formatDateInput(subscription.expiresAt)}" ${subscription.inferred ? "disabled" : ""} />
+                ${subscription.inferred ? `<span class="pill">Inferida</span>` : `<button class="mini-action save-subscription" type="button" data-subscription-id="${escapeHTML(subscription.id)}">Guardar</button>`}
+              </div>
             </div>
           `).join("")}
         </div>
@@ -1282,7 +1483,7 @@
     }
 
     function isCompletedWork(request) {
-      return request.status === "Lista" || request.status === "Entregada";
+      return request.status === "Lista" || request.status === "Entrega subida" || request.status === "Entregada";
     }
 
     function syncAdminSections() {
@@ -1349,11 +1550,11 @@
         },
         {
           title: "En proceso",
-          items: requests.filter((request) => request.status === "En proceso")
+          items: requests.filter((request) => request.status === "Visto" || request.status === "Trabajando" || request.status === "En proceso")
         },
         {
           title: "Entregados",
-          items: requests.filter((request) => request.status === "Entregada" || request.status === "Lista")
+          items: requests.filter((request) => request.status === "Entregada" || request.status === "Entrega subida" || request.status === "Lista")
         }
       ];
 
@@ -1375,7 +1576,7 @@
                   <strong>${escapeHTML(request.documentType || "Documento académico")}</strong>
                   <p class="muted">${escapeHTML(customer.name || "Cliente")} · ${formatDate(request.createdAt)}</p>
                 </div>
-                <span class="pill ${request.status === "Entregada" ? "active" : ""}">${escapeHTML(request.status || "Recibida")}</span>
+                <span class="pill ${request.status === "Entrega subida" || request.status === "Entregada" ? "active" : ""}">${escapeHTML(request.status || "Recibida")}</span>
                 <p class="muted">Profesor: ${escapeHTML(request.teacherName || "Sin profesor")}</p>
                 ${request.delivery ? `<p class="muted">Entrega final: ${renderDelivery(request)}</p>` : ""}
                 <div class="work-actions">
@@ -1448,6 +1649,7 @@
             updateRequestStatus(requestId, status);
           }
 
+          window.showScreenNotification?.("Trabajo actualizado correctamente.");
           window.refreshNotifications?.();
           renderTeachers();
           renderClients();
@@ -1458,6 +1660,91 @@
           }, 1200);
         });
       });
+    }
+
+    function getPaymentRows() {
+      return getAdminClients().flatMap((client) => (
+        client.subscriptions.map((subscription) => ({ ...subscription, client }))
+      ));
+    }
+
+    function updatePaymentClientOptions(clients = getAdminClients()) {
+      paymentClient.innerHTML = clients.length
+        ? clients.map((client) => `<option value="${escapeHTML(client.id)}">${escapeHTML(client.name)} - ${escapeHTML(client.email)}</option>`).join("")
+        : `<option value="">Sin clientes</option>`;
+    }
+
+    function saveSubscriptionFromControls(subscriptionId, root = document) {
+      const plan = root.querySelector(`.subscription-plan-select[data-subscription-id="${CSS.escape(subscriptionId)}"]`)?.value;
+      const status = root.querySelector(`.subscription-status-select[data-subscription-id="${CSS.escape(subscriptionId)}"]`)?.value;
+      const expiresAt = root.querySelector(`.subscription-expiry-input[data-subscription-id="${CSS.escape(subscriptionId)}"]`)?.value;
+
+      updateAdminSubscription(subscriptionId, { plan, status, expiresAt });
+      renderPaymentsBoard();
+      renderClients();
+    }
+
+    function attachPaymentControls(root = document) {
+      root.querySelectorAll(".save-subscription").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          saveSubscriptionFromControls(event.currentTarget.dataset.subscriptionId, event.currentTarget.closest(".subscription-row") || root);
+        });
+      });
+
+      root.querySelectorAll(".client-payment-form").forEach((form) => {
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          createAdminSubscription({
+            userId: event.currentTarget.dataset.clientId,
+            plan: data.get("plan"),
+            status: data.get("status"),
+            expiresAt: data.get("expiresAt"),
+            paymentToken: data.get("paymentToken")
+          });
+          renderPaymentsBoard();
+          renderClients();
+        });
+      });
+    }
+
+    function renderPaymentsBoard() {
+      const clients = getAdminClients();
+      const payments = getPaymentRows();
+
+      updatePaymentClientOptions(clients);
+      paymentExpires.value = paymentExpires.value || getDefaultExpiryDate();
+
+      if (!payments.length) {
+        paymentsList.innerHTML = `
+          <div class="empty-state">
+            <h3>Sin pagos registrados</h3>
+            <p>Cuando un cliente pague o registres un pago manual, aparecerá aquí.</p>
+          </div>
+        `;
+        return;
+      }
+
+      paymentsList.innerHTML = payments.map((subscription) => `
+        <div class="subscription-row">
+          <div>
+            <strong>${escapeHTML(subscription.client.name)} - ${escapeHTML(packageNames[subscription.plan] || subscription.plan)}</strong>
+            <p class="muted">${escapeHTML(subscription.client.email)} · Inicio: ${formatDate(subscription.startsAt)} · Vence: ${formatDate(subscription.expiresAt)}</p>
+          </div>
+          <div class="work-actions">
+            <select class="subscription-plan-select" data-subscription-id="${escapeHTML(subscription.id)}" ${subscription.inferred ? "disabled" : ""}>
+              ${Object.entries(packageNames).map(([plan, name]) => `<option value="${plan}" ${subscription.plan === plan ? "selected" : ""}>${escapeHTML(name)}</option>`).join("")}
+            </select>
+            <select class="subscription-status-select" data-subscription-id="${escapeHTML(subscription.id)}" ${subscription.inferred ? "disabled" : ""}>
+              ${subscriptionStatusOptions.map((status) => `<option value="${status}" ${subscription.status === status ? "selected" : ""}>${status}</option>`).join("")}
+            </select>
+            <input class="subscription-expiry-input" data-subscription-id="${escapeHTML(subscription.id)}" type="date" value="${formatDateInput(subscription.expiresAt)}" ${subscription.inferred ? "disabled" : ""} />
+            ${subscription.inferred ? `<span class="pill">Inferida</span>` : `<button class="mini-action save-subscription" type="button" data-subscription-id="${escapeHTML(subscription.id)}">Guardar</button>`}
+          </div>
+        </div>
+      `).join("");
+
+      attachPaymentControls(paymentsList);
     }
 
     function renderProfile(client, planName, expiryText) {
@@ -1472,6 +1759,7 @@
 
       return `
         <div class="detail-grid">
+          <div class="detail-card"><strong>No. suscriptor</strong>${escapeHTML(client.subscriberId || getSubscriberId(client))}</div>
           <div class="detail-card"><strong>Nombre</strong>${escapeHTML(client.name)}</div>
           <div class="detail-card"><strong>Correo</strong>${escapeHTML(client.email)}</div>
           <div class="detail-card"><strong>Teléfono</strong>${escapeHTML(client.phone || "Sin teléfono")}</div>
@@ -1481,10 +1769,24 @@
           <div class="detail-card"><strong>Veces suscrito</strong>${client.subscriptions.length}</div>
           <div class="detail-card"><strong>Cliente desde</strong>${formatDate(client.createdAt)}</div>
         </div>
+        <form class="admin-form client-profile-form" data-client-id="${escapeHTML(client.id)}">
+          <input name="name" type="text" value="${escapeHTML(client.name)}" placeholder="Nombre" required />
+          <input name="email" type="email" value="${escapeHTML(client.email)}" placeholder="Correo" required />
+          <input name="phone" type="tel" value="${escapeHTML(client.phone || "")}" placeholder="Teléfono" />
+          <button class="btn" type="submit">Guardar usuario</button>
+        </form>
         <div class="profile-actions">
           <button class="ghost-btn reset-client-password" type="button" data-client-id="${escapeHTML(client.id)}" data-client-email="${escapeHTML(client.email)}">Resetear clave</button>
           ${client.teacher ? `<button class="ghost-btn clear-client-teacher" type="button" data-client-id="${escapeHTML(client.id)}">Quitar profesor fijo</button>` : ""}
         </div>
+        <form class="urgent-email-form" data-client-id="${escapeHTML(client.id)}">
+          <strong>Correo urgente</strong>
+          <p class="muted">Úsalo solo cuando la plataforma necesite avisar algo importante al cliente.</p>
+          <input name="subject" type="text" value="Mensaje urgente sobre tu solicitud" required />
+          <textarea name="message" placeholder="Escribe el mensaje urgente para el cliente." required></textarea>
+          <button class="ghost-btn" type="submit">Enviar correo urgente</button>
+          <span class="urgent-email-message" aria-live="polite"></span>
+        </form>
         ${credentialBox}
       `;
     }
@@ -1554,7 +1856,8 @@
       const clients = getAdminClients();
       const visibleClients = clients.filter((client) => (
         client.name.toLowerCase().includes(search) ||
-        client.email.toLowerCase().includes(search)
+        client.email.toLowerCase().includes(search) ||
+        (client.subscriberId || getSubscriberId(client)).toLowerCase().includes(search)
       ));
 
       renderStats(clients);
@@ -1585,7 +1888,7 @@
               </span>
               <span>
                 <strong class="client-name">${escapeHTML(client.name)}${pendingCount ? ` <span class="client-alert">${pendingCount} nuevo(s)</span>` : ""}</strong>
-                <span class="muted">${escapeHTML(client.email)}</span>
+                <span class="muted">${escapeHTML(client.subscriberId || getSubscriberId(client))} · ${escapeHTML(client.email)}</span>
               </span>
               <span class="pill ${client.activeSubscription ? "active" : ""}">${escapeHTML(planName)}</span>
               <span class="pill">${escapeHTML(statusLabel)}</span>
@@ -1620,6 +1923,7 @@
       document.querySelectorAll(".status-select").forEach((select) => {
         select.addEventListener("change", (event) => {
           updateRequestStatus(event.currentTarget.dataset.requestId, event.currentTarget.value);
+          window.showScreenNotification?.("Estado actualizado correctamente.");
           window.refreshNotifications?.();
           renderAdminWorkBoard();
           renderClients();
@@ -1635,6 +1939,46 @@
           renderClients();
         });
       });
+
+      document.querySelectorAll(".client-profile-form").forEach((form) => {
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          updateUserProfile(event.currentTarget.dataset.clientId, {
+            name: data.get("name"),
+            email: data.get("email"),
+            phone: data.get("phone")
+          });
+          renderPaymentsBoard();
+          renderClients();
+        });
+      });
+
+      document.querySelectorAll(".urgent-email-form").forEach((form) => {
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const data = new FormData(event.currentTarget);
+          const message = event.currentTarget.querySelector(".urgent-email-message");
+
+          try {
+            const result = sendUrgentClientEmail(event.currentTarget.dataset.clientId, {
+              subject: data.get("subject"),
+              message: data.get("message")
+            });
+
+            message.textContent = result.delivered
+              ? "Correo enviado."
+              : "Correo guardado en cola de salida.";
+            window.showScreenNotification?.(message.textContent);
+            event.currentTarget.reset();
+          } catch (error) {
+            message.textContent = error.message;
+            window.showScreenNotification?.(error.message, "error");
+          }
+        });
+      });
+
+      attachPaymentControls(clientsList);
 
       document.querySelectorAll(".clear-client-teacher").forEach((button) => {
         button.addEventListener("click", (event) => {
@@ -1661,6 +2005,7 @@
       syncAdminSections();
       renderTeachers();
       renderAdminWorkBoard();
+      renderPaymentsBoard();
       renderClients();
       adminTabs.forEach((tab) => {
         tab.addEventListener("click", () => {
@@ -1669,6 +2014,19 @@
         });
       });
       clientSearch.addEventListener("input", renderClients);
+      paymentAdminForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        createAdminSubscription({
+          userId: paymentClient.value,
+          plan: document.getElementById("payment-plan").value,
+          status: document.getElementById("payment-status").value,
+          expiresAt: paymentExpires.value,
+          paymentToken: document.getElementById("payment-token").value.trim()
+        });
+        document.getElementById("payment-token").value = "";
+        renderPaymentsBoard();
+        renderClients();
+      });
       teacherForm.addEventListener("submit", (event) => {
         event.preventDefault();
 

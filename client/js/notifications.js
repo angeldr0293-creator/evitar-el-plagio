@@ -1,6 +1,7 @@
 (function () {
   const RECENT_LIMIT = 4;
   const SEEN_KEY = "oa_seen_notifications";
+  const FLASH_KEY = "oa_flash_message";
 
   function escapeHTML(value) {
     return String(value || "")
@@ -66,11 +67,12 @@
 
   function buildClientNotifications(user) {
     return getCurrentUserRequests().map((request) => {
-      const ready = request.status === "Lista" || request.status === "Entregada";
+      const statusLabel = getClientRequestStatusLabel(request);
+      const ready = statusLabel === "Listo" || statusLabel === "Entregado";
       return {
-        title: ready ? "Tu trabajo está listo" : `Tu trabajo está ${request.status || "en revisión"}`,
+        title: ready ? "Tu trabajo está listo" : `Tu solicitud está ${statusLabel.toLowerCase()}`,
         text: request.documentType || "Documento académico",
-        date: request.updatedAt || request.assignedAt || request.createdAt,
+        date: request.updatedAt || request.deliveredAt || request.assignedAt || request.createdAt,
         tone: ready ? "success" : "info"
       };
     });
@@ -78,10 +80,10 @@
 
   function buildTeacherNotifications(user) {
     const requests = getTeacherRequests().map((request) => ({
-      title: request.status === "Recibida" ? "Recibiste un trabajo" : "Trabajo por confirmar",
+      title: `Trabajo ${getTeacherRequestStatusLabel(request.status).toLowerCase()}`,
       text: `${request.user && request.user.name ? request.user.name : "Cliente"} · ${request.documentType || "Documento académico"}`,
-      date: request.assignedAt || request.createdAt,
-      tone: request.status === "Lista" || request.status === "Entregada" ? "success" : "info"
+      date: request.updatedAt || request.assignedAt || request.createdAt,
+      tone: request.status === "Lista" || request.status === "Entrega subida" || request.status === "Entregada" ? "success" : "info"
     }));
 
     const assignedClientIds = new Set(getTeacherRequests().map((request) => request.userId));
@@ -162,7 +164,10 @@
   function mountNotifications() {
     const user = getCurrentUser();
     const nav = document.querySelector(".nav");
-    const target = document.querySelector(".nav-actions") || document.querySelector(".nav-links");
+    const target = document.querySelector(".notification-target")
+      || document.querySelector(".nav-tools")
+      || document.querySelector(".nav-actions")
+      || document.querySelector(".nav-links");
 
     if (!user || !nav || document.querySelector(".notification-bell")) {
       return;
@@ -254,14 +259,47 @@
     });
   }
 
+  function showToast(message, tone = "success") {
+    const toast = document.createElement("div");
+    toast.className = `screen-toast ${tone === "error" ? "is-error" : ""}`;
+    toast.setAttribute("role", "status");
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add("is-visible"));
+    setTimeout(() => {
+      toast.classList.remove("is-visible");
+      setTimeout(() => toast.remove(), 250);
+    }, 3600);
+  }
+
+  function showPendingFlash() {
+    const message = sessionStorage.getItem(FLASH_KEY);
+
+    if (!message) {
+      return;
+    }
+
+    sessionStorage.removeItem(FLASH_KEY);
+    showToast(message);
+  }
+
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", mountNotifications);
+    document.addEventListener("DOMContentLoaded", () => {
+      mountNotifications();
+      showPendingFlash();
+    });
   } else {
     mountNotifications();
+    showPendingFlash();
   }
 
   window.refreshNotifications = function () {
     document.querySelector(".notification-bell")?.remove();
     mountNotifications();
+  };
+
+  window.showScreenNotification = showToast;
+  window.queueScreenNotification = function (message) {
+    sessionStorage.setItem(FLASH_KEY, message);
   };
 })();

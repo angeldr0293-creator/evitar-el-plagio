@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Crear cuenta - Originalidad Académica</title>
+  <link rel="stylesheet" href="css/notifications.css" />
   <style>
     * {
       margin: 0;
@@ -161,13 +162,23 @@
       gap: 8px;
     }
 
+    .hp-field {
+      left: -10000px;
+      position: absolute;
+      top: auto;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+    }
+
     label {
       color: #26364d;
       font-size: 14px;
       font-weight: 800;
     }
 
-    input {
+    input,
+    select {
       width: 100%;
       border: 1px solid #d8e0e5;
       border-radius: 12px;
@@ -178,9 +189,93 @@
       transition: 0.2s ease;
     }
 
-    input:focus {
+    input:focus,
+    select:focus {
       border-color: #2b7a68;
       box-shadow: 0 0 0 4px rgba(43,122,104,0.12);
+    }
+
+    .phone-control {
+      display: grid;
+      grid-template-columns: minmax(96px, 118px) 1fr;
+      gap: 10px;
+    }
+
+    .country-picker {
+      position: relative;
+    }
+
+    .country-button {
+      align-items: center;
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      color: #071832;
+      cursor: pointer;
+      display: flex;
+      font-size: 15px;
+      gap: 8px;
+      justify-content: space-between;
+      min-height: 48px;
+      padding: 10px 12px;
+      width: 100%;
+    }
+
+    .country-button:focus {
+      border-color: #2b7a68;
+      box-shadow: 0 0 0 4px rgba(43,122,104,0.12);
+      outline: none;
+    }
+
+    .country-button-label,
+    .country-option {
+      align-items: center;
+      display: inline-flex;
+      gap: 8px;
+    }
+
+    .country-code {
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .country-options {
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      box-shadow: 0 18px 40px rgba(7,24,50,0.16);
+      display: grid;
+      left: 0;
+      max-height: 260px;
+      overflow-y: auto;
+      padding: 6px;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      z-index: 30;
+    }
+
+    .country-options[hidden] {
+      display: none;
+    }
+
+    .country-option {
+      background: transparent;
+      border: 0;
+      border-radius: 8px;
+      color: #071832;
+      cursor: pointer;
+      font: inherit;
+      min-height: 36px;
+      padding: 8px 10px;
+      text-align: left;
+    }
+
+    .country-option:hover,
+    .country-option.active {
+      background: #edf4f2;
     }
 
     .btn {
@@ -243,6 +338,10 @@
         flex-direction: column;
         padding: 20px 0;
       }
+
+      .phone-control {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -299,13 +398,33 @@
           </div>
 
           <div class="field">
-            <label for="register-phone">Teléfono o WhatsApp</label>
-            <input type="tel" id="register-phone" autocomplete="tel" placeholder="+507 6000-0000" />
+            <label for="register-phone">Teléfono</label>
+            <div class="phone-control">
+              <div class="country-picker" data-country-picker>
+                <button class="country-button" type="button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="country-button-label"></span>
+                  <span aria-hidden="true">⌄</span>
+                </button>
+                <input type="hidden" id="register-country-code" autocomplete="tel-country-code" value="+507" />
+                <div class="country-options" role="listbox" hidden></div>
+              </div>
+              <input type="tel" id="register-phone" autocomplete="tel-national" placeholder="6000-0000" />
+            </div>
           </div>
 
           <div class="field">
             <label for="register-password">Contraseña</label>
             <input type="password" id="register-password" autocomplete="new-password" minlength="6" placeholder="Mínimo 6 caracteres" required />
+          </div>
+
+          <div class="field hp-field" aria-hidden="true">
+            <label for="register-website">Sitio web</label>
+            <input type="text" id="register-website" tabindex="-1" autocomplete="off" />
+          </div>
+
+          <div class="field">
+            <label for="register-captcha">Verificación anti-spam: escribe ORIGINAL</label>
+            <input type="text" id="register-captcha" autocomplete="off" placeholder="ORIGINAL" required />
           </div>
 
           <button class="btn" type="submit">Crear mi cuenta</button>
@@ -330,6 +449,7 @@
 
   <script src="auth/auth.js"></script>
   <script src="js/i18n.js"></script>
+  <script src="js/notifications.js"></script>
   <script>
     const tabs = document.querySelectorAll(".tab");
     const forms = document.querySelectorAll(".form");
@@ -337,6 +457,81 @@
     const params = new URLSearchParams(window.location.search);
     const nextPage = params.get("next") || "";
     const existingUser = getCurrentUser();
+    const registerFormStartedAt = Date.now();
+    const phoneCountries = [
+      { iso: "pa", name: "Panamá", code: "+507" },
+      { iso: "mx", name: "México", code: "+52" },
+      { iso: "gt", name: "Guatemala", code: "+502" },
+      { iso: "bz", name: "Belice", code: "+501" },
+      { iso: "sv", name: "El Salvador", code: "+503" },
+      { iso: "hn", name: "Honduras", code: "+504" },
+      { iso: "ni", name: "Nicaragua", code: "+505" },
+      { iso: "cr", name: "Costa Rica", code: "+506" },
+      { iso: "co", name: "Colombia", code: "+57" },
+      { iso: "ve", name: "Venezuela", code: "+58" },
+      { iso: "ec", name: "Ecuador", code: "+593" },
+      { iso: "pe", name: "Perú", code: "+51" },
+      { iso: "bo", name: "Bolivia", code: "+591" },
+      { iso: "cl", name: "Chile", code: "+56" },
+      { iso: "ar", name: "Argentina", code: "+54" },
+      { iso: "uy", name: "Uruguay", code: "+598" },
+      { iso: "py", name: "Paraguay", code: "+595" },
+      { iso: "br", name: "Brasil", code: "+55" },
+      { iso: "cu", name: "Cuba", code: "+53" },
+      { iso: "do", name: "República Dominicana", code: "+1" },
+      { iso: "ht", name: "Haití", code: "+509" },
+      { iso: "pr", name: "Puerto Rico", code: "+1" },
+      { iso: "gy", name: "Guyana", code: "+592" },
+      { iso: "sr", name: "Surinam", code: "+597" },
+      { iso: "gf", name: "Guayana Francesa", code: "+594" },
+      { iso: "es", name: "España", code: "+34" },
+      { iso: "pt", name: "Portugal", code: "+351" },
+      { iso: "fr", name: "Francia", code: "+33" },
+      { iso: "it", name: "Italia", code: "+39" },
+      { iso: "de", name: "Alemania", code: "+49" },
+      { iso: "gb", name: "Reino Unido", code: "+44" },
+      { iso: "ie", name: "Irlanda", code: "+353" },
+      { iso: "nl", name: "Países Bajos", code: "+31" },
+      { iso: "be", name: "Bélgica", code: "+32" },
+      { iso: "ch", name: "Suiza", code: "+41" },
+      { iso: "at", name: "Austria", code: "+43" },
+      { iso: "se", name: "Suecia", code: "+46" },
+      { iso: "no", name: "Noruega", code: "+47" },
+      { iso: "dk", name: "Dinamarca", code: "+45" },
+      { iso: "fi", name: "Finlandia", code: "+358" },
+      { iso: "is", name: "Islandia", code: "+354" },
+      { iso: "pl", name: "Polonia", code: "+48" },
+      { iso: "cz", name: "Chequia", code: "+420" },
+      { iso: "sk", name: "Eslovaquia", code: "+421" },
+      { iso: "hu", name: "Hungría", code: "+36" },
+      { iso: "ro", name: "Rumania", code: "+40" },
+      { iso: "bg", name: "Bulgaria", code: "+359" },
+      { iso: "gr", name: "Grecia", code: "+30" },
+      { iso: "hr", name: "Croacia", code: "+385" },
+      { iso: "si", name: "Eslovenia", code: "+386" },
+      { iso: "rs", name: "Serbia", code: "+381" },
+      { iso: "ba", name: "Bosnia y Herzegovina", code: "+387" },
+      { iso: "me", name: "Montenegro", code: "+382" },
+      { iso: "mk", name: "Macedonia del Norte", code: "+389" },
+      { iso: "al", name: "Albania", code: "+355" },
+      { iso: "xk", name: "Kosovo", code: "+383" },
+      { iso: "ee", name: "Estonia", code: "+372" },
+      { iso: "lv", name: "Letonia", code: "+371" },
+      { iso: "lt", name: "Lituania", code: "+370" },
+      { iso: "ua", name: "Ucrania", code: "+380" },
+      { iso: "md", name: "Moldavia", code: "+373" },
+      { iso: "by", name: "Bielorrusia", code: "+375" },
+      { iso: "ru", name: "Rusia", code: "+7" },
+      { iso: "tr", name: "Turquía", code: "+90" },
+      { iso: "cy", name: "Chipre", code: "+357" },
+      { iso: "mt", name: "Malta", code: "+356" },
+      { iso: "lu", name: "Luxemburgo", code: "+352" },
+      { iso: "li", name: "Liechtenstein", code: "+423" },
+      { iso: "mc", name: "Mónaco", code: "+377" },
+      { iso: "ad", name: "Andorra", code: "+376" },
+      { iso: "sm", name: "San Marino", code: "+378" },
+      { iso: "va", name: "Ciudad del Vaticano", code: "+379" }
+    ];
 
     if (isAdminUser(existingUser)) {
       window.location.replace("admin.html");
@@ -365,6 +560,105 @@
         : "panel.html";
     }
 
+    const flagColors = {
+      pa: ["#ffffff", "#d21034", "#005293"], mx: ["#006847", "#ffffff", "#ce1126"], gt: ["#4997d0", "#ffffff", "#4997d0"],
+      bz: ["#003f87", "#ce1126", "#ffffff"], sv: ["#0047ab", "#ffffff", "#0047ab"], hn: ["#0073cf", "#ffffff", "#0073cf"],
+      ni: ["#0067c6", "#ffffff", "#0067c6"], cr: ["#002b7f", "#ffffff", "#ce1126"], co: ["#fcd116", "#003893", "#ce1126"],
+      ve: ["#f4d900", "#0033a0", "#ef3340"], ec: ["#ffdd00", "#034ea2", "#ed1c24"], pe: ["#d91023", "#ffffff", "#d91023"],
+      bo: ["#d52b1e", "#f9e300", "#007934"], cl: ["#0039a6", "#ffffff", "#d52b1e"], ar: ["#75aadb", "#ffffff", "#75aadb"],
+      uy: ["#ffffff", "#0038a8", "#ffffff"], py: ["#d52b1e", "#ffffff", "#0038a8"], br: ["#009b3a", "#ffdf00", "#002776"],
+      cu: ["#002a8f", "#ffffff", "#cf142b"], do: ["#002d62", "#ffffff", "#ce1126"], ht: ["#00209f", "#d21034", "#ffffff"],
+      pr: ["#ed0000", "#ffffff", "#0050f0"], gy: ["#009e49", "#fcd116", "#ce1126"], sr: ["#377e3f", "#ffffff", "#b40a2d"],
+      gf: ["#009739", "#ffcd00", "#ef3340"], es: ["#aa151b", "#f1bf00", "#aa151b"], pt: ["#006600", "#ff0000", "#ffff00"],
+      fr: ["#0055a4", "#ffffff", "#ef4135"], it: ["#009246", "#ffffff", "#ce2b37"], de: ["#000000", "#dd0000", "#ffce00"],
+      gb: ["#012169", "#ffffff", "#c8102e"], ie: ["#169b62", "#ffffff", "#ff883e"], nl: ["#ae1c28", "#ffffff", "#21468b"],
+      be: ["#000000", "#fae042", "#ed2939"], ch: ["#ff0000", "#ffffff", "#ff0000"], at: ["#ed2939", "#ffffff", "#ed2939"],
+      se: ["#006aa7", "#fecc00", "#006aa7"], no: ["#ba0c2f", "#ffffff", "#00205b"], dk: ["#c60c30", "#ffffff", "#c60c30"],
+      fi: ["#ffffff", "#003580", "#ffffff"], is: ["#02529c", "#ffffff", "#dc1e35"], pl: ["#ffffff", "#dc143c", "#dc143c"],
+      cz: ["#ffffff", "#d7141a", "#11457e"], sk: ["#ffffff", "#0b4ea2", "#ee1c25"], hu: ["#ce2939", "#ffffff", "#477050"],
+      ro: ["#002b7f", "#fcd116", "#ce1126"], bg: ["#ffffff", "#00966e", "#d62612"], gr: ["#0d5eaf", "#ffffff", "#0d5eaf"],
+      hr: ["#ff0000", "#ffffff", "#171796"], si: ["#ffffff", "#005ce6", "#ff0000"], rs: ["#c6363c", "#0c4076", "#ffffff"],
+      ba: ["#002395", "#fecb00", "#ffffff"], me: ["#c40308", "#d3ae3b", "#c40308"], mk: ["#d20000", "#ffe600", "#d20000"],
+      al: ["#e41e20", "#000000", "#e41e20"], xk: ["#244aa5", "#d0a650", "#ffffff"], ee: ["#4891d9", "#000000", "#ffffff"],
+      lv: ["#9e3039", "#ffffff", "#9e3039"], lt: ["#fdb913", "#006a44", "#c1272d"], ua: ["#005bbb", "#ffd500", "#ffd500"],
+      md: ["#003f87", "#ffd200", "#d52b1e"], by: ["#d22730", "#009739", "#ffffff"], ru: ["#ffffff", "#0039a6", "#d52b1e"],
+      tr: ["#e30a17", "#ffffff", "#e30a17"], cy: ["#ffffff", "#d57800", "#3a7728"], mt: ["#ffffff", "#cf142b", "#cf142b"],
+      lu: ["#ed2939", "#ffffff", "#00a1de"], li: ["#002b7f", "#ce1126", "#fcd116"], mc: ["#ce1126", "#ffffff", "#ffffff"],
+      ad: ["#10069f", "#fedf00", "#d50032"], sm: ["#ffffff", "#5eb6e4", "#5eb6e4"], va: ["#ffe000", "#ffffff", "#ffffff"]
+    };
+
+    function setupCountryCodePicker(picker, defaultCode = "+507") {
+      const button = picker.querySelector(".country-button");
+      const label = picker.querySelector(".country-button-label");
+      const input = picker.querySelector("input[type='hidden']");
+      const options = picker.querySelector(".country-options");
+
+      function setCountry(country) {
+        input.value = country.code;
+        input.dataset.country = country.name;
+        input.dataset.iso = country.iso;
+        label.innerHTML = `<span class="country-code">${country.iso}</span> <span>${country.code}</span>`;
+        button.setAttribute("aria-label", `${country.name} ${country.code}`);
+        options.querySelectorAll(".country-option").forEach((option) => {
+          option.classList.toggle("active", option.dataset.iso === country.iso);
+        });
+      }
+
+      options.innerHTML = phoneCountries.map((country) => `
+        <button class="country-option" type="button" role="option" data-iso="${country.iso}" data-code="${country.code}" title="${country.name}">
+          <span class="country-code">${country.iso}</span>
+          <span>${country.code}</span>
+        </button>
+      `).join("");
+
+      button.addEventListener("click", () => {
+        const isOpen = options.hidden;
+        options.hidden = !isOpen;
+        button.setAttribute("aria-expanded", String(isOpen));
+      });
+
+      options.addEventListener("click", (event) => {
+        const option = event.target.closest(".country-option");
+
+        if (!option) {
+          return;
+        }
+
+        const country = phoneCountries.find((item) => item.iso === option.dataset.iso);
+        setCountry(country);
+        options.hidden = true;
+        button.setAttribute("aria-expanded", "false");
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!picker.contains(event.target)) {
+          options.hidden = true;
+          button.setAttribute("aria-expanded", "false");
+        }
+      });
+
+      setCountry(phoneCountries.find((country) => country.code === defaultCode) || phoneCountries[0]);
+    }
+
+    function getFullPhone(countrySelectId, phoneInputId) {
+      const localNumber = document.getElementById(phoneInputId).value.trim();
+
+      if (!localNumber) {
+        return "";
+      }
+
+      if (localNumber.startsWith("+")) {
+        return localNumber;
+      }
+
+      const countrySelect = document.getElementById(countrySelectId);
+      const countryName = countrySelect.dataset.country || "";
+      const countryCode = countrySelect.value;
+      return `${countryName} (${countryCode}) ${localNumber}`.trim();
+    }
+
+    setupCountryCodePicker(document.querySelector("[data-country-picker]"));
+
     tabs.forEach((tab) => {
       tab.addEventListener("click", () => {
         tabs.forEach((item) => item.classList.remove("active"));
@@ -382,11 +676,15 @@
         const user = registerUser({
           name: document.getElementById("register-name").value.trim(),
           email: document.getElementById("register-email").value.trim(),
-          phone: document.getElementById("register-phone").value.trim(),
-          password: document.getElementById("register-password").value
+          phone: getFullPhone("register-country-code", "register-phone"),
+          password: document.getElementById("register-password").value,
+          website: document.getElementById("register-website").value,
+          captchaAnswer: document.getElementById("register-captcha").value,
+          formStartedAt: registerFormStartedAt
         });
 
         registerPendingSubscription();
+        window.queueScreenNotification?.("Cuenta creada correctamente. Bienvenido a tu panel.");
         showMessage("Cuenta creada correctamente. Redirigiendo...", "success");
         setTimeout(() => window.location.href = getHomeForUser(user), 700);
       } catch (error) {

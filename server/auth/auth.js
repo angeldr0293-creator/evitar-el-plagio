@@ -2,14 +2,33 @@
 const AUTH_USERS_KEY = "oa_users";
 const AUTH_REQUESTS_KEY = "oa_requests";
 const AUTH_SUBSCRIPTIONS_KEY = "oa_subscriptions";
-const ADMIN_EMAIL = "admin@originalidad.com";
-const ADMIN_PASSWORD = "Admin2026!";
 const SHARED_KEYS = [AUTH_USERS_KEY, AUTH_REQUESTS_KEY, AUTH_SUBSCRIPTIONS_KEY];
-const API_STATE_ENDPOINTS = [
-  "/api/state",
-  "http://127.0.0.1:5173/api/state",
-  "http://localhost:5173/api/state"
-];
+
+function getApiBaseUrl() {
+  return (window.OA_API_BASE_URL || "").replace(/\/$/, "");
+}
+
+function createApiEndpoints(pathname) {
+  const baseUrl = getApiBaseUrl();
+  return baseUrl ? [`${baseUrl}${pathname}`, pathname] : [pathname];
+}
+
+const API_STATE_ENDPOINTS = createApiEndpoints("/api/state");
+const API_REGISTER_ENDPOINTS = createApiEndpoints("/api/register");
+const API_LOGIN_ENDPOINTS = createApiEndpoints("/api/login");
+const API_ADMIN_LOGIN_ENDPOINTS = createApiEndpoints("/api/admin/login");
+const API_ADMIN_EMAIL_CHECK_ENDPOINTS = createApiEndpoints("/api/admin/email-check");
+const API_LOGOUT_ENDPOINTS = createApiEndpoints("/api/logout");
+
+function postApiAction(pathname, payload = {}) {
+  const result = postJSONToFirstEndpoint(createApiEndpoints(pathname), payload);
+
+  if (!result || !result.ok) {
+    throw new Error(result?.error || "No se pudo completar la solicitud.");
+  }
+
+  return result;
+}
 
 function createId() {
   if (window.crypto && crypto.randomUUID) {
@@ -17,6 +36,23 @@ function createId() {
   }
 
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getSubscriberId(user) {
+  if (!user) {
+    return "";
+  }
+
+  if (user.subscriberId) {
+    return user.subscriberId;
+  }
+
+  let hash = 0;
+  String(user.id || user.email || "").split("").forEach((char) => {
+    hash = ((hash << 5) - hash + char.charCodeAt(0)) >>> 0;
+  });
+
+  return `ZC-${hash.toString(16).padStart(8, "0").slice(0, 8).toUpperCase()}`;
 }
 
 function getDefaultSharedValue(key) {
@@ -28,6 +64,7 @@ function getSharedState() {
     try {
       const request = new XMLHttpRequest();
       request.open("GET", endpoint, false);
+      request.withCredentials = true;
       request.send();
 
       if (request.status >= 200 && request.status < 300) {
@@ -47,6 +84,7 @@ function saveSharedState(state) {
       const request = new XMLHttpRequest();
       request.open("POST", endpoint, false);
       request.setRequestHeader("Content-Type", "application/json");
+      request.withCredentials = true;
       request.send(JSON.stringify(state));
       if (request.status >= 200 && request.status < 300) {
         return true;
@@ -57,6 +95,69 @@ function saveSharedState(state) {
   }
 
   return false;
+}
+
+function postJSONToFirstEndpoint(endpoints, payload) {
+  for (const endpoint of endpoints) {
+    try {
+      const request = new XMLHttpRequest();
+      request.open("POST", endpoint, false);
+      request.setRequestHeader("Content-Type", "application/json");
+      request.withCredentials = true;
+      request.send(JSON.stringify(payload));
+
+      if (request.status >= 200 && request.status < 300) {
+        return JSON.parse(request.responseText || "{}");
+      }
+
+      if (request.status >= 400) {
+        const error = JSON.parse(request.responseText || "{}");
+        return { ok: false, error: error.error || "No se pudo completar la solicitud." };
+      }
+    } catch (error) {
+      // Se prueba el siguiente endpoint disponible.
+    }
+  }
+
+  return null;
+}
+
+function loginAdminUser(email, password) {
+  const result = postJSONToFirstEndpoint(API_ADMIN_LOGIN_ENDPOINTS, { email, password });
+
+  if (!result || !result.ok || !result.user) {
+    return null;
+  }
+
+  setCurrentUser(result.user);
+  return result.user;
+}
+
+function registerClientUser(data) {
+  const result = postJSONToFirstEndpoint(API_REGISTER_ENDPOINTS, data);
+
+  if (!result || !result.ok || !result.user) {
+    throw new Error(result?.error || "No se pudo crear la cuenta.");
+  }
+
+  setCurrentUser(result.user);
+  return result.user;
+}
+
+function loginClientUser(email, password) {
+  const result = postJSONToFirstEndpoint(API_LOGIN_ENDPOINTS, { email, password });
+
+  if (!result || !result.ok || !result.user) {
+    throw new Error(result?.error || "Correo o contraseña incorrectos.");
+  }
+
+  setCurrentUser(result.user);
+  return result.user;
+}
+
+function isReservedAdminEmail(email) {
+  const result = postJSONToFirstEndpoint(API_ADMIN_EMAIL_CHECK_ENDPOINTS, { email });
+  return Boolean(result && result.matches);
 }
 
 function getSharedItem(key) {
@@ -79,7 +180,9 @@ function setSharedItem(key, value) {
   let savedLocally = true;
 
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    if (key !== AUTH_USERS_KEY) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
   } catch (error) {
     // Los adjuntos pueden superar el limite de localStorage; el servidor compartido queda como fuente principal.
     savedLocally = false;
@@ -109,6 +212,7 @@ function saveUsers(users) {
 }
 
 function getCurrentUser() {
+  localStorage.removeItem("oa_auth_token");
   const storedUser = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || "null");
 
   if (!storedUser) {
@@ -132,6 +236,7 @@ function getCurrentUser() {
     name: savedUser.name,
     email: savedUser.email,
     phone: savedUser.phone,
+    subscriberId: getSubscriberId(savedUser),
     role: savedUser.role || "client"
   };
 
@@ -144,6 +249,7 @@ function setCurrentUser(user) {
 }
 
 function logout() {
+  postJSONToFirstEndpoint(API_LOGOUT_ENDPOINTS, {});
   localStorage.removeItem(AUTH_USER_KEY);
   window.location.href = "index.html";
 }
@@ -179,6 +285,98 @@ function getPlanCreditConfig() {
     academico: { credits: 100, pages: 50 },
     premium: { credits: 200, pages: 100 }
   };
+}
+
+function getPlanFinanceConfig() {
+  return {
+    inicial: { name: "Inicial", price: 14.99, includedPages: 25, teacherShare: 0.5, platformShare: 0.5 },
+    academico: { name: "Académico", price: 21.99, includedPages: 50, teacherShare: 0.5, platformShare: 0.5 },
+    premium: { name: "Premium", price: 36.99, includedPages: 100, teacherShare: 0.5, platformShare: 0.5 }
+  };
+}
+
+function getPlanValuePerPage(config) {
+  return config && config.includedPages ? config.price / config.includedPages : 0;
+}
+
+function formatMoney(value) {
+  return `$${Number(value || 0).toFixed(2)}`;
+}
+
+function getMonthKey(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString().slice(0, 7);
+}
+
+function getDayKey(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toISOString().slice(0, 10);
+}
+
+function isRequestDelivered(request) {
+  return Boolean(request && (
+    request.status === "Lista"
+    || request.status === "Entrega subida"
+    || request.status === "Entregada"
+    || request.delivery
+    || request.deliveredAt
+  ));
+}
+
+function getRequestDeliveredAt(request) {
+  return request?.deliveredAt || request?.updatedAt || request?.createdAt || "";
+}
+
+function getRequestFinance(request) {
+  const config = getPlanFinanceConfig()[request?.package] || getPlanFinanceConfig().academico;
+  const pages = getRequestPages(request);
+  const clientPerPage = getPlanValuePerPage(config);
+  const teacherPerPage = clientPerPage * config.teacherShare;
+  const platformPerPage = clientPerPage * config.platformShare;
+  const teacherTotal = pages * teacherPerPage;
+  const gross = pages * clientPerPage;
+
+  return {
+    plan: request?.package || "creditos",
+    planName: config.name,
+    pages,
+    clientPerPage,
+    teacherPerPage,
+    platformPerPage,
+    teacherShare: config.teacherShare,
+    platformShare: config.platformShare,
+    gross,
+    teacherTotal,
+    adminNet: pages * platformPerPage
+  };
+}
+
+function getDeliveredRequestsForMonth(requests, monthKey = getMonthKey()) {
+  return requests.filter((request) => (
+    isRequestDelivered(request) && getMonthKey(getRequestDeliveredAt(request)) === monthKey
+  ));
+}
+
+function summarizeDeliveredRequests(requests) {
+  return requests.reduce((summary, request) => {
+    const finance = getRequestFinance(request);
+    summary.pages += finance.pages;
+    summary.gross += finance.gross;
+    summary.teacherTotal += finance.teacherTotal;
+    summary.adminNet += finance.adminNet;
+    summary.works += 1;
+    return summary;
+  }, { pages: 0, gross: 0, teacherTotal: 0, adminNet: 0, works: 0 });
 }
 
 function getRequestPages(request) {
@@ -249,9 +447,12 @@ function setupCreditBadges() {
 
   const authLink = document.querySelector("[data-auth-link]");
   const logoutButton = document.querySelector(".nav-actions button[onclick*='logout']");
+  const creditsTarget = document.querySelector(".credits-target");
   const accountControl = authLink || logoutButton;
 
-  if (accountControl) {
+  if (creditsTarget) {
+    creditsTarget.appendChild(badge);
+  } else if (accountControl) {
     let accountGroup = accountControl.closest(".nav-account-group");
 
     if (!accountGroup) {
@@ -305,54 +506,17 @@ function addDays(date, days) {
 }
 
 function registerUser(data) {
-  const users = getUsers();
-  const exists = users.some((user) => user.email.toLowerCase() === data.email.toLowerCase())
-    || data.email.toLowerCase() === ADMIN_EMAIL;
-
-  if (exists) {
-    throw new Error("Ya existe una cuenta con este correo.");
-  }
-
-  const user = {
-    id: createId(),
-    name: data.name,
-    email: data.email,
-    phone: data.phone || "",
-    password: data.password,
-    role: "client",
-    createdAt: new Date().toISOString()
-  };
-
-  users.push(user);
-  saveUsers(users);
-  setCurrentUser({ id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role });
-
-  return user;
+  return registerClientUser(data);
 }
 
 function loginUser(email, password) {
-  if (email.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-    const admin = {
-      id: "admin",
-      name: "Administrador",
-      email: ADMIN_EMAIL,
-      role: "admin"
-    };
+  const admin = loginAdminUser(email, password);
 
-    setCurrentUser(admin);
+  if (admin) {
     return admin;
   }
 
-  const user = getUsers().find(
-    (item) => item.email.toLowerCase() === email.toLowerCase() && item.password === password
-  );
-
-  if (!user) {
-    throw new Error("Correo o contraseña incorrectos.");
-  }
-
-  setCurrentUser({ id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role || "client" });
-  return user;
+  return loginClientUser(email, password);
 }
 
 function getTeachers() {
@@ -364,29 +528,7 @@ function createTeacherUser(data) {
     throw new Error("Solo el administrador puede crear profesores.");
   }
 
-  const users = getUsers();
-  const exists = users.some((user) => user.email.toLowerCase() === data.email.toLowerCase())
-    || data.email.toLowerCase() === ADMIN_EMAIL;
-
-  if (exists) {
-    throw new Error("Ya existe una cuenta con este correo.");
-  }
-
-  const teacher = {
-    id: createId(),
-    name: data.name,
-    email: data.email,
-    phone: data.phone || "",
-    password: data.password,
-    role: "teacher",
-    specialty: data.specialty || "",
-    createdAt: new Date().toISOString()
-  };
-
-  users.push(teacher);
-  saveUsers(users);
-
-  return teacher;
+  return postApiAction("/api/teachers", data).user;
 }
 
 function resetTeacherPassword(teacherId, password) {
@@ -394,18 +536,7 @@ function resetTeacherPassword(teacherId, password) {
     throw new Error("Solo el administrador puede cambiar contraseñas de profesores.");
   }
 
-  const users = getUsers();
-  const teacher = users.find((user) => user.id === teacherId && user.role === "teacher");
-
-  if (!teacher) {
-    throw new Error("No se encontró el profesor.");
-  }
-
-  const updatedUsers = users.map((user) => (
-    user.id === teacherId ? { ...user, password } : user
-  ));
-
-  saveUsers(updatedUsers);
+  return postApiAction(`/api/users/${encodeURIComponent(teacherId)}/password`, { password }).user;
 }
 
 function resetClientPassword(clientId, password) {
@@ -413,18 +544,25 @@ function resetClientPassword(clientId, password) {
     throw new Error("Solo el administrador puede cambiar contraseñas de clientes.");
   }
 
-  const users = getUsers();
-  const client = users.find((user) => user.id === clientId && (user.role || "client") === "client");
+  return postApiAction(`/api/users/${encodeURIComponent(clientId)}/password`, { password }).user;
+}
 
-  if (!client) {
-    throw new Error("No se encontró el cliente.");
+function updateUserProfile(userId, data) {
+  if (!isAdminUser()) {
+    throw new Error("Solo el administrador puede editar usuarios.");
   }
 
-  saveUsers(users.map((user) => (
-    user.id === clientId ? { ...user, password } : user
-  )));
+  return postApiAction(`/api/users/${encodeURIComponent(userId)}`, data).user;
+}
 
-  return { ...client, password };
+function changeOwnPassword(currentPassword, newPassword) {
+  const user = getCurrentUser();
+
+  if (!user) {
+    throw new Error("Debes iniciar sesion.");
+  }
+
+  return postApiAction("/api/me/password", { currentPassword, newPassword }).user;
 }
 
 function registerSubscription(plan, paymentToken = "") {
@@ -434,42 +572,31 @@ function registerSubscription(plan, paymentToken = "") {
     throw new Error("Debes iniciar sesión para guardar la suscripción.");
   }
 
-  const subscriptions = getSubscriptions();
-  const existingByToken = paymentToken
-    ? subscriptions.find((subscription) => subscription.userId === user.id && subscription.paymentToken === paymentToken)
-    : null;
+  return postApiAction("/api/subscriptions", { plan, paymentToken }).subscription;
+}
 
-  if (existingByToken) {
-    return existingByToken;
+function createAdminSubscription(data) {
+  if (!isAdminUser()) {
+    throw new Error("Solo el administrador puede crear pagos.");
   }
 
-  const latestActive = subscriptions.find((subscription) => (
-    subscription.userId === user.id &&
-    subscription.plan === plan &&
-    subscription.status === "Activa" &&
-    new Date(subscription.expiresAt) >= new Date()
-  ));
+  return postApiAction("/api/admin/subscriptions", data).subscription;
+}
 
-  if (!paymentToken && latestActive) {
-    return latestActive;
+function updateAdminSubscription(subscriptionId, data) {
+  if (!isAdminUser()) {
+    throw new Error("Solo el administrador puede actualizar pagos.");
   }
 
-  const createdAt = new Date();
-  const subscription = {
-    id: createId(),
-    userId: user.id,
-    plan,
-    status: "Activa",
-    paymentToken: paymentToken || createId(),
-    createdAt: createdAt.toISOString(),
-    startsAt: createdAt.toISOString(),
-    expiresAt: addDays(createdAt, 30).toISOString()
-  };
+  return postApiAction(`/api/subscriptions/${encodeURIComponent(subscriptionId)}`, data).subscription;
+}
 
-  subscriptions.unshift(subscription);
-  saveSubscriptions(subscriptions);
+function sendUrgentClientEmail(userId, data) {
+  if (!isAdminUser()) {
+    throw new Error("Solo el administrador puede enviar correos urgentes.");
+  }
 
-  return subscription;
+  return postApiAction("/api/admin/urgent-email", { userId, ...data });
 }
 
 function registerPendingSubscription() {
@@ -491,26 +618,7 @@ function createRequest(data) {
     throw new Error("Debes iniciar sesión para guardar tu solicitud.");
   }
 
-  const requests = getRequests();
-  const savedUser = getUsers().find((item) => item.id === user.id);
-  const assignedTeacher = savedUser && savedUser.teacherId
-    ? getTeachers().find((teacher) => teacher.id === savedUser.teacherId)
-    : null;
-  const request = {
-    id: createId(),
-    userId: user.id,
-    status: "Recibida",
-    createdAt: new Date().toISOString(),
-    teacherId: assignedTeacher ? assignedTeacher.id : "",
-    teacherName: assignedTeacher ? assignedTeacher.name : "",
-    assignedAt: assignedTeacher ? new Date().toISOString() : "",
-    ...data
-  };
-
-  requests.unshift(request);
-  saveRequests(requests);
-
-  return request;
+  return postApiAction("/api/requests", data).request;
 }
 
 function getCurrentUserRequests() {
@@ -599,12 +707,7 @@ function updateRequestStatus(requestId, status) {
     throw new Error("No tienes permiso para cambiar solicitudes.");
   }
 
-  const requests = getRequests();
-  const updatedRequests = requests.map((request) => (
-    request.id === requestId ? { ...request, status, updatedAt: new Date().toISOString() } : request
-  ));
-
-  saveRequests(updatedRequests);
+  return postApiAction(`/api/requests/${encodeURIComponent(requestId)}/status`, { status }).request;
 }
 
 function saveTeacherDelivery(requestId, delivery) {
@@ -616,20 +719,7 @@ function saveTeacherDelivery(requestId, delivery) {
     throw new Error("Solo el profesor asignado puede subir la entrega.");
   }
 
-  const requests = getRequests();
-  const updatedRequests = requests.map((request) => (
-    request.id === requestId
-      ? {
-          ...request,
-          status: "Entregada",
-          delivery,
-          deliveredAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      : request
-  ));
-
-  saveRequests(updatedRequests);
+  return postApiAction(`/api/requests/${encodeURIComponent(requestId)}/delivery`, { delivery }).request;
 }
 
 function assignRequestToTeacher(requestId, teacherId) {
@@ -637,32 +727,42 @@ function assignRequestToTeacher(requestId, teacherId) {
     throw new Error("Solo el administrador puede asignar trabajos.");
   }
 
-  const teacher = getTeachers().find((user) => user.id === teacherId);
-  const requests = getRequests();
-  const selectedRequest = requests.find((request) => request.id === requestId);
-  const updatedRequests = requests.map((request) => (
-    request.id === requestId
-      ? {
-          ...request,
-          teacherId: teacher ? teacher.id : "",
-          teacherName: teacher ? teacher.name : "",
-          assignedAt: teacher ? new Date().toISOString() : "",
-          updatedAt: new Date().toISOString()
-        }
-      : request
-  ));
+  return postApiAction(`/api/requests/${encodeURIComponent(requestId)}/teacher`, { teacherId }).request;
+}
 
-  saveRequests(updatedRequests);
+function getClientRequestStatusLabel(request, subscriptions = getCurrentUserSubscriptions()) {
+  const subscription = request.subscriptionId
+    ? subscriptions.find((item) => item.id === request.subscriptionId)
+    : null;
 
-  if (selectedRequest && teacher) {
-    const users = getUsers();
-    const updatedUsers = users.map((user) => (
-      user.id === selectedRequest.userId
-        ? { ...user, teacherId: teacher.id, teacherName: teacher.name }
-        : user
-    ));
-    saveUsers(updatedUsers);
+  if (subscription && subscription.status === "Pendiente") {
+    return "Pendiente de pago";
   }
+
+  return {
+    "Pendiente de pago": "Pendiente de pago",
+    Recibida: "Recibido",
+    Asignada: "Asignado",
+    Visto: "En proceso",
+    Trabajando: "En proceso",
+    "En proceso": "En proceso",
+    Lista: "Listo",
+    "Entrega subida": "Entregado",
+    Entregada: "Entregado"
+  }[request.status] || request.status || "Recibido";
+}
+
+function getTeacherRequestStatusLabel(status) {
+  return {
+    Recibida: "Asignado",
+    Asignada: "Asignado",
+    Visto: "Descargado/visto",
+    Trabajando: "Trabajando",
+    "En proceso": "Trabajando",
+    Lista: "Entrega subida",
+    "Entrega subida": "Entrega subida",
+    Entregada: "Entrega subida"
+  }[status] || status || "Asignado";
 }
 
 function clearClientTeacher(clientId) {
@@ -670,10 +770,7 @@ function clearClientTeacher(clientId) {
     throw new Error("Solo el administrador puede quitar profesores responsables.");
   }
 
-  const users = getUsers();
-  saveUsers(users.map((user) => (
-    user.id === clientId ? { ...user, teacherId: "", teacherName: "" } : user
-  )));
+  return postApiAction(`/api/users/${encodeURIComponent(clientId)}/teacher`, { teacherId: "" }).user;
 }
 
 function getTeacherRequests() {

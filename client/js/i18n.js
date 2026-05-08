@@ -16,6 +16,7 @@
     "Cómo ayudamos": "How we help",
     "C&oacute;mo ayudamos": "How we help",
     "Precios": "Pricing",
+    "Soporte": "Support",
     "Preguntas frecuentes": "FAQ",
     "Mi panel": "My dashboard",
     "Iniciar sesión / Registrarse": "Log in / Sign up",
@@ -98,7 +99,8 @@
     "Completa la información principal para entender tu caso y preparar la revisión correcta.": "Complete the main information so we can understand your case and prepare the right review.",
     "Nombre completo": "Full name",
     "Correo electrónico": "Email address",
-    "Teléfono o WhatsApp": "Phone or WhatsApp",
+    "Teléfono o WhatsApp": "Phone",
+    "Teléfono": "Phone",
     "Tipo de ayuda": "Type of help",
     "Tipo de documento": "Document type",
     "Formato requerido": "Required format",
@@ -192,13 +194,26 @@
     "Crear cuenta": "Create account",
     "Iniciar sesión": "Log in",
     "Crea tu cuenta": "Create your account",
+    "Crea tu cuenta y administra tus revisiones en un solo lugar": "Create your account and manage your reviews in one place",
+    "Tu plataforma personal te permite enviar trabajos, guardar solicitudes, revisar estados y mantener tus archivos organizados.": "Your personal platform lets you submit work, save requests, check status updates, and keep your files organized.",
+    "Historial de solicitudes": "Request history",
+    "Consulta los trabajos que has enviado y el paquete seleccionado.": "Review the work you have submitted and the selected package.",
+    "Seguimiento personalizado": "Personalized tracking",
+    "Mira si tu revisión está recibida, en proceso o lista.": "See whether your review has been received, is in progress, or is ready.",
+    "Datos guardados": "Saved details",
+    "No tienes que escribir tu información cada vez que solicitas una revisión.": "You do not have to enter your information every time you request a review.",
     "Accede a tu cuenta": "Access your account",
     "Nombre": "Name",
     "Correo": "Email",
     "Teléfono": "Phone",
     "Contraseña": "Password",
+    "Mínimo 6 caracteres": "Minimum 6 characters",
+    "Tu contraseña": "Your password",
     "Ya tengo cuenta": "I already have an account",
     "Crear mi cuenta": "Create my account",
+    "Entrar a mi panel": "Go to my dashboard",
+    "Cuenta creada correctamente. Redirigiendo...": "Account created successfully. Redirecting...",
+    "Sesión iniciada. Redirigiendo...": "Session started. Redirecting...",
     "Entrar": "Enter",
     "Volver al inicio": "Back to home",
     "Tu espacio privado para enviar trabajos, revisar avances y mantener todo organizado.": "Your private space to submit work, review progress, and keep everything organized.",
@@ -400,7 +415,9 @@
   }
 
   function findSwitcherTarget() {
-    return document.querySelector(".nav-actions")
+    return document.querySelector(".language-target")
+      || document.querySelector(".nav-tools")
+      || document.querySelector(".nav-actions")
       || document.querySelector(".nav-links")
       || document.querySelector(".topbar")
       || document.querySelector(".nav")

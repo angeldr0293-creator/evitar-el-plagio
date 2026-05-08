@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Solicitar revisión - Originalidad Académica</title>
+  <link rel="stylesheet" href="css/notifications.css" />
   <style>
     * {
       margin: 0;
@@ -281,6 +282,89 @@
       resize: vertical;
     }
 
+    .phone-control {
+      display: grid;
+      grid-template-columns: minmax(96px, 118px) 1fr;
+      gap: 10px;
+    }
+
+    .country-picker {
+      position: relative;
+    }
+
+    .country-button {
+      align-items: center;
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      color: #071832;
+      cursor: pointer;
+      display: flex;
+      font-size: 15px;
+      gap: 8px;
+      justify-content: space-between;
+      min-height: 48px;
+      padding: 10px 12px;
+      width: 100%;
+    }
+
+    .country-button:focus {
+      border-color: #2b7a68;
+      box-shadow: 0 0 0 4px rgba(43,122,104,0.12);
+      outline: none;
+    }
+
+    .country-button-label,
+    .country-option {
+      align-items: center;
+      display: inline-flex;
+      gap: 8px;
+    }
+
+    .country-code {
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .country-options {
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      box-shadow: 0 18px 40px rgba(7,24,50,0.16);
+      display: grid;
+      left: 0;
+      max-height: 260px;
+      overflow-y: auto;
+      padding: 6px;
+      position: absolute;
+      right: 0;
+      top: calc(100% + 6px);
+      z-index: 30;
+    }
+
+    .country-options[hidden] {
+      display: none;
+    }
+
+    .country-option {
+      background: transparent;
+      border: 0;
+      border-radius: 8px;
+      color: #071832;
+      cursor: pointer;
+      font: inherit;
+      min-height: 36px;
+      padding: 8px 10px;
+      text-align: left;
+    }
+
+    .country-option:hover,
+    .country-option.active {
+      background: #edf4f2;
+    }
+
 
     .file-box {
       background: #f8faf9;
@@ -382,6 +466,86 @@
       background: #fffbeb;
       border-color: #fde68a;
       color: #854d0e;
+    }
+
+    .submission-confirmation {
+      background: #fffdf5;
+      border: 1px solid #fde68a;
+      border-radius: 16px;
+      color: #26364d;
+      display: grid;
+      gap: 14px;
+      margin-top: 18px;
+      padding: 18px;
+    }
+
+    .submission-confirmation[hidden] {
+      display: none;
+    }
+
+    .submission-confirmation h3 {
+      color: #071832;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .confirmation-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .confirmation-item {
+      background: rgba(255,255,255,0.72);
+      border: 1px solid #f3e6bf;
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    .confirmation-item strong {
+      color: #071832;
+      display: block;
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+
+    .confirmation-item.full {
+      grid-column: 1 / -1;
+    }
+
+    .credit-consent {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 12px;
+      color: #854d0e;
+      padding: 12px;
+    }
+
+    .credit-consent strong {
+      color: #7c2d12;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .confirmation-actions {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr 1.2fr;
+    }
+
+    .confirmation-actions .ghost-btn,
+    .confirmation-actions .btn {
+      min-height: 48px;
+    }
+
+    .confirmation-actions .ghost-btn {
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      color: #071832;
+      cursor: pointer;
+      font-weight: 800;
     }
 
     .divider {
@@ -540,7 +704,9 @@
       }
 
       .hero-inner,
-      .form-layout {
+      .form-layout,
+      .confirmation-grid,
+      .confirmation-actions {
         grid-template-columns: 1fr;
       }
 
@@ -581,6 +747,10 @@
       .form-grid {
         grid-template-columns: 1fr;
       }
+
+      .phone-control {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -615,6 +785,7 @@
           <a href="index.html#proceso">Cómo ayudamos</a>
           <a href="precios.html">Precios</a>
           <a href="index.html#preguntas">Preguntas frecuentes</a>
+          <a href="soporte.html">Soporte</a>
           <a href="panel.html">Mi panel</a>
           <a data-auth-link href="registro.html">Iniciar sesión / Registrarse</a>
           <a href="solicitar.html" class="nav-button">Solicitar revisión</a>
@@ -676,8 +847,18 @@
           </div>
 
           <div class="field">
-            <label for="telefono">Teléfono o WhatsApp</label>
-            <input type="tel" id="telefono" name="telefono" placeholder="+507 6000-0000" />
+            <label for="telefono">Teléfono</label>
+            <div class="phone-control">
+              <div class="country-picker" data-country-picker>
+                <button class="country-button" type="button" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="country-button-label"></span>
+                  <span aria-hidden="true">⌄</span>
+                </button>
+                <input type="hidden" id="telefono-pais" name="telefono-pais" autocomplete="tel-country-code" value="+507" />
+                <div class="country-options" role="listbox" hidden></div>
+              </div>
+              <input type="tel" id="telefono" name="telefono" autocomplete="tel-national" placeholder="6000-0000" />
+            </div>
           </div>
 
           <div class="field">
@@ -742,6 +923,8 @@
 
         <div class="divider"></div>
 
+        <section id="submission-confirmation" class="submission-confirmation" aria-live="polite" hidden></section>
+
         <button class="btn btn-primary" type="submit">Enviar solicitud</button>
       </form>
 
@@ -775,11 +958,13 @@
 
   <footer>
     <div class="container">
-      Originalidad Académica - Solicitudes para textos más humanos, claros y responsables
+      Originalidad Académica - Solicitudes para textos más humanos, claros y responsables<br />
+      Panamá · Instagram: @resolviendotrabajos · <a href="soporte.html">Soporte</a>
     </div>
   </footer>
   <script src="auth/auth.js"></script>
   <script src="js/i18n.js"></script>
+  <script src="js/notifications.js"></script>
   <script>
     const navToggle = document.querySelector(".nav-toggle");
     const navLinks = document.getElementById("nav-links");
@@ -804,12 +989,189 @@
     }
 
     const currentUser = getCurrentUser();
+    const phoneCountries = [
+      { iso: "pa", name: "Panamá", code: "+507" },
+      { iso: "mx", name: "México", code: "+52" },
+      { iso: "gt", name: "Guatemala", code: "+502" },
+      { iso: "bz", name: "Belice", code: "+501" },
+      { iso: "sv", name: "El Salvador", code: "+503" },
+      { iso: "hn", name: "Honduras", code: "+504" },
+      { iso: "ni", name: "Nicaragua", code: "+505" },
+      { iso: "cr", name: "Costa Rica", code: "+506" },
+      { iso: "co", name: "Colombia", code: "+57" },
+      { iso: "ve", name: "Venezuela", code: "+58" },
+      { iso: "ec", name: "Ecuador", code: "+593" },
+      { iso: "pe", name: "Perú", code: "+51" },
+      { iso: "bo", name: "Bolivia", code: "+591" },
+      { iso: "cl", name: "Chile", code: "+56" },
+      { iso: "ar", name: "Argentina", code: "+54" },
+      { iso: "uy", name: "Uruguay", code: "+598" },
+      { iso: "py", name: "Paraguay", code: "+595" },
+      { iso: "br", name: "Brasil", code: "+55" },
+      { iso: "cu", name: "Cuba", code: "+53" },
+      { iso: "do", name: "República Dominicana", code: "+1" },
+      { iso: "ht", name: "Haití", code: "+509" },
+      { iso: "pr", name: "Puerto Rico", code: "+1" },
+      { iso: "gy", name: "Guyana", code: "+592" },
+      { iso: "sr", name: "Surinam", code: "+597" },
+      { iso: "gf", name: "Guayana Francesa", code: "+594" },
+      { iso: "es", name: "España", code: "+34" },
+      { iso: "pt", name: "Portugal", code: "+351" },
+      { iso: "fr", name: "Francia", code: "+33" },
+      { iso: "it", name: "Italia", code: "+39" },
+      { iso: "de", name: "Alemania", code: "+49" },
+      { iso: "gb", name: "Reino Unido", code: "+44" },
+      { iso: "ie", name: "Irlanda", code: "+353" },
+      { iso: "nl", name: "Países Bajos", code: "+31" },
+      { iso: "be", name: "Bélgica", code: "+32" },
+      { iso: "ch", name: "Suiza", code: "+41" },
+      { iso: "at", name: "Austria", code: "+43" },
+      { iso: "se", name: "Suecia", code: "+46" },
+      { iso: "no", name: "Noruega", code: "+47" },
+      { iso: "dk", name: "Dinamarca", code: "+45" },
+      { iso: "fi", name: "Finlandia", code: "+358" },
+      { iso: "is", name: "Islandia", code: "+354" },
+      { iso: "pl", name: "Polonia", code: "+48" },
+      { iso: "cz", name: "Chequia", code: "+420" },
+      { iso: "sk", name: "Eslovaquia", code: "+421" },
+      { iso: "hu", name: "Hungría", code: "+36" },
+      { iso: "ro", name: "Rumania", code: "+40" },
+      { iso: "bg", name: "Bulgaria", code: "+359" },
+      { iso: "gr", name: "Grecia", code: "+30" },
+      { iso: "hr", name: "Croacia", code: "+385" },
+      { iso: "si", name: "Eslovenia", code: "+386" },
+      { iso: "rs", name: "Serbia", code: "+381" },
+      { iso: "ba", name: "Bosnia y Herzegovina", code: "+387" },
+      { iso: "me", name: "Montenegro", code: "+382" },
+      { iso: "mk", name: "Macedonia del Norte", code: "+389" },
+      { iso: "al", name: "Albania", code: "+355" },
+      { iso: "xk", name: "Kosovo", code: "+383" },
+      { iso: "ee", name: "Estonia", code: "+372" },
+      { iso: "lv", name: "Letonia", code: "+371" },
+      { iso: "lt", name: "Lituania", code: "+370" },
+      { iso: "ua", name: "Ucrania", code: "+380" },
+      { iso: "md", name: "Moldavia", code: "+373" },
+      { iso: "by", name: "Bielorrusia", code: "+375" },
+      { iso: "ru", name: "Rusia", code: "+7" },
+      { iso: "tr", name: "Turquía", code: "+90" },
+      { iso: "cy", name: "Chipre", code: "+357" },
+      { iso: "mt", name: "Malta", code: "+356" },
+      { iso: "lu", name: "Luxemburgo", code: "+352" },
+      { iso: "li", name: "Liechtenstein", code: "+423" },
+      { iso: "mc", name: "Mónaco", code: "+377" },
+      { iso: "ad", name: "Andorra", code: "+376" },
+      { iso: "sm", name: "San Marino", code: "+378" },
+      { iso: "va", name: "Ciudad del Vaticano", code: "+379" }
+    ];
+
+    const flagColors = {
+      pa: ["#ffffff", "#d21034", "#005293"], mx: ["#006847", "#ffffff", "#ce1126"], gt: ["#4997d0", "#ffffff", "#4997d0"],
+      bz: ["#003f87", "#ce1126", "#ffffff"], sv: ["#0047ab", "#ffffff", "#0047ab"], hn: ["#0073cf", "#ffffff", "#0073cf"],
+      ni: ["#0067c6", "#ffffff", "#0067c6"], cr: ["#002b7f", "#ffffff", "#ce1126"], co: ["#fcd116", "#003893", "#ce1126"],
+      ve: ["#f4d900", "#0033a0", "#ef3340"], ec: ["#ffdd00", "#034ea2", "#ed1c24"], pe: ["#d91023", "#ffffff", "#d91023"],
+      bo: ["#d52b1e", "#f9e300", "#007934"], cl: ["#0039a6", "#ffffff", "#d52b1e"], ar: ["#75aadb", "#ffffff", "#75aadb"],
+      uy: ["#ffffff", "#0038a8", "#ffffff"], py: ["#d52b1e", "#ffffff", "#0038a8"], br: ["#009b3a", "#ffdf00", "#002776"],
+      cu: ["#002a8f", "#ffffff", "#cf142b"], do: ["#002d62", "#ffffff", "#ce1126"], ht: ["#00209f", "#d21034", "#ffffff"],
+      pr: ["#ed0000", "#ffffff", "#0050f0"], gy: ["#009e49", "#fcd116", "#ce1126"], sr: ["#377e3f", "#ffffff", "#b40a2d"],
+      gf: ["#009739", "#ffcd00", "#ef3340"], es: ["#aa151b", "#f1bf00", "#aa151b"], pt: ["#006600", "#ff0000", "#ffff00"],
+      fr: ["#0055a4", "#ffffff", "#ef4135"], it: ["#009246", "#ffffff", "#ce2b37"], de: ["#000000", "#dd0000", "#ffce00"],
+      gb: ["#012169", "#ffffff", "#c8102e"], ie: ["#169b62", "#ffffff", "#ff883e"], nl: ["#ae1c28", "#ffffff", "#21468b"],
+      be: ["#000000", "#fae042", "#ed2939"], ch: ["#ff0000", "#ffffff", "#ff0000"], at: ["#ed2939", "#ffffff", "#ed2939"],
+      se: ["#006aa7", "#fecc00", "#006aa7"], no: ["#ba0c2f", "#ffffff", "#00205b"], dk: ["#c60c30", "#ffffff", "#c60c30"],
+      fi: ["#ffffff", "#003580", "#ffffff"], is: ["#02529c", "#ffffff", "#dc1e35"], pl: ["#ffffff", "#dc143c", "#dc143c"],
+      cz: ["#ffffff", "#d7141a", "#11457e"], sk: ["#ffffff", "#0b4ea2", "#ee1c25"], hu: ["#ce2939", "#ffffff", "#477050"],
+      ro: ["#002b7f", "#fcd116", "#ce1126"], bg: ["#ffffff", "#00966e", "#d62612"], gr: ["#0d5eaf", "#ffffff", "#0d5eaf"],
+      hr: ["#ff0000", "#ffffff", "#171796"], si: ["#ffffff", "#005ce6", "#ff0000"], rs: ["#c6363c", "#0c4076", "#ffffff"],
+      ba: ["#002395", "#fecb00", "#ffffff"], me: ["#c40308", "#d3ae3b", "#c40308"], mk: ["#d20000", "#ffe600", "#d20000"],
+      al: ["#e41e20", "#000000", "#e41e20"], xk: ["#244aa5", "#d0a650", "#ffffff"], ee: ["#4891d9", "#000000", "#ffffff"],
+      lv: ["#9e3039", "#ffffff", "#9e3039"], lt: ["#fdb913", "#006a44", "#c1272d"], ua: ["#005bbb", "#ffd500", "#ffd500"],
+      md: ["#003f87", "#ffd200", "#d52b1e"], by: ["#d22730", "#009739", "#ffffff"], ru: ["#ffffff", "#0039a6", "#d52b1e"],
+      tr: ["#e30a17", "#ffffff", "#e30a17"], cy: ["#ffffff", "#d57800", "#3a7728"], mt: ["#ffffff", "#cf142b", "#cf142b"],
+      lu: ["#ed2939", "#ffffff", "#00a1de"], li: ["#002b7f", "#ce1126", "#fcd116"], mc: ["#ce1126", "#ffffff", "#ffffff"],
+      ad: ["#10069f", "#fedf00", "#d50032"], sm: ["#ffffff", "#5eb6e4", "#5eb6e4"], va: ["#ffe000", "#ffffff", "#ffffff"]
+    };
+
+    function setupCountryCodePicker(picker, defaultCode = "+507") {
+      const button = picker.querySelector(".country-button");
+      const label = picker.querySelector(".country-button-label");
+      const input = picker.querySelector("input[type='hidden']");
+      const options = picker.querySelector(".country-options");
+
+      function setCountry(country) {
+        input.value = country.code;
+        input.dataset.country = country.name;
+        input.dataset.iso = country.iso;
+        label.innerHTML = `<span class="country-code">${country.iso}</span> <span>${country.code}</span>`;
+        button.setAttribute("aria-label", `${country.name} ${country.code}`);
+        options.querySelectorAll(".country-option").forEach((option) => {
+          option.classList.toggle("active", option.dataset.iso === country.iso);
+        });
+      }
+
+      options.innerHTML = phoneCountries.map((country) => `
+        <button class="country-option" type="button" role="option" data-iso="${country.iso}" data-code="${country.code}" title="${country.name}">
+          <span class="country-code">${country.iso}</span>
+          <span>${country.code}</span>
+        </button>
+      `).join("");
+
+      button.addEventListener("click", () => {
+        const isOpen = options.hidden;
+        options.hidden = !isOpen;
+        button.setAttribute("aria-expanded", String(isOpen));
+      });
+
+      options.addEventListener("click", (event) => {
+        const option = event.target.closest(".country-option");
+
+        if (!option) {
+          return;
+        }
+
+        const country = phoneCountries.find((item) => item.iso === option.dataset.iso);
+        setCountry(country);
+        options.hidden = true;
+        button.setAttribute("aria-expanded", "false");
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!picker.contains(event.target)) {
+          options.hidden = true;
+          button.setAttribute("aria-expanded", "false");
+        }
+      });
+
+      setCountry(phoneCountries.find((country) => country.code === defaultCode) || phoneCountries[0]);
+      return (countryCode) => {
+        setCountry(phoneCountries.find((country) => country.code === countryCode) || phoneCountries[0]);
+      };
+    }
+
+    function splitPhoneNumber(value) {
+      const cleanValue = String(value || "").trim();
+      const country = phoneCountries
+        .find((item) => cleanValue.includes(`${item.name} (`))
+        || [...phoneCountries].sort((a, b) => b.code.length - a.code.length).find((item) => cleanValue.includes(item.code));
+
+      if (!country) {
+        return { country: "+507", number: cleanValue };
+      }
+
+      return {
+        country: country.code,
+        number: cleanValue.slice(cleanValue.indexOf(country.code) + country.code.length).replace(/^\)\s*/, "").trim()
+      };
+    }
+
+    const setPhoneCountry = setupCountryCodePicker(document.querySelector("[data-country-picker]"));
 
     if (currentUser) {
       registerPendingSubscription();
+      const savedPhone = splitPhoneNumber(currentUser.phone);
       document.getElementById("nombre").value = currentUser.name || "";
       document.getElementById("correo").value = currentUser.email || "";
-      document.getElementById("telefono").value = currentUser.phone || "";
+      setPhoneCountry(savedPhone.country);
+      document.getElementById("telefono").value = savedPhone.number;
     }
 
     const params = new URLSearchParams(window.location.search);
@@ -832,7 +1194,10 @@
     const selectedFilesList = document.getElementById("selected-files");
     const fileAnalysis = document.getElementById("file-analysis");
     const planLimitsText = document.getElementById("plan-limits");
+    const requestForm = document.getElementById("request-form");
+    const submissionConfirmation = document.getElementById("submission-confirmation");
     let latestPageAnalysis = null;
+    let pendingSubmission = null;
 
     if (purchasedPlan && planFromUrl !== purchasedPlan) {
       const url = new URL(window.location.href);
@@ -850,6 +1215,15 @@
       ambos: "Ambas cosas",
       citas: "Apoyo con citas y referencias"
     };
+
+    function escapeHTML(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
 
     function getFileExtension(file) {
       return file.name.split(".").pop().toLowerCase();
@@ -1126,7 +1500,94 @@
       return Promise.all(selectedFiles.map(fileToAttachment));
     }
 
+    function hideSubmissionConfirmation() {
+      pendingSubmission = null;
+      submissionConfirmation.hidden = true;
+      submissionConfirmation.innerHTML = "";
+    }
+
+    function getFormSubmissionData(pageAnalysis) {
+      const helpType = document.getElementById("tipo-ayuda").value;
+      const documentType = document.getElementById("tipo-documento").value;
+      const files = Array.from(fileInput.files).map((file) => file.name);
+      const totalPages = pageAnalysis.items.reduce((sum, item) => sum + item.pages, 0);
+      const requiredCredits = totalPages * 2;
+
+      return {
+        subscriptionId: "",
+        package: requestPlan || "creditos",
+        helpType: labels[helpType] || helpType,
+        documentType: documentType || "Documento académico",
+        deliveryTime: document.getElementById("hora-entrega").value,
+        format: document.getElementById("formato").value,
+        deadline: document.getElementById("fecha").value,
+        workCount: files.length,
+        pages: totalPages,
+        pageDetails: pageAnalysis.items,
+        instructions: document.getElementById("instrucciones").value.trim(),
+        files,
+        requiredCredits
+      };
+    }
+
+    function renderSubmissionConfirmation(submission, creditSummary) {
+      const formatLabel = document.getElementById("formato").selectedOptions[0]?.textContent || "Sin formato específico";
+      const deadlineText = submission.deadline || "Sin fecha límite";
+      const instructionsText = submission.instructions || "Sin instrucciones adicionales";
+
+      submissionConfirmation.innerHTML = `
+        <h3>Confirma tu solicitud</h3>
+        <p>Revisa los datos antes de enviar. Al aceptar, la solicitud se guardará de inmediato y se reservarán los créditos indicados para este trabajo.</p>
+        <div class="confirmation-grid">
+          <div class="confirmation-item"><strong>Nombre</strong>${escapeHTML(document.getElementById("nombre").value)}</div>
+          <div class="confirmation-item"><strong>Correo</strong>${escapeHTML(document.getElementById("correo").value)}</div>
+          <div class="confirmation-item"><strong>Tipo de ayuda</strong>${escapeHTML(submission.helpType)}</div>
+          <div class="confirmation-item"><strong>Documento</strong>${escapeHTML(submission.documentType)}</div>
+          <div class="confirmation-item"><strong>Fecha límite</strong>${escapeHTML(deadlineText)}</div>
+          <div class="confirmation-item"><strong>Hora de entrega</strong>${escapeHTML(submission.deliveryTime)}</div>
+          <div class="confirmation-item"><strong>Formato</strong>${escapeHTML(formatLabel)}</div>
+          <div class="confirmation-item"><strong>Archivos</strong>${escapeHTML(submission.files.join(", "))}</div>
+          <div class="confirmation-item full"><strong>Instrucciones</strong>${escapeHTML(instructionsText)}</div>
+        </div>
+        <div class="credit-consent">
+          <strong>Créditos a invertir: ${submission.requiredCredits}</strong>
+          Se detectaron ${submission.pages} página(s). Tienes ${creditSummary.availableCredits} crédito(s) disponible(s). Revisa que el documento no tenga hojas extra, portadas duplicadas o páginas innecesarias para no gastar créditos de más.
+        </div>
+        <div class="confirmation-actions">
+          <button class="ghost-btn" type="button" id="review-again">Volver a revisar</button>
+          <button class="btn btn-primary" type="button" id="confirm-send-request">Aceptar y enviar solicitud</button>
+        </div>
+      `;
+      submissionConfirmation.hidden = false;
+      submissionConfirmation.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    async function submitConfirmedRequest() {
+      if (!pendingSubmission) {
+        return;
+      }
+
+      const confirmButton = document.getElementById("confirm-send-request");
+      confirmButton.disabled = true;
+      confirmButton.textContent = "Enviando...";
+
+      const subscription = purchasedPlan
+        ? registerSubscription(purchasedPlan, sessionStorage.getItem("oa_payment_token"))
+        : activeSubscription;
+      const attachments = await readSelectedAttachments();
+
+      createRequest({
+        ...pendingSubmission,
+        subscriptionId: subscription ? subscription.id : "",
+        attachments
+      });
+
+      window.queueScreenNotification?.("Solicitud enviada. La recibimos correctamente y podrás seguir su estado en tu panel.");
+      window.location.href = "panel.html";
+    }
+
     fileInput.addEventListener("change", () => {
+      hideSubmissionConfirmation();
       refreshSelectedFiles();
     });
 
@@ -1148,7 +1609,40 @@
       setSelectedFile(event.dataTransfer.files);
     });
 
-    document.getElementById("request-form").addEventListener("submit", async (event) => {
+    requestForm.addEventListener("input", (event) => {
+      if (!event.target.closest(".submission-confirmation")) {
+        hideSubmissionConfirmation();
+      }
+    });
+
+    requestForm.addEventListener("change", (event) => {
+      if (!event.target.closest(".submission-confirmation") && event.target !== fileInput) {
+        hideSubmissionConfirmation();
+      }
+    });
+
+    submissionConfirmation.addEventListener("click", async (event) => {
+      if (event.target.closest("#review-again")) {
+        hideSubmissionConfirmation();
+        fileAnalysis.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+
+      if (event.target.closest("#confirm-send-request")) {
+        try {
+          await submitConfirmedRequest();
+        } catch (error) {
+          alert(error.message || "No se pudo enviar la solicitud.");
+          const confirmButton = document.getElementById("confirm-send-request");
+          if (confirmButton) {
+            confirmButton.disabled = false;
+            confirmButton.textContent = "Aceptar y enviar solicitud";
+          }
+        }
+      }
+    });
+
+    requestForm.addEventListener("submit", async (event) => {
       event.preventDefault();
 
       const currentCreditSummary = getClientCreditSummary();
@@ -1170,47 +1664,24 @@
       }
 
       const pageAnalysis = latestPageAnalysis || await analyzeSelectedFiles();
+      renderPageAnalysis(pageAnalysis);
 
       if (pageAnalysis.hasErrors) {
         alert("No se puede enviar todavía. Revisa los mensajes del archivo: hay documentos que no pudieron ser leídos automáticamente.");
         return;
       }
 
-      const helpType = document.getElementById("tipo-ayuda").value;
-      const documentType = document.getElementById("tipo-documento").value;
-      const attachments = await readSelectedAttachments();
-      const files = attachments.map((file) => file.name);
-      const totalPages = pageAnalysis.items.reduce((sum, item) => sum + item.pages, 0);
-      const requiredCredits = totalPages * 2;
+      const submission = getFormSubmissionData(pageAnalysis);
       const updatedCreditSummary = getClientCreditSummary();
 
-      if (requiredCredits > updatedCreditSummary.availableCredits) {
-        alert(`Crédito insuficiente. Este envío requiere ${requiredCredits} crédito(s) y tienes ${updatedCreditSummary.availableCredits} disponible(s). Compra un nuevo paquete para continuar.`);
+      if (submission.requiredCredits > updatedCreditSummary.availableCredits) {
+        alert(`Crédito insuficiente. Este envío requiere ${submission.requiredCredits} crédito(s) y tienes ${updatedCreditSummary.availableCredits} disponible(s). Compra un nuevo paquete para continuar.`);
         renderPageAnalysis(pageAnalysis);
         return;
       }
 
-      const subscription = purchasedPlan
-        ? registerSubscription(purchasedPlan, sessionStorage.getItem("oa_payment_token"))
-        : activeSubscription;
-
-      createRequest({
-        subscriptionId: subscription ? subscription.id : "",
-        package: requestPlan || "creditos",
-        helpType: labels[helpType] || helpType,
-        documentType: documentType || "Documento académico",
-        deliveryTime: document.getElementById("hora-entrega").value,
-        format: document.getElementById("formato").value,
-        deadline: document.getElementById("fecha").value,
-        workCount: files.length,
-        pages: totalPages,
-        pageDetails: pageAnalysis.items,
-        instructions: document.getElementById("instrucciones").value.trim(),
-        files,
-        attachments
-      });
-
-      window.location.href = "panel.html";
+      pendingSubmission = submission;
+      renderSubmissionConfirmation(submission, updatedCreditSummary);
     });
   </script>
 </body>

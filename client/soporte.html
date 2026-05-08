@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Soporte - Originalidad Académica</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #f8faf9;
+      color: #071832;
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.6;
+    }
+
+    .container {
+      margin: 0 auto;
+      width: min(90%, 1080px);
+    }
+
+    .site-header {
+      background: rgba(255,255,255,0.94);
+      border-bottom: 1px solid #dfe6ea;
+      box-shadow: 0 8px 24px rgba(7,24,50,0.04);
+    }
+
+    .nav {
+      align-items: center;
+      display: flex;
+      gap: 24px;
+      justify-content: space-between;
+      min-height: 82px;
+    }
+
+    .brand {
+      color: #071832;
+      display: flex;
+      gap: 14px;
+      text-decoration: none;
+    }
+
+    .brand-mark {
+      color: #071832;
+      display: inline-flex;
+      height: 46px;
+      width: 46px;
+    }
+
+    .brand-title {
+      display: block;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .brand-subtitle {
+      color: #475569;
+      display: block;
+      font-size: 15px;
+      margin-top: 2px;
+    }
+
+    .nav-links {
+      align-items: center;
+      display: flex;
+      gap: 26px;
+      font-weight: 700;
+    }
+
+    .nav-links a {
+      color: #071832;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .nav-button,
+    .btn-primary {
+      background: #071832;
+      color: white;
+      box-shadow: 0 12px 24px rgba(7,24,50,0.18);
+    }
+
+    .nav-button {
+      border-radius: 10px;
+      color: white !important;
+      display: inline-flex;
+      min-height: 50px;
+      padding: 13px 20px;
+    }
+
+    .hero {
+      background:
+        radial-gradient(circle at 76% 22%, rgba(223,233,232,0.72), transparent 34%),
+        linear-gradient(115deg, #fbfaf7 0%, #f7faf9 58%, #edf4f4 100%);
+      padding: 68px 0 54px;
+    }
+
+    .badge {
+      background: #edf6f3;
+      border: 1px solid #cfe2dc;
+      border-radius: 999px;
+      color: #11493f;
+      display: inline-flex;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      margin-bottom: 20px;
+      padding: 8px 15px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(38px, 5vw, 62px);
+      line-height: 1.06;
+      margin-bottom: 16px;
+      max-width: 780px;
+    }
+
+    .hero p {
+      color: #26364d;
+      font-size: 18px;
+      max-width: 720px;
+    }
+
+    main {
+      padding: 64px 0;
+    }
+
+    .support-layout {
+      align-items: start;
+      display: grid;
+      gap: 28px;
+      grid-template-columns: 1fr 340px;
+    }
+
+    .panel,
+    .details {
+      background: white;
+      border: 1px solid #e2e9ec;
+      border-radius: 18px;
+      box-shadow: 0 16px 38px rgba(7,24,50,0.06);
+      padding: 30px;
+    }
+
+    .section-heading {
+      margin-bottom: 24px;
+    }
+
+    .section-heading h2,
+    .details h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 28px;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+
+    .section-heading p,
+    .details p,
+    .detail-list {
+      color: #475569;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .hidden-field {
+      display: none;
+    }
+
+    label {
+      color: #26364d;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    input,
+    select,
+    textarea {
+      background: white;
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      color: #071832;
+      font-size: 15px;
+      outline: none;
+      padding: 13px 14px;
+      width: 100%;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #2b7a68;
+      box-shadow: 0 0 0 4px rgba(43,122,104,0.12);
+    }
+
+    textarea {
+      min-height: 150px;
+      resize: vertical;
+    }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      font-size: 16px;
+      font-weight: 800;
+      justify-content: center;
+      min-height: 54px;
+      padding: 14px 22px;
+      text-decoration: none;
+      width: 100%;
+    }
+
+    .status {
+      border-radius: 12px;
+      display: none;
+      font-weight: 700;
+      margin-top: 18px;
+      padding: 13px 14px;
+    }
+
+    .status.ok {
+      background: #edf6f3;
+      border: 1px solid #cfe2dc;
+      color: #11493f;
+      display: block;
+    }
+
+    .status.error {
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+      color: #9f1239;
+      display: block;
+    }
+
+    .detail-list {
+      display: grid;
+      gap: 14px;
+      list-style: none;
+      margin-top: 20px;
+    }
+
+    .detail-list strong {
+      color: #071832;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    footer {
+      background: white;
+      border-top: 1px solid #e2e9ec;
+      color: #475569;
+      font-size: 14px;
+      padding: 26px 0;
+      text-align: center;
+    }
+
+    footer a {
+      color: #1d6f5f;
+      font-weight: 700;
+    }
+
+    svg {
+      fill: none;
+      height: 24px;
+      stroke: currentColor;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-width: 1.8;
+      width: 24px;
+    }
+
+    .brand-mark svg {
+      height: 46px;
+      width: 46px;
+    }
+
+    @media (max-width: 960px) {
+      .nav {
+        align-items: start;
+        flex-direction: column;
+        padding: 16px 0;
+      }
+
+      .nav-links {
+        align-items: stretch;
+        display: grid;
+        gap: 10px;
+        width: 100%;
+      }
+
+      .support-layout,
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .brand-title {
+        font-size: 21px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="nav">
+        <a href="index.html" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <path d="M24 4 40 10v12c0 11-6.8 18.2-16 22C14.8 40.2 8 33 8 22V10l16-6Z"></path>
+              <path d="M24 13v22"></path>
+              <path d="m16 23 5 5 11-12"></path>
+            </svg>
+          </span>
+          <span>
+            <span class="brand-title">Originalidad Académica</span>
+            <span class="brand-subtitle">Escribe con integridad. Destaca con originalidad.</span>
+          </span>
+        </a>
+
+        <div class="nav-links">
+          <a href="index.html#servicios">Qué hacemos</a>
+          <a href="precios.html">Precios</a>
+          <a href="panel.html">Mi panel</a>
+          <a data-auth-link href="registro.html">Iniciar sesión / Registrarse</a>
+          <a href="solicitar.html" class="nav-button">Solicitar revisión</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <span class="badge">Formulario de soporte</span>
+      <h1>Cuéntanos qué necesitas resolver</h1>
+      <p>Usa este formulario para reportar dudas sobre tu cuenta, pagos, solicitudes, archivos o entregas. Por ahora este es el canal oficial de soporte.</p>
+    </div>
+  </section>
+
+  <main>
+    <div class="container support-layout">
+      <form id="support-form" class="panel" novalidate>
+        <div class="section-heading">
+          <h2>Enviar mensaje</h2>
+          <p>Completa los datos y revisaremos tu caso internamente desde el canal de soporte.</p>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="name">Nombre completo</label>
+            <input id="name" name="name" type="text" placeholder="Ej. María González" required />
+          </div>
+
+          <div class="field">
+            <label for="email">Correo de contacto</label>
+            <input id="email" name="email" type="email" placeholder="tu@email.com" required />
+          </div>
+
+          <div class="field full">
+            <label for="topic">Motivo</label>
+            <select id="topic" name="topic" required>
+              <option value="">Selecciona una opción</option>
+              <option value="Cuenta o acceso">Cuenta o acceso</option>
+              <option value="Pago o plan">Pago o plan</option>
+              <option value="Solicitud o archivo">Solicitud o archivo</option>
+              <option value="Entrega">Entrega</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+
+          <div class="field full">
+            <label for="message">Mensaje</label>
+            <textarea id="message" name="message" placeholder="Describe qué ocurrió y agrega el nombre de la solicitud si aplica." required></textarea>
+          </div>
+
+          <div class="field hidden-field" aria-hidden="true">
+            <label for="website">Sitio web</label>
+            <input id="website" name="website" type="text" tabindex="-1" autocomplete="off" />
+          </div>
+        </div>
+
+        <input id="form-started-at" name="formStartedAt" type="hidden" />
+        <button class="btn btn-primary" type="submit">Enviar a soporte</button>
+        <p id="support-status" class="status" role="status"></p>
+      </form>
+
+      <aside class="details">
+        <h2>Datos del negocio</h2>
+        <p>Información pública disponible mientras se define el nombre comercial final.</p>
+        <ul class="detail-list">
+          <li><strong>Nombre comercial</strong>Por definir</li>
+          <li><strong>Ubicación general</strong>Panamá</li>
+          <li><strong>Canal oficial</strong>Instagram: @resolviendotrabajos</li>
+          <li><strong>Contacto visible</strong>Formulario de soporte</li>
+        </ul>
+      </aside>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      Originalidad Académica - Panamá · Instagram: @resolviendotrabajos<br />
+      <a href="privacidad.html">Privacidad</a> ·
+      <a href="terminos.html">Términos</a> ·
+      <a href="soporte.html">Soporte</a>
+    </div>
+  </footer>
+
+  <script src="auth/auth.js"></script>
+  <script>
+    setupAuthLinks();
+
+    const currentUser = getCurrentUser();
+    const form = document.getElementById("support-form");
+    const statusMessage = document.getElementById("support-status");
+    const startedAt = document.getElementById("form-started-at");
+
+    startedAt.value = String(Date.now());
+
+    if (currentUser) {
+      document.getElementById("name").value = currentUser.name || "";
+      document.getElementById("email").value = currentUser.email || "";
+    }
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!form.reportValidity()) {
+        return;
+      }
+
+      statusMessage.className = "status";
+      statusMessage.textContent = "";
+
+      try {
+        const response = await fetch("/api/support", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            name: document.getElementById("name").value,
+            email: document.getElementById("email").value,
+            topic: document.getElementById("topic").value,
+            message: document.getElementById("message").value,
+            website: document.getElementById("website").value,
+            formStartedAt: startedAt.value
+          })
+        });
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || "No se pudo enviar el mensaje.");
+        }
+
+        form.reset();
+        startedAt.value = String(Date.now());
+        statusMessage.className = "status ok";
+        statusMessage.textContent = "Tu mensaje fue enviado. Lo revisaremos desde soporte.";
+      } catch (error) {
+        statusMessage.className = "status error";
+        statusMessage.textContent = error.message || "No se pudo enviar el mensaje.";
+      }
+    });
+  </script>
+</body>
+</html>

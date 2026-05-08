@@ -35,32 +35,39 @@
     }
 
     .nav {
-      min-height: 86px;
+      min-height: 64px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 24px;
+      gap: 12px;
     }
 
     .brand {
       color: #071832;
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 10px;
       text-decoration: none;
+      min-width: 0;
     }
 
     .brand-mark {
       color: #071832;
       display: inline-flex;
-      height: 46px;
-      width: 46px;
+      height: 38px;
+      width: 38px;
+      flex: 0 0 auto;
+    }
+
+    .brand-mark svg {
+      height: 100%;
+      width: 100%;
     }
 
     .brand-title {
       display: block;
       font-family: Georgia, "Times New Roman", serif;
-      font-size: 24px;
+      font-size: clamp(19px, 3vw, 24px);
       font-weight: 700;
       line-height: 1.1;
     }
@@ -68,8 +75,27 @@
     .brand-subtitle {
       color: #475569;
       display: block;
-      font-size: 15px;
+      font-size: 13px;
       margin-top: 2px;
+    }
+
+    .nav-tools,
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .nav-actions {
+      margin-left: 0;
+      min-width: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .nav-actions::-webkit-scrollbar {
+      display: none;
     }
 
     .ghost-btn {
@@ -79,12 +105,13 @@
       color: #071832;
       cursor: pointer;
       font-weight: 800;
-      min-height: 48px;
-      padding: 12px 18px;
+      min-height: 42px;
+      padding: 9px 13px;
+      white-space: nowrap;
     }
 
     main {
-      padding: 48px 0 72px;
+      padding: 28px 0 72px;
     }
 
     .hero {
@@ -423,9 +450,7 @@
 
     @media (max-width: 900px) {
       .nav {
-        align-items: flex-start;
-        flex-direction: column;
-        padding: 18px 0;
+        padding: 10px 0;
       }
 
       .stats,
@@ -460,10 +485,28 @@
         padding: 22px;
       }
 
-      .ghost-btn,
       .status-select,
       .delivery-actions .ghost-btn {
         width: 100%;
+      }
+
+      .brand-subtitle {
+        display: none;
+      }
+
+      .brand-title {
+        display: none;
+      }
+
+      .nav-tools,
+      .nav-actions {
+        gap: 6px;
+      }
+
+      .ghost-btn {
+        font-size: 13px;
+        min-height: 40px;
+        padding: 8px 10px;
       }
     }
   </style>
@@ -487,7 +530,11 @@
           </span>
         </a>
 
-        <button class="ghost-btn" type="button" onclick="logout()">Cerrar sesión</button>
+        <div class="nav-tools" aria-label="Herramientas del profesor"></div>
+        <div class="nav-actions">
+          <a class="ghost-btn" href="perfil-profesor.html">Perfil</a>
+          <button class="ghost-btn" type="button" onclick="logout()">Cerrar sesión</button>
+        </div>
       </nav>
     </div>
   </header>
@@ -552,7 +599,12 @@
       window.location.href = "panel.html";
     }
 
-    const statusOptions = ["Recibida", "En proceso", "Lista", "Entregada"];
+    const statusOptions = [
+      { value: "Asignada", label: "Asignado" },
+      { value: "Visto", label: "Descargado/visto" },
+      { value: "Trabajando", label: "Trabajando" },
+      { value: "Entrega subida", label: "Entrega subida" }
+    ];
     const worksList = document.getElementById("works-list");
     const teacherAlert = document.getElementById("teacher-alert");
     const workTabs = document.querySelectorAll(".work-tab");
@@ -637,13 +689,13 @@
 
     function isDeliverySaved(requestId) {
       const savedRequest = getRequests().find((request) => request.id === requestId);
-      return Boolean(savedRequest && savedRequest.delivery && savedRequest.delivery.dataUrl);
+      return Boolean(savedRequest && savedRequest.delivery && (savedRequest.delivery.url || savedRequest.delivery.dataUrl));
     }
 
     function renderAttachments(request) {
       if (Array.isArray(request.attachments) && request.attachments.length) {
         return request.attachments.map((file) => `
-          <a href="${file.dataUrl}" download="${escapeHTML(file.name)}">${escapeHTML(file.name)} ${formatFileSize(file.size)}</a>
+          <a href="${file.url || file.dataUrl}" download="${escapeHTML(file.name)}">${escapeHTML(file.name)} ${formatFileSize(file.size)}</a>
         `).join("<br>");
       }
 
@@ -655,11 +707,11 @@
     }
 
     function renderDelivery(request) {
-      if (request.delivery && request.delivery.dataUrl) {
+      if (request.delivery && (request.delivery.url || request.delivery.dataUrl)) {
         return `
           <div class="delivery-box">
             <strong>Entrega subida</strong>
-            <a href="${request.delivery.dataUrl}" download="${escapeHTML(request.delivery.name)}">${escapeHTML(request.delivery.name)} ${formatFileSize(request.delivery.size)}</a>
+            <a href="${request.delivery.url || request.delivery.dataUrl}" download="${escapeHTML(request.delivery.name)}">${escapeHTML(request.delivery.name)} ${formatFileSize(request.delivery.size)}</a>
             <span class="muted">El cliente ya puede descargar este documento desde su panel.</span>
           </div>
         `;
@@ -702,13 +754,13 @@
 
     function renderStats(requests) {
       document.getElementById("total-works").textContent = requests.length;
-      document.getElementById("received-works").textContent = requests.filter((item) => item.status === "Recibida").length;
-      document.getElementById("progress-works").textContent = requests.filter((item) => item.status === "En proceso").length;
-      document.getElementById("done-works").textContent = requests.filter((item) => item.status === "Lista" || item.status === "Entregada").length;
+      document.getElementById("received-works").textContent = requests.filter((item) => item.status === "Recibida" || item.status === "Asignada").length;
+      document.getElementById("progress-works").textContent = requests.filter((item) => item.status === "Visto" || item.status === "Trabajando" || item.status === "En proceso").length;
+      document.getElementById("done-works").textContent = requests.filter((item) => item.status === "Lista" || item.status === "Entrega subida" || item.status === "Entregada").length;
     }
 
     function renderTeacherAlert(requests) {
-      const pending = requests.filter((item) => item.status === "Recibida");
+      const pending = requests.filter((item) => item.status === "Recibida" || item.status === "Asignada");
 
       if (!pending.length) {
         teacherAlert.innerHTML = "";
@@ -724,14 +776,14 @@
 
     function getVisibleRequests(requests) {
       if (activeView === "progress") {
-        return requests.filter((request) => request.status === "En proceso");
+        return requests.filter((request) => request.status === "Visto" || request.status === "Trabajando" || request.status === "En proceso");
       }
 
       if (activeView === "done") {
-        return requests.filter((request) => request.status === "Lista" || request.status === "Entregada");
+        return requests.filter((request) => request.status === "Lista" || request.status === "Entrega subida" || request.status === "Entregada");
       }
 
-      return requests.filter((request) => request.status === "Recibida");
+      return requests.filter((request) => request.status === "Recibida" || request.status === "Asignada");
     }
 
     function getEmptyMessage() {
@@ -753,8 +805,7 @@
 
         if (!result[key]) {
           result[key] = {
-            name: customer.name || "Cliente",
-            email: customer.email || "Sin correo",
+            code: customer.subscriberId || getSubscriberId(customer) || "Sin código",
             total: 0,
             done: 0,
             latest: request.createdAt
@@ -762,7 +813,7 @@
         }
 
         result[key].total += 1;
-        result[key].done += request.status === "Lista" || request.status === "Entregada" ? 1 : 0;
+        result[key].done += request.status === "Lista" || request.status === "Entrega subida" || request.status === "Entregada" ? 1 : 0;
         result[key].latest = new Date(request.createdAt) > new Date(result[key].latest) ? request.createdAt : result[key].latest;
         return result;
       }, {});
@@ -782,8 +833,8 @@
       worksList.innerHTML = rows.map((client) => `
         <article class="client-row">
           <div>
-            <strong>${escapeHTML(client.name)}</strong>
-            <span>${escapeHTML(client.email)} · Último trabajo: ${formatDate(client.latest)}</span>
+            <strong>${escapeHTML(client.code)}</strong>
+            <span>Último trabajo: ${formatDate(client.latest)}</span>
           </div>
           <span>${client.done}/${client.total} entregado(s)</span>
         </article>
@@ -819,8 +870,9 @@
         const customer = request.user || {};
         const files = renderAttachments(request);
         const deadlineDate = getDeadlineDate(request);
+        const normalizedStatus = request.status === "Recibida" ? "Asignada" : request.status === "En proceso" ? "Trabajando" : request.status === "Entregada" ? "Entrega subida" : request.status;
         const selectedOptions = statusOptions.map((status) => `
-          <option value="${status}" ${request.status === status ? "selected" : ""}>${status}</option>
+          <option value="${status.value}" ${normalizedStatus === status.value ? "selected" : ""}>${status.label}</option>
         `).join("");
 
         return `
@@ -831,7 +883,7 @@
             </div>
             <div>
               <h3>${escapeHTML(request.documentType || "Documento académico")}</h3>
-              <p class="muted">Cliente: ${escapeHTML(customer.name || "Sin nombre")} · ${escapeHTML(customer.email || "Sin correo")}</p>
+              <p class="muted">Suscriptor: ${escapeHTML(customer.subscriberId || getSubscriberId(customer) || "Sin código")}</p>
               <p class="muted">Asignado: ${formatDate(request.assignedAt)} · Recibido: ${formatDate(request.createdAt)}</p>
               <div class="quick-meta">
                 <span>${escapeHTML(request.helpType || "Ayuda no indicada")}</span>
@@ -864,6 +916,7 @@
       document.querySelectorAll(".status-select").forEach((select) => {
         select.addEventListener("change", (event) => {
           updateRequestStatus(event.currentTarget.dataset.requestId, event.currentTarget.value);
+          window.showScreenNotification?.(`Estado actualizado: ${getTeacherRequestStatusLabel(event.currentTarget.value)}.`);
           window.refreshNotifications?.();
           renderWorks();
         });
@@ -928,6 +981,7 @@
             }
 
             message.textContent = "Entrega guardada.";
+            window.showScreenNotification?.("Entrega subida. El cliente ya puede verla en su panel.");
             activeView = "done";
             syncTabs();
             window.refreshNotifications?.();

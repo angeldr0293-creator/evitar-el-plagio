@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Estadística - Originalidad Académica</title>
+  <link rel="stylesheet" href="css/notifications.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #f7faf9; color: #071832; font-family: Arial, Helvetica, sans-serif; line-height: 1.6; }
+    .container { width: min(94%, 1240px); margin: 0 auto; }
+    .site-header { background: rgba(255,255,255,0.95); border-bottom: 1px solid #dfe6ea; position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px); }
+    .nav { min-height: 66px; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+    .brand { color: #071832; display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .brand-mark { color: #071832; display: inline-flex; height: 38px; width: 38px; }
+    .brand-mark svg, svg { fill: none; height: 100%; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; width: 100%; }
+    .brand-title { display: block; font-family: Georgia, "Times New Roman", serif; font-size: 22px; font-weight: 700; line-height: 1.1; }
+    .brand-subtitle { color: #475569; display: block; font-size: 13px; }
+    .nav-actions { display: flex; align-items: center; gap: 10px; }
+    .btn, .ghost-btn { border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; min-height: 44px; padding: 10px 16px; text-decoration: none; }
+    .btn { background: #071832; border: 1px solid #071832; color: white; }
+    .ghost-btn { background: white; border: 1px solid #d8e0e5; color: #071832; }
+    main { padding: 34px 0 72px; }
+    .hero { background: linear-gradient(135deg, #071832, #123c43); border-radius: 22px; color: white; margin-bottom: 24px; padding: 30px; }
+    .hero h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(34px, 4vw, 52px); line-height: 1.08; }
+    .hero p { color: #dbe7e6; margin-top: 8px; }
+    .toolbar { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+    .toolbar input { border: 1px solid #d8e0e5; border-radius: 12px; color: #071832; font: inherit; min-height: 44px; padding: 10px 12px; }
+    .stats { display: grid; gap: 14px; grid-template-columns: repeat(4, 1fr); margin-bottom: 18px; }
+    .stat, .panel, .row { background: white; border: 1px solid #e2e9ec; border-radius: 18px; box-shadow: 0 14px 34px rgba(7,24,50,0.05); }
+    .stat { padding: 18px; }
+    .stat strong { display: block; font-family: Georgia, "Times New Roman", serif; font-size: 30px; line-height: 1; margin-bottom: 7px; }
+    .stat span, .muted { color: #64748b; font-size: 14px; }
+    .grid { display: grid; gap: 18px; grid-template-columns: 1fr 1fr; }
+    .panel { padding: 22px; }
+    .panel h2 { font-family: Georgia, "Times New Roman", serif; font-size: 26px; line-height: 1.2; margin-bottom: 12px; }
+    .list { display: grid; gap: 10px; }
+    .row { box-shadow: none; display: grid; gap: 8px; padding: 14px; }
+    .row-head { align-items: center; display: flex; gap: 10px; justify-content: space-between; }
+    .row strong { color: #071832; }
+    .bar-track { background: #e8eef1; border-radius: 999px; height: 10px; overflow: hidden; }
+    .bar-fill { background: #2b7a68; display: block; height: 100%; }
+    .bar-fill.alt { background: #0f2f57; }
+    .bar-fill.warn { background: #b45309; }
+    .table { overflow-x: auto; }
+    table { border-collapse: collapse; min-width: 720px; width: 100%; }
+    th, td { border-bottom: 1px solid #e8eef1; padding: 10px; text-align: left; vertical-align: top; }
+    th { color: #475569; font-size: 13px; }
+    .pill { background: #edf6f3; border: 1px solid #cfe2dc; border-radius: 999px; color: #11493f; display: inline-flex; font-size: 12px; font-weight: 800; padding: 4px 8px; }
+    @media (max-width: 900px) {
+      .stats, .grid { grid-template-columns: 1fr; }
+      .brand-subtitle { display: none; }
+      .nav-actions { gap: 6px; }
+      .ghost-btn, .btn { font-size: 13px; padding: 8px 10px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="nav">
+        <a href="admin.html" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 48 48"><path d="M24 4 40 10v12c0 11-6.8 18.2-16 22C14.8 40.2 8 33 8 22V10l16-6Z"></path><path d="M17 24h14"></path><path d="M24 17v14"></path></svg>
+          </span>
+          <span><span class="brand-title">Originalidad Académica</span><span class="brand-subtitle">Estadística administrativa</span></span>
+        </a>
+        <div class="nav-actions">
+          <a class="ghost-btn" href="admin.html">Admin</a>
+          <button class="ghost-btn" type="button" onclick="logout()">Cerrar sesión</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <section class="hero">
+        <h1>Estadística</h1>
+        <p>Ingresos, pagos a profesores, utilidad neta, páginas, entregas, suscripciones y cortes diarios/mensuales.</p>
+      </section>
+
+      <div class="toolbar">
+        <label>Mes de corte <input id="month-filter" type="month" /></label>
+        <span class="pill">Cálculo: valor/página prorrateado por plan · 50% profesor / 50% plataforma</span>
+      </div>
+
+      <section class="stats">
+        <article class="stat"><strong id="stat-subscription-income">$0.00</strong><span>Ingresos por suscripciones del mes</span></article>
+        <article class="stat"><strong id="stat-total-net">$0.00</strong><span>Utilidad neta real del mes</span></article>
+        <article class="stat"><strong id="stat-page-gross">$0.00</strong><span>Valor generado por páginas entregadas</span></article>
+        <article class="stat"><strong id="stat-teacher-pay">$0.00</strong><span>Pagos a profesores</span></article>
+        <article class="stat"><strong id="stat-admin-net">$0.00</strong><span>Utilidad neta por páginas</span></article>
+        <article class="stat"><strong id="stat-unused-value">$0.00</strong><span>Valor de páginas no usadas</span></article>
+        <article class="stat"><strong id="stat-pages">0</strong><span>Páginas trabajadas</span></article>
+        <article class="stat"><strong id="stat-delivered">0</strong><span>Trabajos entregados</span></article>
+        <article class="stat"><strong id="stat-active-subs">0</strong><span>Suscripciones activas</span></article>
+        <article class="stat"><strong id="stat-expiring">0</strong><span>Vencen en 7 días</span></article>
+      </section>
+
+      <div class="grid">
+        <section class="panel">
+          <h2>Utilidad real</h2>
+          <div id="real-profit-report" class="list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Generación por plan</h2>
+          <div id="plan-chart" class="list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Pagos a profesores</h2>
+          <div id="teacher-chart" class="list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Reporte diario</h2>
+          <div id="daily-report" class="list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Reporte mensual</h2>
+          <div id="monthly-report" class="list"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Suscripciones</h2>
+          <div id="subscription-report" class="table"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Detalle de trabajos entregados</h2>
+          <div id="work-report" class="table"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="auth/auth.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    const user = getCurrentUser();
+
+    if (!user) {
+      window.location.href = "registro.html?next=estadisticas.html";
+    }
+
+    if (!isAdminUser(user)) {
+      window.location.href = "panel.html";
+    }
+
+    const monthFilter = document.getElementById("month-filter");
+    monthFilter.value = getMonthKey();
+
+    function escapeHTML(value) {
+      return String(value || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+    }
+
+    function formatDate(value) {
+      if (!value) return "-";
+      return new Intl.DateTimeFormat("es", { year: "numeric", month: "short", day: "numeric" }).format(new Date(value));
+    }
+
+    function formatMonth(value) {
+      if (!value) return "-";
+      const date = new Date(`${value}-01T00:00:00`);
+      return new Intl.DateTimeFormat("es", { year: "numeric", month: "long" }).format(date);
+    }
+
+    function percent(value, max) {
+      return max ? Math.max(4, Math.round((value / max) * 100)) : 0;
+    }
+
+    function renderBarRow({ title, meta, value, max, tone = "" }) {
+      return `
+        <article class="row">
+          <div class="row-head"><strong>${escapeHTML(title)}</strong><span>${escapeHTML(value)}</span></div>
+          <div class="bar-track"><span class="bar-fill ${tone}" style="width:${percent(Number(String(value).replace(/[^0-9.]/g, "")), max)}%"></span></div>
+          <span class="muted">${meta}</span>
+        </article>
+      `;
+    }
+
+    function getSubscriptionIncome(subscriptions, monthKey) {
+      const config = getPlanFinanceConfig();
+      return subscriptions
+        .filter((subscription) => getMonthKey(subscription.createdAt || subscription.startsAt) === monthKey)
+        .reduce((total, subscription) => total + (config[subscription.plan]?.price || 0), 0);
+    }
+
+    function getSubscriptionCapacity(subscriptions, monthKey) {
+      const config = getPlanFinanceConfig();
+      return subscriptions
+        .filter((subscription) => getMonthKey(subscription.createdAt || subscription.startsAt) === monthKey)
+        .reduce((summary, subscription) => {
+          const plan = config[subscription.plan];
+          if (!plan) return summary;
+          summary.pages += plan.includedPages;
+          summary.value += plan.price;
+          return summary;
+        }, { pages: 0, value: 0 });
+    }
+
+    function getActiveSubscriptions(subscriptions) {
+      const now = new Date();
+      return subscriptions.filter((subscription) => (
+        subscription.status === "Activa" && new Date(subscription.expiresAt) >= now
+      ));
+    }
+
+    function groupBy(items, getKey) {
+      return items.reduce((result, item) => {
+        const key = getKey(item);
+        if (!key) return result;
+        result[key] = result[key] || [];
+        result[key].push(item);
+        return result;
+      }, {});
+    }
+
+    function renderStats() {
+      const monthKey = monthFilter.value || getMonthKey();
+      const clients = getAdminClients();
+      const requests = getAdminRequests();
+      const delivered = getDeliveredRequestsForMonth(requests, monthKey);
+      const subscriptions = getSubscriptions();
+      const summary = summarizeDeliveredRequests(delivered);
+      const activeSubscriptions = getActiveSubscriptions(subscriptions);
+      const inSevenDays = new Date();
+      inSevenDays.setDate(inSevenDays.getDate() + 7);
+      const expiring = activeSubscriptions.filter((subscription) => new Date(subscription.expiresAt) <= inSevenDays);
+      const subscriptionIncome = getSubscriptionIncome(subscriptions, monthKey);
+      const subscriptionCapacity = getSubscriptionCapacity(subscriptions, monthKey);
+      const realNet = subscriptionIncome - summary.teacherTotal;
+      const unusedPages = Math.max(subscriptionCapacity.pages - summary.pages, 0);
+      const unusedValue = Math.max(subscriptionIncome - summary.gross, 0);
+
+      document.getElementById("stat-subscription-income").textContent = formatMoney(subscriptionIncome);
+      document.getElementById("stat-total-net").textContent = formatMoney(realNet);
+      document.getElementById("stat-page-gross").textContent = formatMoney(summary.gross);
+      document.getElementById("stat-teacher-pay").textContent = formatMoney(summary.teacherTotal);
+      document.getElementById("stat-admin-net").textContent = formatMoney(summary.adminNet);
+      document.getElementById("stat-unused-value").textContent = formatMoney(unusedValue);
+      document.getElementById("stat-pages").textContent = summary.pages;
+      document.getElementById("stat-delivered").textContent = summary.works;
+      document.getElementById("stat-active-subs").textContent = activeSubscriptions.length;
+      document.getElementById("stat-expiring").textContent = expiring.length;
+
+      renderRealProfitReport({
+        subscriptionIncome,
+        realNet,
+        unusedPages,
+        unusedValue,
+        usedPages: summary.pages,
+        teacherTotal: summary.teacherTotal,
+        pageGross: summary.gross,
+        pageAdminNet: summary.adminNet,
+        capacityPages: subscriptionCapacity.pages
+      });
+      renderPlanChart(delivered);
+      renderTeacherChart(delivered);
+      renderDailyReport(delivered);
+      renderMonthlyReport(requests.filter(isRequestDelivered));
+      renderSubscriptionReport(clients, subscriptions);
+      renderWorkReport(delivered);
+    }
+
+    function renderRealProfitReport(summary) {
+      const max = Math.max(summary.subscriptionIncome, summary.realNet, summary.unusedValue, summary.teacherTotal, 1);
+      document.getElementById("real-profit-report").innerHTML = `
+        ${renderBarRow({
+          title: "Ingresos cobrados por suscripciones",
+          value: formatMoney(summary.subscriptionIncome),
+          max,
+          meta: `${summary.capacityPages} páginas vendidas como capacidad del mes`
+        })}
+        ${renderBarRow({
+          title: "Pago devengado a profesores",
+          value: formatMoney(summary.teacherTotal),
+          max,
+          tone: "alt",
+          meta: `${summary.usedPages} páginas realmente entregadas`
+        })}
+        ${renderBarRow({
+          title: "Valor de páginas no usadas",
+          value: formatMoney(summary.unusedValue),
+          max,
+          tone: "warn",
+          meta: `${summary.unusedPages} página(s) vendidas que todavía no generaron pago a profesor`
+        })}
+        ${renderBarRow({
+          title: "Utilidad neta real del mes",
+          value: formatMoney(summary.realNet),
+          max,
+          meta: "Ingresos por suscripciones menos pagos devengados a profesores"
+        })}
+      `;
+    }
+
+    function renderPlanChart(delivered) {
+      const grouped = groupBy(delivered, (request) => request.package || "creditos");
+      const rows = Object.entries(grouped).map(([plan, items]) => ({ plan, ...summarizeDeliveredRequests(items) }));
+      const max = Math.max(...rows.map((row) => row.gross), 1);
+      document.getElementById("plan-chart").innerHTML = rows.length ? rows.map((row) => renderBarRow({
+        title: getPlanFinanceConfig()[row.plan]?.name || row.plan,
+        value: formatMoney(row.gross),
+        max,
+        meta: `${row.pages} páginas · ${row.works} trabajos · profesor 50% ${formatMoney(row.teacherTotal)} · plataforma 50% ${formatMoney(row.adminNet)}`
+      })).join("") : `<div class="row">Sin entregas en este mes.</div>`;
+    }
+
+    function renderTeacherChart(delivered) {
+      const grouped = groupBy(delivered, (request) => request.teacherId || "sin-profesor");
+      const teachers = getTeachers().reduce((result, teacher) => {
+        result[teacher.id] = teacher;
+        return result;
+      }, {});
+      const rows = Object.entries(grouped).map(([teacherId, items]) => ({
+        teacherId,
+        teacherName: teachers[teacherId]?.name || "Sin profesor",
+        ...summarizeDeliveredRequests(items)
+      }));
+      const max = Math.max(...rows.map((row) => row.teacherTotal), 1);
+      document.getElementById("teacher-chart").innerHTML = rows.length ? rows.map((row) => renderBarRow({
+        title: row.teacherName,
+        value: formatMoney(row.teacherTotal),
+        max,
+        tone: "alt",
+        meta: `${row.pages} páginas · ${row.works} entregas · estado pendiente`
+      })).join("") : `<div class="row">Sin pagos a profesores en este mes.</div>`;
+    }
+
+    function renderDailyReport(delivered) {
+      const grouped = groupBy(delivered, (request) => getDayKey(getRequestDeliveredAt(request)));
+      const rows = Object.entries(grouped)
+        .sort(([a], [b]) => b.localeCompare(a))
+        .map(([day, items]) => ({ day, ...summarizeDeliveredRequests(items) }));
+      const max = Math.max(...rows.map((row) => row.gross), 1);
+      document.getElementById("daily-report").innerHTML = rows.length ? rows.map((row) => renderBarRow({
+        title: formatDate(row.day),
+        value: formatMoney(row.gross),
+        max,
+        meta: `${row.works} trabajos · ${row.pages} páginas · utilidad ${formatMoney(row.adminNet)}`
+      })).join("") : `<div class="row">Sin actividad diaria en este mes.</div>`;
+    }
+
+    function renderMonthlyReport(allDelivered) {
+      const grouped = groupBy(allDelivered, (request) => getMonthKey(getRequestDeliveredAt(request)));
+      const rows = Object.entries(grouped)
+        .sort(([a], [b]) => b.localeCompare(a))
+        .map(([month, items]) => ({ month, ...summarizeDeliveredRequests(items) }));
+      const max = Math.max(...rows.map((row) => row.gross), 1);
+      document.getElementById("monthly-report").innerHTML = rows.length ? rows.map((row) => renderBarRow({
+        title: formatMonth(row.month),
+        value: formatMoney(row.gross),
+        max,
+        tone: "warn",
+        meta: `${row.works} trabajos · ${row.pages} páginas · profesores 50% ${formatMoney(row.teacherTotal)} · plataforma 50% ${formatMoney(row.adminNet)}`
+      })).join("") : `<div class="row">Sin entregas históricas.</div>`;
+    }
+
+    function renderSubscriptionReport(clients, subscriptions) {
+      const usersById = clients.reduce((result, client) => {
+        result[client.id] = client;
+        return result;
+      }, {});
+      const rows = subscriptions
+        .slice()
+        .sort((a, b) => new Date(b.createdAt || b.startsAt) - new Date(a.createdAt || a.startsAt));
+      document.getElementById("subscription-report").innerHTML = rows.length ? `
+        <table>
+          <thead><tr><th>Cliente</th><th>Plan</th><th>Estado</th><th>Inicio</th><th>Vence</th><th>Ingreso</th></tr></thead>
+          <tbody>
+            ${rows.map((subscription) => {
+              const client = usersById[subscription.userId] || {};
+              const plan = getPlanFinanceConfig()[subscription.plan];
+              return `
+                <tr>
+                  <td>${escapeHTML(client.subscriberId || getSubscriberId(client) || subscription.userId)}</td>
+                  <td>${escapeHTML(plan?.name || subscription.plan)}</td>
+                  <td>${escapeHTML(subscription.status || "Activa")}</td>
+                  <td>${formatDate(subscription.createdAt || subscription.startsAt)}</td>
+                  <td>${formatDate(subscription.expiresAt)}</td>
+                  <td>${formatMoney(plan?.price || 0)}</td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      ` : `<div class="row">Sin suscripciones registradas.</div>`;
+    }
+
+    function renderWorkReport(delivered) {
+      const teachers = getTeachers().reduce((result, teacher) => {
+        result[teacher.id] = teacher;
+        return result;
+      }, {});
+      document.getElementById("work-report").innerHTML = delivered.length ? `
+        <table>
+          <thead><tr><th>Fecha</th><th>Cliente</th><th>Profesor</th><th>Plan</th><th>Páginas</th><th>Valor/pág.</th><th>Profesor 50%</th><th>Plataforma 50%</th></tr></thead>
+          <tbody>
+            ${delivered.map((request) => {
+              const finance = getRequestFinance(request);
+              return `
+                <tr>
+                  <td>${formatDate(getRequestDeliveredAt(request))}</td>
+                  <td>${escapeHTML(request.user?.subscriberId || getSubscriberId(request.user) || request.userId)}</td>
+                  <td>${escapeHTML(teachers[request.teacherId]?.name || request.teacherName || "Sin profesor")}</td>
+                  <td>${escapeHTML(finance.planName)}</td>
+                  <td>${finance.pages}</td>
+                  <td>${formatMoney(finance.clientPerPage)}</td>
+                  <td>${formatMoney(finance.teacherTotal)}</td>
+                  <td>${formatMoney(finance.adminNet)}</td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      ` : `<div class="row">Sin trabajos entregados en este mes.</div>`;
+    }
+
+    monthFilter.addEventListener("change", renderStats);
+    renderStats();
+  </script>
+</body>
+</html>

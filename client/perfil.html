@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Perfil - Originalidad Académica</title>
+  <title>Perfil - ZeroCopy IA</title>
   <link rel="stylesheet" href="css/notifications.css" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -47,10 +47,8 @@
     <div class="container">
       <nav class="nav">
         <a href="panel.html" class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 48 48"><path d="M24 4 40 10v12c0 11-6.8 18.2-16 22C14.8 40.2 8 33 8 22V10l16-6Z"></path><path d="M24 13v22"></path><path d="m16 23 5 5 11-12"></path></svg>
-          </span>
-          <span><span class="brand-title">Originalidad Académica</span><span class="brand-subtitle">Perfil del estudiante</span></span>
+          <span class="brand-mark brand-logo" aria-hidden="true" style="width:72px;height:48px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;"><img src="assets/zerocopy-logo-header.png" alt="" style="width:100%;height:100%;object-fit:contain;display:block;" /></span>
+          <span><span class="brand-title" style="white-space:nowrap;">ZeroCopy IA <small style="color:#2b7a68;font-family:Arial, Helvetica, sans-serif;font-size:10px;font-weight:800;letter-spacing:0;margin-left:4px;vertical-align:middle;white-space:nowrap;">by RT</small></span><span class="brand-subtitle">Perfil del estudiante</span></span>
         </a>
         <div class="nav-actions">
           <a class="ghost-btn" href="panel.html">Panel</a>
@@ -145,10 +143,13 @@
         ? subscriptions.map((subscription) => `
           <article class="history-row">
             <strong>${escapeHTML(packageNames[subscription.plan] || subscription.plan)}</strong>
-            Estado: ${escapeHTML(subscription.status || "Activa")}<br />
+            Estado: ${escapeHTML(subscription.status || "Pendiente")}<br />
+            Monto: ${formatMoney(subscription.amount || 0)} ${escapeHTML(subscription.currency || "USD")}<br />
+            Metodo: ${escapeHTML(subscription.paymentMethod || "-")}<br />
             Registro: ${formatDate(subscription.createdAt || subscription.startsAt)}<br />
             Vence: ${formatDate(subscription.expiresAt)}<br />
-            Referencia: ${escapeHTML(subscription.paymentToken || "Sin referencia")}
+            Referencia: ${escapeHTML(subscription.transactionId || subscription.paymentToken || "Sin referencia")}<br />
+            ${subscription.paymentProof ? `<a href="${escapeHTML(subscription.paymentProof.url)}" target="_blank" rel="noopener">Ver comprobante</a>` : "Comprobante pendiente"}
           </article>
         `).join("")
         : `<div class="history-row">Sin pagos registrados.</div>`;

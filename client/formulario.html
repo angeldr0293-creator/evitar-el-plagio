@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Solicitar revisión - Originalidad Académica</title>
+  <title>Solicitar revisión - ZeroCopy IA</title>
   <link rel="stylesheet" href="css/notifications.css" />
   <style>
     * {
@@ -759,16 +759,9 @@
     <div class="container">
       <nav class="nav">
         <a href="index.html" class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 48 48">
-              <path d="M24 4 40 10v12c0 11-6.8 18.2-16 22C14.8 40.2 8 33 8 22V10l16-6Z"></path>
-              <path d="M24 13v22"></path>
-              <path d="m16 23 5 5 11-12"></path>
-            </svg>
-          </span>
+          <span class="brand-mark brand-logo" aria-hidden="true" style="width:72px;height:48px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;"><img src="assets/zerocopy-logo-header.png" alt="" style="width:100%;height:100%;object-fit:contain;display:block;" /></span>
           <span>
-            <span class="brand-title">Originalidad Académica</span>
-            <span class="brand-subtitle">Escribe con integridad. Destaca con originalidad.</span>
+            <span class="brand-title" style="white-space:nowrap;">ZeroCopy IA <small style="color:#2b7a68;font-family:Arial, Helvetica, sans-serif;font-size:10px;font-weight:800;letter-spacing:0;margin-left:4px;vertical-align:middle;white-space:nowrap;">by RT</small></span>
           </span>
         </a>
 
@@ -958,8 +951,8 @@
 
   <footer>
     <div class="container">
-      Originalidad Académica - Solicitudes para textos más humanos, claros y responsables<br />
-      Panamá · Instagram: @resolviendotrabajos · <a href="soporte.html">Soporte</a>
+      ZeroCopy IA - Solicitudes para textos más humanos, claros y responsables<br />
+      Panamá · Instagram: @resolviendotrabajos · Soporte: resolviendot@gmail.com · WhatsApp: +507 0000-0000
     </div>
   </footer>
   <script src="auth/auth.js"></script>
@@ -1180,7 +1173,7 @@
     const planFromUrl = params.get("plan");
     const purchasedPlan = allowedPlans.includes(planFromPayment) ? planFromPayment : null;
     const activeSubscription = getCurrentUserSubscriptions().find((subscription) => (
-      subscription.status === "Activa" && new Date(subscription.expiresAt) >= new Date()
+      isPaidSubscription(subscription)
     )) || getCurrentUserSubscriptions()[0] || null;
     const requestPlan = purchasedPlan || (activeSubscription ? activeSubscription.plan : null);
     const planGuides = {
@@ -1572,7 +1565,7 @@
       confirmButton.textContent = "Enviando...";
 
       const subscription = purchasedPlan
-        ? registerSubscription(purchasedPlan, sessionStorage.getItem("oa_payment_token"))
+        ? registerPendingSubscription()
         : activeSubscription;
       const attachments = await readSelectedAttachments();
 

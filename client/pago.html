@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pago del plan - Originalidad Acad&eacute;mica</title>
+  <title>Pago del plan - ZeroCopy IA</title>
   <style>
     * {
       margin: 0;
@@ -268,9 +268,67 @@
       transform: translateY(-2px);
     }
 
+    .method.disabled {
+      background: #f8faf9;
+      cursor: not-allowed;
+      opacity: 0.78;
+    }
+
+    .method.disabled:hover {
+      border-color: #d8e0e5;
+      transform: none;
+    }
+
     .method input {
       accent-color: #2b7a68;
       margin-top: 4px;
+    }
+
+    .method-content {
+      align-items: center;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 72px 1fr;
+      min-width: 0;
+    }
+
+    .payment-logo {
+      align-items: center;
+      background: white;
+      border: 1px solid #e3ebee;
+      border-radius: 10px;
+      color: #071832;
+      display: inline-flex;
+      font-size: 13px;
+      font-weight: 900;
+      height: 42px;
+      justify-content: center;
+      letter-spacing: 0;
+      padding: 0 10px;
+      width: 72px;
+    }
+
+    .payment-logo.paypal {
+      color: #003087;
+    }
+
+    .payment-logo.paypal span {
+      color: #009cde;
+      font: inherit;
+      margin-left: 1px;
+    }
+
+    .payment-logo.bank {
+      color: #1d4f91;
+      font-size: 12px;
+    }
+
+    .payment-logo.yappy {
+      color: #2b7a68;
+    }
+
+    .payment-logo.transfer {
+      color: #475569;
     }
 
     .method strong {
@@ -281,6 +339,38 @@
     .method span {
       color: #64748b;
       font-size: 14px;
+    }
+
+    .method-badge {
+      background: #e9f5f2;
+      border-radius: 999px;
+      color: #2b7a68;
+      display: inline-flex;
+      font-size: 11px;
+      font-weight: 900;
+      margin-left: 8px;
+      padding: 3px 8px;
+      text-transform: uppercase;
+      vertical-align: middle;
+    }
+
+    .payment-panel {
+      background: #f8faf9;
+      border: 1px solid #e1eaed;
+      border-radius: 16px;
+      color: #26364d;
+      margin-bottom: 22px;
+      padding: 16px;
+    }
+
+    .payment-panel strong {
+      color: #071832;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .payment-panel[hidden] {
+      display: none;
     }
 
     .form-grid {
@@ -538,16 +628,9 @@
     <div class="container">
       <nav class="nav">
         <a href="index.html" class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 48 48">
-              <path d="M24 4 40 10v12c0 11-6.8 18.2-16 22C14.8 40.2 8 33 8 22V10l16-6Z"></path>
-              <path d="M24 13v22"></path>
-              <path d="m16 23 5 5 11-12"></path>
-            </svg>
-          </span>
+          <span class="brand-mark brand-logo" aria-hidden="true" style="width:72px;height:48px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;"><img src="assets/zerocopy-logo-header.png" alt="" style="width:100%;height:100%;object-fit:contain;display:block;" /></span>
           <span>
-            <span class="brand-title">Originalidad Acad&eacute;mica</span>
-            <span class="brand-subtitle">Escribe con integridad. Destaca con originalidad.</span>
+            <span class="brand-title" style="white-space:nowrap;">ZeroCopy IA <small style="color:#2b7a68;font-family:Arial, Helvetica, sans-serif;font-size:10px;font-weight:800;letter-spacing:0;margin-left:4px;vertical-align:middle;white-space:nowrap;">by RT</small></span>
           </span>
         </a>
 
@@ -613,53 +696,86 @@
 
         <div class="section-heading">
           <h2>Datos para realizar el pago</h2>
-          <p>Esta pantalla deja listo el flujo visual de pago. Cuando conectes una pasarela real, estos campos pueden enviarse al proveedor de pagos.</p>
+          <p>Elige un m&eacute;todo. PayPal y Banco General quedar&aacute;n listos para activaci&oacute;n autom&aacute;tica cuando conectemos sus credenciales.</p>
         </div>
 
         <form id="payment-form">
           <div class="payment-methods" aria-label="M&eacute;todos de pago">
+            <label class="method disabled">
+              <input type="radio" name="payment-method" value="paypal" />
+              <span class="method-content">
+                <span class="payment-logo paypal">Pay<span>Pal</span></span>
+                <span>
+                  <strong>PayPal <span class="method-badge">Autom&aacute;tico</span></strong>
+                  <span>Se activar&aacute; cuando conectemos tu cuenta empresarial de PayPal.</span>
+                </span>
+              </span>
+            </label>
+
+            <label class="method disabled">
+              <input type="radio" name="payment-method" value="banco-general" />
+              <span class="method-content">
+                <span class="payment-logo bank">BG</span>
+                <span>
+                  <strong>Banco General <span class="method-badge">Autom&aacute;tico</span></strong>
+                  <span>Listo para integrar el bot&oacute;n o enlace de pago bancario.</span>
+                </span>
+              </span>
+            </label>
+
             <label class="method">
-              <input type="radio" name="payment-method" value="tarjeta" checked />
-              <span>
-                <strong>Tarjeta de cr&eacute;dito o d&eacute;bito</strong>
-                <span>Visa, Mastercard u otra tarjeta compatible.</span>
+              <input type="radio" name="payment-method" value="yappy" checked />
+              <span class="method-content">
+                <span class="payment-logo yappy">Yappy</span>
+                <span>
+                  <strong>Yappy / transferencia <span class="method-badge">Manual</span></strong>
+                  <span>Env&iacute;a el pago, sube comprobante y soporte lo confirma.</span>
+                </span>
               </span>
             </label>
 
             <label class="method">
               <input type="radio" name="payment-method" value="transferencia" />
-              <span>
-                <strong>Transferencia bancaria</strong>
-                <span>Recibe instrucciones para completar el pago manualmente.</span>
+              <span class="method-content">
+                <span class="payment-logo transfer">ACH</span>
+                <span>
+                  <strong>Transferencia bancaria</strong>
+                  <span>Recibe instrucciones para completar el pago manualmente.</span>
+                </span>
               </span>
             </label>
           </div>
 
-          <div class="form-grid">
+          <div id="automatic-payment-panel" class="payment-panel" hidden>
+            <strong>M&eacute;todo autom&aacute;tico en preparaci&oacute;n</strong>
+            <span>Este bot&oacute;n se conectar&aacute; al proveedor elegido para confirmar el pago y activar el plan al instante. Por ahora usa Yappy o transferencia manual.</span>
+          </div>
+
+          <div class="form-grid" id="manual-payment-fields">
             <div class="field full">
-              <label for="card-name">Nombre del titular</label>
-              <input type="text" id="card-name" placeholder="Nombre como aparece en la tarjeta" required />
+              <label for="payment-reference">Referencia o n&uacute;mero de transacci&oacute;n</label>
+              <input type="text" id="payment-reference" placeholder="Ej. Yappy 123456 / transferencia 000123" required />
             </div>
 
             <div class="field full">
-              <label for="card-number">N&uacute;mero de tarjeta</label>
-              <input type="text" id="card-number" inputmode="numeric" maxlength="19" placeholder="0000 0000 0000 0000" required />
+              <label for="payment-proof">Comprobante de pago</label>
+              <input type="file" id="payment-proof" accept=".pdf,.png,.jpg,.jpeg" required />
             </div>
 
             <div class="field">
-              <label for="card-expiry">Vencimiento</label>
-              <input type="text" id="card-expiry" placeholder="MM/AA" required />
+              <label for="payment-amount">Monto pagado</label>
+              <input type="number" id="payment-amount" min="1" step="0.01" required />
             </div>
 
             <div class="field">
-              <label for="card-cvv">CVV</label>
-              <input type="text" id="card-cvv" inputmode="numeric" maxlength="4" placeholder="123" required />
+              <label for="payment-note">Nota opcional</label>
+              <input type="text" id="payment-note" placeholder="Nombre usado en el pago" />
             </div>
           </div>
 
           <div class="divider"></div>
 
-          <button class="btn btn-primary" type="submit">Pagar y continuar con la solicitud</button>
+          <button class="btn btn-primary" type="submit">Registrar pago pendiente y continuar</button>
           <a id="change-plan" class="btn btn-secondary" href="precios.html">Cambiar de plan</a>
         </form>
       </section>
@@ -681,8 +797,8 @@
 
   <footer>
     <div class="container">
-      Originalidad Acad&eacute;mica - Pago de planes para textos m&aacute;s humanos, claros y responsables<br />
-      Panam&aacute; &middot; Instagram: @resolviendotrabajos &middot; <a href="soporte.html">Soporte</a>
+      ZeroCopy IA - Pago de planes para textos m&aacute;s humanos, claros y responsables<br />
+      Panam&aacute; &middot; Instagram: @resolviendotrabajos &middot; Soporte: resolviendot@gmail.com &middot; WhatsApp: +507 0000-0000
     </div>
   </footer>
 
@@ -775,8 +891,9 @@
     const selectedPlanKey = plans[params.get("plan")] ? params.get("plan") : "academico";
     const selectedPlan = plans[selectedPlanKey];
     const requestUrl = `solicitar.html?plan=${encodeURIComponent(selectedPlanKey)}`;
+    const selectedPlanAmount = Number(selectedPlan.price.replace("$", ""));
 
-    document.title = decodeHTML(`Pago ${selectedPlan.name} - Originalidad Acad&eacute;mica`);
+    document.title = decodeHTML(`Pago ${selectedPlan.name} - ZeroCopy IA`);
     document.getElementById("hero-title").textContent = decodeHTML(`Confirma tu ${selectedPlan.name}`);
     document.getElementById("hero-text").textContent = decodeHTML(selectedPlan.description);
     document.getElementById("plan-name").textContent = decodeHTML(selectedPlan.name);
@@ -786,6 +903,7 @@
     document.getElementById("plan-pages").textContent = selectedPlan.pages;
     document.getElementById("summary-price").textContent = selectedPlan.price;
     document.getElementById("summary-name").textContent = decodeHTML(selectedPlan.name);
+    document.getElementById("payment-amount").value = selectedPlanAmount.toFixed(2);
 
     const benefitsList = document.getElementById("benefits-list");
     const summaryList = document.getElementById("summary-list");
@@ -803,25 +921,75 @@
     });
 
     const paymentMethodInputs = document.querySelectorAll("input[name='payment-method']");
-    const cardFields = ["card-name", "card-number", "card-expiry", "card-cvv"].map((id) => document.getElementById(id));
+    const automaticPaymentPanel = document.getElementById("automatic-payment-panel");
+    const manualPaymentFields = document.getElementById("manual-payment-fields");
+    const manualFieldInputs = manualPaymentFields.querySelectorAll("input");
+    const submitButton = document.querySelector("#payment-form button[type='submit']");
 
-    function syncPaymentFields() {
+    function syncPaymentMethod() {
       const selectedMethod = document.querySelector("input[name='payment-method']:checked").value;
-      const requiresCard = selectedMethod === "tarjeta";
+      const isAutomaticPlaceholder = selectedMethod === "paypal" || selectedMethod === "banco-general";
 
-      cardFields.forEach((field) => {
-        field.required = requiresCard;
-        field.disabled = !requiresCard;
+      automaticPaymentPanel.hidden = !isAutomaticPlaceholder;
+      manualPaymentFields.hidden = isAutomaticPlaceholder;
+      submitButton.disabled = isAutomaticPlaceholder;
+      submitButton.textContent = isAutomaticPlaceholder
+        ? "Metodo automatico por conectar"
+        : "Registrar pago pendiente y continuar";
+
+      manualFieldInputs.forEach((input) => {
+        input.disabled = isAutomaticPlaceholder;
       });
     }
 
-    paymentMethodInputs.forEach((input) => input.addEventListener("change", syncPaymentFields));
-    syncPaymentFields();
+    paymentMethodInputs.forEach((input) => input.addEventListener("change", syncPaymentMethod));
+    syncPaymentMethod();
 
-    document.getElementById("payment-form").addEventListener("submit", (event) => {
+    function fileToAttachment(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = () => {
+          resolve({
+            name: file.name,
+            type: file.type || "application/octet-stream",
+            size: file.size,
+            dataUrl: reader.result
+          });
+        };
+
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    document.getElementById("payment-form").addEventListener("submit", async (event) => {
       event.preventDefault();
+      const selectedMethod = document.querySelector("input[name='payment-method']:checked").value;
+
+      if (selectedMethod === "paypal" || selectedMethod === "banco-general") {
+        return;
+      }
+
+      const proofFile = document.getElementById("payment-proof").files[0];
+      const transactionId = document.getElementById("payment-reference").value.trim();
+
+      if (!proofFile || !transactionId) {
+        return;
+      }
+
+      const proof = await fileToAttachment(proofFile);
       sessionStorage.setItem("oa_selected_plan", selectedPlanKey);
-      sessionStorage.setItem("oa_payment_token", `${Date.now()}-${Math.random().toString(16).slice(2)}`);
+      sessionStorage.setItem("oa_payment_token", transactionId);
+      sessionStorage.setItem("oa_payment_data", JSON.stringify({
+        paymentMethod: document.querySelector("input[name='payment-method']:checked").value,
+        amount: Number(document.getElementById("payment-amount").value || selectedPlanAmount),
+        currency: "USD",
+        transactionId,
+        paymentToken: transactionId,
+        paymentNote: document.getElementById("payment-note").value.trim(),
+        paymentProof: proof
+      }));
       registerPendingSubscription();
       window.location.href = requestUrl;
     });

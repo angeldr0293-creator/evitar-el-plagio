@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mi panel - Originalidad Académica</title>
+  <title>Mi panel - ZeroCopy IA</title>
   <link rel="stylesheet" href="css/notifications.css" />
   <style>
     * {
@@ -219,6 +219,17 @@
 
     .stat {
       padding: 22px;
+    }
+
+    .stat-link {
+      color: inherit;
+      display: block;
+      text-decoration: none;
+      transition: 0.2s ease;
+    }
+
+    .stat-link:hover {
+      transform: translateY(-2px);
     }
 
     .stat strong {
@@ -553,15 +564,9 @@
     <div class="container">
       <nav class="nav">
         <a href="index.html" class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 48 48">
-              <path d="M24 4 40 10v12c0 11-6.8 18.2-16 22C14.8 40.2 8 33 8 22V10l16-6Z"></path>
-              <path d="M24 13v22"></path>
-              <path d="m16 23 5 5 11-12"></path>
-            </svg>
-          </span>
+          <span class="brand-mark brand-logo" aria-hidden="true" style="width:72px;height:48px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;"><img src="assets/zerocopy-logo-header.png" alt="" style="width:100%;height:100%;object-fit:contain;display:block;" /></span>
           <span>
-            <span class="brand-title">Originalidad Académica</span>
+            <span class="brand-title" style="white-space:nowrap;">ZeroCopy IA <small style="color:#2b7a68;font-family:Arial, Helvetica, sans-serif;font-size:10px;font-weight:800;letter-spacing:0;margin-left:4px;vertical-align:middle;white-space:nowrap;">by RT</small></span>
             <span class="brand-subtitle">Panel personalizado del estudiante</span>
           </span>
         </a>
@@ -604,10 +609,10 @@
           <strong id="total-requests">0</strong>
           <span>Solicitudes enviadas</span>
         </article>
-        <article class="stat">
+        <a class="stat stat-link" href="recibidos.html">
           <strong id="received-requests">0</strong>
           <span>Trabajos recibidos</span>
-        </article>
+        </a>
         <article class="stat">
           <strong id="latest-package">-</strong>
           <span>Último paquete usado</span>
@@ -751,6 +756,19 @@
       `;
     }
 
+    function getDeliveryDate(request) {
+      return new Date(request.deliveredAt || request.updatedAt || request.assignedAt || request.createdAt);
+    }
+
+    function isReceivedArchiveReady(request) {
+      if (!request.delivery || !(request.delivery.url || request.delivery.dataUrl)) {
+        return false;
+      }
+
+      const deliveredAt = getDeliveryDate(request);
+      return Number.isFinite(deliveredAt.getTime()) && Date.now() - deliveredAt.getTime() >= 24 * 60 * 60 * 1000;
+    }
+
     function getRequestPages(request) {
       const directPages = Number(request.pages);
 
@@ -800,11 +818,13 @@
       const requests = getCurrentUserRequests();
       const requestsList = document.getElementById("requests-list");
       const creditSummary = getCreditSummary(requests);
+      const deliveredRequests = requests.filter((request) => request.delivery && (request.delivery.url || request.delivery.dataUrl));
+      const activeRequests = requests.filter((request) => !isReceivedArchiveReady(request));
 
       document.getElementById("welcome-title").textContent = `Hola, ${user.name}`;
       document.getElementById("account-email").textContent = user.email;
-      document.getElementById("total-requests").textContent = requests.length;
-      document.getElementById("received-requests").textContent = requests.filter((item) => getClientRequestStatusLabel(item) === "Recibido").length;
+      document.getElementById("total-requests").textContent = requests.length - deliveredRequests.length;
+      document.getElementById("received-requests").textContent = deliveredRequests.length;
       document.getElementById("latest-package").textContent = requests[0] ? packageNames[requests[0].package] : "-";
       document.getElementById("available-credits").textContent = `${creditSummary.availableCredits} créditos`;
       document.getElementById("credits-detail").textContent = creditSummary.totalCredits
@@ -825,18 +845,18 @@
       });
       setupCreditBadges();
 
-      if (!requests.length) {
+      if (!activeRequests.length) {
         requestsList.innerHTML = `
           <div class="empty-state">
-            <h3>Aún no tienes solicitudes</h3>
-            <p>Cuando envíes tu primer trabajo, aparecerá aquí con su paquete, fecha y estado.</p>
+            <h3>No tienes solicitudes activas</h3>
+            <p>Cuando envíes un nuevo trabajo o tengas una entrega reciente, aparecerá aquí. Los trabajos con más de 24 horas de recibidos pasan al historial.</p>
             <a class="btn" href="${canSendWork ? "formulario.html" : "precios.html"}">${canSendWork ? "Enviar mi primer trabajo" : "Comprar créditos"}</a>
           </div>
         `;
         return;
       }
 
-      requestsList.innerHTML = requests.map((request) => `
+      requestsList.innerHTML = activeRequests.map((request) => `
         <article class="request-card">
           <div class="request-top">
             <div>

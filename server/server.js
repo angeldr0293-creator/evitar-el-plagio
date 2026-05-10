@@ -56,6 +56,9 @@ const EMAIL_PROVIDER = (process.env.EMAIL_PROVIDER || "").toLowerCase();
 const EMAIL_FROM = process.env.EMAIL_FROM || "";
 const EMAIL_REPLY_TO = process.env.EMAIL_REPLY_TO || EMAIL_FROM;
 const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
+const TURNSTILE_SITE_KEY = process.env.TURNSTILE_SITE_KEY || "";
+const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY || "";
+const CANONICAL_HOST = (process.env.CANONICAL_HOST || "").toLowerCase();
 const SESSION_COOKIE_NAME = "oa_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 const FORCE_HTTPS = process.env.FORCE_HTTPS === "true" || process.env.NODE_ENV === "production";
@@ -69,15 +72,22 @@ const defaultState = {
 
 const ALLOWED_USER_ROLES = ["client", "teacher"];
 const ALLOWED_REQUEST_STATUSES = ["Pendiente de pago", "Recibida", "Asignada", "Visto", "Trabajando", "En proceso", "Lista", "Entrega subida", "Entregada"];
-const ALLOWED_SUBSCRIPTION_STATUSES = ["Activa", "Cancelada", "Expirada", "Pendiente"];
+const ALLOWED_SUBSCRIPTION_STATUSES = ["Pendiente", "Pagado", "Rechazado", "Reembolsado", "Expirado"];
+const LEGACY_SUBSCRIPTION_STATUS_MAP = {
+  Activa: "Pagado",
+  Cancelada: "Rechazado",
+  Expirada: "Expirado"
+};
 const ALLOWED_PLANS = ["inicial", "academico", "premium"];
 const ALLOWED_REQUEST_PACKAGES = [...ALLOWED_PLANS, "creditos"];
 const REQUEST_FILE_EXTENSIONS = [".doc", ".docx", ".pdf", ".txt"];
 const DELIVERY_FILE_EXTENSIONS = [".doc", ".docx", ".pdf", ".txt"];
+const PAYMENT_PROOF_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg"];
 const MAX_REQUEST_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_REQUEST_TOTAL_SIZE = 15 * 1024 * 1024;
 const MAX_REQUEST_FILES = 5;
 const MAX_DELIVERY_FILE_SIZE = 2 * 1024 * 1024;
+const MAX_PAYMENT_PROOF_SIZE = 5 * 1024 * 1024;
 const DANGEROUS_FILE_EXTENSIONS = new Set([
   ".bat", ".cmd", ".com", ".cpl", ".dll", ".exe", ".hta", ".jar", ".js", ".jse",
   ".lnk", ".msi", ".ps1", ".scr", ".sh", ".vb", ".vbe", ".vbs", ".wsf"
@@ -403,6 +413,14 @@ function validateFileSignature(buffer, extension, label) {
   if (extension === ".txt" && buffer.includes(0)) {
     throw createValidationError(`${label} no parece ser un TXT valido.`);
   }
+
+  if (extension === ".png" && buffer.subarray(0, 8).toString("hex") !== "89504e470d0a1a0a") {
+    throw createValidationError(`${label} no parece ser un PNG valido.`);
+  }
+
+  if ((extension === ".jpg" || extension === ".jpeg") && buffer.subarray(0, 3).toString("hex") !== "ffd8ff") {
+    throw createValidationError(`${label} no parece ser un JPG valido.`);
+  }
 }
 
 function storeAttachmentFile(file, allowedExtensions, maxSize, label) {
@@ -459,6 +477,40 @@ function sanitizeAttachment(file, allowedExtensions, maxSize, label) {
   }
 
   return { name, type, size, storageKey, url: `${FILES_PUBLIC_PATH}/${storageKey}` };
+}
+
+function normalizeSubscriptionStatus(status) {
+  const cleanStatus = toCleanString(status || "Pendiente", 40);
+  return LEGACY_SUBSCRIPTION_STATUS_MAP[cleanStatus] || cleanStatus || "Pendiente";
+}
+
+function sanitizePaymentProof(file) {
+  if (!file) {
+    return null;
+  }
+
+  return sanitizeAttachment(file, PAYMENT_PROOF_EXTENSIONS, MAX_PAYMENT_PROOF_SIZE, "el comprobante de pago");
+}
+
+function sanitizePaymentAmount(value, plan) {
+  const planPrices = {
+    inicial: 14.99,
+    academico: 21.99,
+    premium: 36.99
+  };
+  const amount = Number(value || planPrices[plan] || 0);
+
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 10000) {
+    throw createValidationError("El monto del pago no es valido.");
+  }
+
+  return Number(amount.toFixed(2));
+}
+
+function isPaidSubscription(subscription) {
+  return subscription
+    && subscription.status === "Pagado"
+    && (!subscription.expiresAt || new Date(subscription.expiresAt) >= new Date());
 }
 
 function sanitizePageDetails(pageDetails, validFileNames) {
@@ -663,7 +715,52 @@ function createRateLimiter({ windowMs, max, keyPrefix }) {
   };
 }
 
-function validateRegistrationSpamBarrier(body = {}) {
+async function verifyTurnstileToken(token, request) {
+  const cleanToken = toCleanString(token, 2048);
+
+  if (!TURNSTILE_SECRET_KEY) {
+    return false;
+  }
+
+  if (!cleanToken) {
+    throw createPublicError(400, "Completa la verificacion anti-spam.");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const verification = new URLSearchParams();
+    verification.set("secret", TURNSTILE_SECRET_KEY);
+    verification.set("response", cleanToken);
+    verification.set("remoteip", getClientIp(request));
+
+    const turnstileResponse = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      body: verification,
+      signal: controller.signal
+    });
+    const result = await turnstileResponse.json().catch(() => ({}));
+
+    if (!turnstileResponse.ok || !result.success) {
+      logSecurityEvent("turnstile_rejected", { ip: getClientIp(request), errors: result["error-codes"] || [] });
+      throw createPublicError(400, "No se pudo validar la verificacion anti-spam.");
+    }
+
+    return true;
+  } catch (error) {
+    if (error.publicMessage) {
+      throw error;
+    }
+
+    logSecurityEvent("turnstile_error", { ip: getClientIp(request), error: error.message });
+    throw createPublicError(400, "No se pudo validar la verificacion anti-spam.");
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function validateRegistrationSpamBarrier(body = {}, request) {
   const website = toCleanString(body.website, 120);
   const captchaAnswer = toCleanString(body.captchaAnswer, 40).toLowerCase();
   const formStartedAt = Number(body.formStartedAt || 0);
@@ -671,6 +768,10 @@ function validateRegistrationSpamBarrier(body = {}) {
 
   if (website) {
     throw createPublicError(400, "No se pudo validar el registro.");
+  }
+
+  if (await verifyTurnstileToken(body.turnstileToken, request)) {
+    return;
   }
 
   if (captchaAnswer !== "original") {
@@ -913,8 +1014,15 @@ function sanitizeSubscription(subscription, usersById) {
     id: requireCleanString(subscription.id, "El id de la suscripcion", 80),
     userId,
     plan: requireAllowedValue(subscription.plan, ALLOWED_PLANS, "El plan"),
-    status: requireAllowedValue(subscription.status || "Activa", ALLOWED_SUBSCRIPTION_STATUSES, "El estado de la suscripcion"),
-    paymentToken: toCleanString(subscription.paymentToken, 120),
+    status: requireAllowedValue(normalizeSubscriptionStatus(subscription.status), ALLOWED_SUBSCRIPTION_STATUSES, "El estado de la suscripcion"),
+    paymentMethod: requireCleanString(subscription.paymentMethod || "manual", "El metodo de pago", 80),
+    amount: sanitizePaymentAmount(subscription.amount, subscription.plan),
+    currency: toCleanString(subscription.currency || "USD", 8) || "USD",
+    transactionId: toCleanString(subscription.transactionId || subscription.paymentToken, 120),
+    paymentToken: toCleanString(subscription.paymentToken || subscription.transactionId, 120),
+    paymentProof: sanitizePaymentProof(subscription.paymentProof),
+    reviewedAt: sanitizeOptionalDate(subscription.reviewedAt, "La fecha de revision", true),
+    reviewedBy: toCleanString(subscription.reviewedBy, 80),
     createdAt: sanitizeOptionalDate(subscription.createdAt || new Date().toISOString(), "La fecha de creacion"),
     startsAt: sanitizeOptionalDate(subscription.startsAt || subscription.createdAt || new Date().toISOString(), "La fecha de inicio", true),
     expiresAt: sanitizeOptionalDate(subscription.expiresAt, "La fecha de expiracion", true),
@@ -1188,6 +1296,25 @@ app.use((request, response, next) => {
 });
 
 app.use((request, response, next) => {
+  const requestHost = (request.get("host") || "").toLowerCase();
+  const hostWithoutPort = requestHost.split(":")[0];
+
+  if (!CANONICAL_HOST || !hostWithoutPort || hostWithoutPort === CANONICAL_HOST) {
+    next();
+    return;
+  }
+
+  if (hostWithoutPort === `www.${CANONICAL_HOST}`) {
+    const forwardedProto = request.get("x-forwarded-proto");
+    const protocol = FORCE_HTTPS || forwardedProto === "https" || request.secure ? "https" : request.protocol;
+    response.redirect(308, `${protocol}://${CANONICAL_HOST}${request.originalUrl}`);
+    return;
+  }
+
+  next();
+});
+
+app.use((request, response, next) => {
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setHeader("X-Frame-Options", "DENY");
   response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
@@ -1195,7 +1322,7 @@ app.use((request, response, next) => {
   response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
   response.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
   );
 
   if (FORCE_HTTPS) {
@@ -1274,6 +1401,13 @@ app.get("/api/state", (request, response) => {
   }
 
   response.json(filterStateForUser(auth.state, auth.user));
+});
+
+app.get("/api/public-config", (request, response) => {
+  response.json({
+    ok: true,
+    turnstileSiteKey: TURNSTILE_SITE_KEY
+  });
 });
 
 app.post("/api/state", (request, response) => {
@@ -1483,8 +1617,15 @@ app.post("/api/admin/subscriptions", adminActionRateLimit, (request, response) =
       id: crypto.randomUUID(),
       userId: request.body?.userId,
       plan: request.body?.plan,
-      status: request.body?.status || "Activa",
-      paymentToken: request.body?.paymentToken || `admin-${crypto.randomUUID()}`,
+      status: request.body?.status || "Pagado",
+      paymentMethod: request.body?.paymentMethod || "manual-admin",
+      amount: request.body?.amount,
+      currency: request.body?.currency || "USD",
+      transactionId: request.body?.transactionId || request.body?.paymentToken || `admin-${crypto.randomUUID()}`,
+      paymentToken: request.body?.paymentToken || request.body?.transactionId || `admin-${crypto.randomUUID()}`,
+      paymentProof: request.body?.paymentProof || null,
+      reviewedAt: request.body?.status === "Pagado" || !request.body?.status ? createdAt.toISOString() : "",
+      reviewedBy: request.body?.status === "Pagado" || !request.body?.status ? auth.user.id : "",
       createdAt: createdAt.toISOString(),
       startsAt,
       expiresAt
@@ -1521,9 +1662,31 @@ app.post("/api/subscriptions/:subscriptionId", adminActionRateLimit, (request, r
     }
 
     targetSubscription.plan = requireAllowedValue(request.body?.plan || targetSubscription.plan, ALLOWED_PLANS, "El plan");
-    targetSubscription.status = requireAllowedValue(request.body?.status || targetSubscription.status, ALLOWED_SUBSCRIPTION_STATUSES, "El estado de la suscripcion");
+    const nextStatus = requireAllowedValue(normalizeSubscriptionStatus(request.body?.status || targetSubscription.status), ALLOWED_SUBSCRIPTION_STATUSES, "El estado de la suscripcion");
+    targetSubscription.status = nextStatus;
     targetSubscription.expiresAt = sanitizeOptionalDate(request.body?.expiresAt || targetSubscription.expiresAt, "La fecha de expiracion", true);
     targetSubscription.startsAt = sanitizeOptionalDate(request.body?.startsAt || targetSubscription.startsAt, "La fecha de inicio", true);
+    targetSubscription.paymentMethod = toCleanString(request.body?.paymentMethod || targetSubscription.paymentMethod, 80);
+    targetSubscription.amount = request.body?.amount ? sanitizePaymentAmount(request.body.amount, targetSubscription.plan) : targetSubscription.amount;
+    targetSubscription.currency = toCleanString(request.body?.currency || targetSubscription.currency || "USD", 8);
+    targetSubscription.transactionId = toCleanString(request.body?.transactionId || targetSubscription.transactionId || targetSubscription.paymentToken, 120);
+    targetSubscription.paymentToken = toCleanString(request.body?.paymentToken || targetSubscription.paymentToken || targetSubscription.transactionId, 120);
+
+    if (request.body?.paymentProof) {
+      targetSubscription.paymentProof = sanitizePaymentProof(request.body.paymentProof);
+    }
+
+    if (nextStatus === "Pagado") {
+      targetSubscription.reviewedAt = new Date().toISOString();
+      targetSubscription.reviewedBy = auth.user.id;
+      state.oa_requests.forEach((item) => {
+        if (item.subscriptionId === targetSubscription.id && item.status === "Pendiente de pago") {
+          item.status = "Recibida";
+          item.updatedAt = new Date().toISOString();
+          appendStatusHistory(item, "Recibida", auth.user, { note: "Pago confirmado" });
+        }
+      });
+    }
 
     saveValidatedState(state);
     logSecurityEvent("subscription_updated_by_admin", { actorId: auth.user.id, subscriptionId: targetSubscription.id });
@@ -1548,7 +1711,15 @@ app.post("/api/subscriptions", formRateLimit, (request, response) => {
   try {
     const state = getValidatedState();
     const plan = requireAllowedValue(request.body?.plan, ALLOWED_PLANS, "El plan");
-    const paymentToken = toCleanString(request.body?.paymentToken || crypto.randomUUID(), 120);
+    const paymentMethod = requireCleanString(request.body?.paymentMethod || "transferencia", "El metodo de pago", 80);
+    const transactionId = requireCleanString(request.body?.transactionId || request.body?.paymentToken || crypto.randomUUID(), "La referencia de pago", 120);
+    const amount = sanitizePaymentAmount(request.body?.amount, plan);
+    const paymentProof = sanitizePaymentProof(request.body?.paymentProof);
+    const paymentToken = transactionId;
+
+    if (!paymentProof) {
+      throw createValidationError("Debes subir un comprobante de pago.");
+    }
     const existingByToken = state.oa_subscriptions.find((subscription) => (
       subscription.userId === auth.user.id && subscription.paymentToken === paymentToken
     ));
@@ -1561,7 +1732,7 @@ app.post("/api/subscriptions", formRateLimit, (request, response) => {
     const latestActive = state.oa_subscriptions.find((subscription) => (
       subscription.userId === auth.user.id
       && subscription.plan === plan
-      && subscription.status === "Activa"
+      && isPaidSubscription(subscription)
       && new Date(subscription.expiresAt) >= new Date()
     ));
 
@@ -1575,8 +1746,13 @@ app.post("/api/subscriptions", formRateLimit, (request, response) => {
       id: crypto.randomUUID(),
       userId: auth.user.id,
       plan,
-      status: "Activa",
+      status: "Pendiente",
+      paymentMethod,
+      amount,
+      currency: request.body?.currency || "USD",
+      transactionId,
       paymentToken,
+      paymentProof,
       createdAt: createdAt.toISOString(),
       startsAt: createdAt.toISOString(),
       expiresAt: addDays(createdAt, 30).toISOString()
@@ -1610,20 +1786,24 @@ app.post("/api/requests", formRateLimit, (request, response) => {
       : null;
     const subscriptionsById = new Map(state.oa_subscriptions.map((subscription) => [subscription.id, subscription]));
     const usersById = new Map(state.oa_users.map((user) => [user.id, user]));
+    const requestSubscription = request.body?.subscriptionId ? subscriptionsById.get(toCleanString(request.body.subscriptionId, 80)) : null;
+    const initialStatus = requestSubscription && !isPaidSubscription(requestSubscription)
+      ? "Pendiente de pago"
+      : assignedTeacher ? "Asignada" : "Recibida";
     const nextRequest = sanitizeRequest({
       ...request.body,
       id: crypto.randomUUID(),
       userId: auth.user.id,
-      status: assignedTeacher ? "Asignada" : "Recibida",
+      status: initialStatus,
       createdAt: new Date().toISOString(),
-      teacherId: assignedTeacher ? assignedTeacher.id : "",
-      teacherName: assignedTeacher ? assignedTeacher.name : "",
-      assignedAt: assignedTeacher ? new Date().toISOString() : ""
+      teacherId: assignedTeacher && initialStatus !== "Pendiente de pago" ? assignedTeacher.id : "",
+      teacherName: assignedTeacher && initialStatus !== "Pendiente de pago" ? assignedTeacher.name : "",
+      assignedAt: assignedTeacher && initialStatus !== "Pendiente de pago" ? new Date().toISOString() : ""
     }, usersById, subscriptionsById);
 
     appendStatusHistory(nextRequest, "Recibida", auth.user, { note: "Solicitud creada" });
 
-    if (assignedTeacher) {
+    if (assignedTeacher && initialStatus !== "Pendiente de pago") {
       appendStatusHistory(nextRequest, "Asignada", auth.user, {
         teacherId: assignedTeacher.id,
         teacherName: assignedTeacher.name,
@@ -1708,6 +1888,10 @@ app.post("/api/requests/:requestId/teacher", adminActionRateLimit, (request, res
       throw createPublicError(404, "Solicitud no encontrada.");
     }
 
+    if (targetRequest.status === "Pendiente de pago") {
+      throw createPublicError(409, "Confirma el pago antes de asignar profesor.");
+    }
+
     if (teacherId && !teacher) {
       throw createPublicError(404, "Profesor no encontrado.");
     }
@@ -1789,13 +1973,13 @@ app.post("/api/requests/:requestId/delivery", formRateLimit, (request, response)
   }
 });
 
-app.post("/api/register", registerRateLimit, (request, response) => {
+app.post("/api/register", registerRateLimit, async (request, response) => {
   const state = readState();
   const { name = "", email = "", phone = "", password = "" } = request.body || {};
   let normalizedEmail = "";
 
   try {
-    validateRegistrationSpamBarrier(request.body || {});
+    await validateRegistrationSpamBarrier(request.body || {}, request);
     normalizedEmail = requireValidEmail(email);
     requireCleanString(name, "El nombre", 120);
     requirePassword(password);
@@ -1918,7 +2102,7 @@ app.post("/api/admin/urgent-email", adminActionRateLimit, async (request, respon
   }
 
   if (auth.user.role !== "admin") {
-    sendError(response, createPublicError(403, "No tienes permiso para enviar correos urgentes."));
+    sendError(response, createPublicError(403, "No tienes permiso para enviar mensajes de soporte."));
     return;
   }
 
@@ -1934,22 +2118,22 @@ app.post("/api/admin/urgent-email", adminActionRateLimit, async (request, respon
     }
 
     const result = await sendTransactionalEmail({
-      event: "urgent_admin_message",
+      event: "support_admin_message",
       to: client.email,
       subject,
       text: createEmailText({
         greeting: `Hola ${client.name || "cliente"},`,
         lines: [
           message,
-          "Este mensaje fue enviado por la plataforma porque requiere tu atención."
+          "Este mensaje fue enviado por soporte desde la plataforma."
         ]
       })
     });
 
-    logSecurityEvent("urgent_email_sent", { actorId: auth.user.id, userId: client.id, delivered: result.delivered, queued: result.queued });
+    logSecurityEvent("support_email_sent", { actorId: auth.user.id, userId: client.id, delivered: result.delivered, queued: result.queued });
     response.json({ ok: true, delivered: result.delivered, queued: result.queued });
   } catch (error) {
-    sendError(response, error, "No se pudo enviar el correo urgente.");
+    sendError(response, error, "No se pudo enviar el mensaje de soporte.");
   }
 });
 
@@ -2035,7 +2219,7 @@ app.use((error, request, response, next) => {
 });
 
 app.listen(PORT, HOST, () => {
-  console.log(`Originalidad Academica listo en ${PUBLIC_APP_URL}/`);
+  console.log(`ZeroCopy IA listo en ${PUBLIC_APP_URL}/`);
 
   if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
     console.warn("Faltan ADMIN_EMAIL o ADMIN_PASSWORD en el entorno.");

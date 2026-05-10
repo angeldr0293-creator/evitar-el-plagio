@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trabajos recibidos - ZeroCopy IA</title>
+  <link rel="stylesheet" href="css/notifications.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f8faf9; color: #071832; font-family: Arial, Helvetica, sans-serif; line-height: 1.6; }
+    .container { margin: 0 auto; width: min(92%, 1180px); }
+    .site-header { background: rgba(255,255,255,0.94); border-bottom: 1px solid #dfe6ea; box-shadow: 0 8px 24px rgba(7,24,50,0.04); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px); }
+    .nav { align-items: center; display: flex; gap: 12px; justify-content: space-between; min-height: 66px; }
+    .brand { align-items: center; color: #071832; display: flex; gap: 10px; min-width: 0; text-decoration: none; }
+    .brand-mark { color: #071832; display: inline-flex; flex: 0 0 auto; height: 38px; width: 38px; }
+    .brand-mark svg, svg { fill: none; height: 100%; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; width: 100%; }
+    .brand-title { display: block; font-family: Georgia, "Times New Roman", serif; font-size: clamp(19px, 3vw, 24px); font-weight: 700; line-height: 1.1; }
+    .brand-subtitle { color: #475569; display: block; font-size: 13px; margin-top: 2px; }
+    .nav-actions { align-items: center; display: flex; gap: 8px; }
+    .btn, .ghost-btn { align-items: center; border-radius: 12px; cursor: pointer; display: inline-flex; font-weight: 800; justify-content: center; min-height: 42px; padding: 9px 13px; text-decoration: none; white-space: nowrap; }
+    .btn { background: #071832; border: 1px solid #071832; color: white; box-shadow: 0 12px 24px rgba(7,24,50,0.16); }
+    .ghost-btn { background: white; border: 1px solid #d8e0e5; color: #071832; }
+    main { padding: 28px 0 76px; }
+    .hero { background: linear-gradient(135deg, #071832, #123c43); border-radius: 24px; color: white; margin-bottom: 22px; padding: 34px; }
+    .hero h1 { font-family: Georgia, "Times New Roman", serif; font-size: clamp(34px, 4vw, 52px); line-height: 1.08; margin-bottom: 10px; }
+    .hero p { color: #dbe7e6; max-width: 780px; }
+    .panel { background: white; border: 1px solid #e2e9ec; border-radius: 20px; box-shadow: 0 14px 34px rgba(7,24,50,0.05); padding: 24px; }
+    .filters { display: grid; gap: 12px; grid-template-columns: 1.4fr repeat(2, minmax(150px, 0.6fr)) auto; margin-bottom: 18px; }
+    input { border: 1px solid #d8e0e5; border-radius: 12px; color: #071832; font: inherit; min-height: 44px; padding: 10px 12px; width: 100%; }
+    input:focus { border-color: #2b7a68; box-shadow: 0 0 0 4px rgba(43,122,104,0.12); outline: none; }
+    .received-list { display: grid; gap: 14px; }
+    .received-card, .empty-state { background: white; border: 1px solid #e2e9ec; border-radius: 16px; padding: 18px; }
+    .received-card { display: grid; gap: 12px; }
+    .received-top { align-items: start; display: flex; gap: 14px; justify-content: space-between; }
+    .received-card h2 { font-size: 20px; line-height: 1.2; }
+    .muted { color: #64748b; font-size: 14px; }
+    .pill { background: #edf6f3; border: 1px solid #cfe2dc; border-radius: 999px; color: #11493f; font-size: 12px; font-weight: 800; padding: 6px 10px; white-space: nowrap; }
+    .meta { color: #475569; display: grid; gap: 8px 14px; grid-template-columns: repeat(3, 1fr); font-size: 14px; }
+    .meta strong { color: #071832; }
+    .delivery { background: #edf6f3; border: 1px solid #cfe2dc; border-radius: 14px; color: #11493f; padding: 14px; }
+    .delivery a { color: #071832; font-weight: 800; }
+    .empty-state { color: #475569; text-align: center; }
+    .empty-state strong { color: #071832; display: block; font-family: Georgia, "Times New Roman", serif; font-size: 25px; margin-bottom: 6px; }
+    @media (max-width: 860px) { .filters, .meta { grid-template-columns: 1fr; } .received-top { display: grid; } }
+    @media (max-width: 640px) { .brand-title, .brand-subtitle { display: none; } .nav { padding: 10px 0; } .hero, .panel { padding: 22px; } .nav-actions { gap: 6px; } .ghost-btn, .btn { font-size: 13px; padding: 8px 10px; } }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <nav class="nav">
+        <a href="panel.html" class="brand">
+          <span class="brand-mark brand-logo" aria-hidden="true" style="width:72px;height:48px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;"><img src="assets/zerocopy-logo-header.png" alt="" style="width:100%;height:100%;object-fit:contain;display:block;" /></span>
+          <span>
+            <span class="brand-title" style="white-space:nowrap;">ZeroCopy IA <small style="color:#2b7a68;font-family:Arial, Helvetica, sans-serif;font-size:10px;font-weight:800;letter-spacing:0;margin-left:4px;vertical-align:middle;white-space:nowrap;">by RT</small></span>
+            <span class="brand-subtitle">Historial de trabajos recibidos</span>
+          </span>
+        </a>
+        <div class="nav-actions">
+          <a class="ghost-btn" href="panel.html">Panel</a>
+          <button class="ghost-btn" type="button" onclick="logout()">Cerrar sesión</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <section class="hero">
+        <h1>Trabajos recibidos</h1>
+        <p>Aquí se guardan tus entregas finales después de 24 horas. Puedes filtrarlas por nombre del trabajo o por fecha de recepción.</p>
+      </section>
+
+      <section class="panel">
+        <div class="filters">
+          <input id="search-filter" type="search" placeholder="Buscar por nombre del trabajo, archivo o tipo de ayuda" />
+          <input id="from-filter" type="date" aria-label="Fecha desde" />
+          <input id="to-filter" type="date" aria-label="Fecha hasta" />
+          <button id="clear-filters" class="ghost-btn" type="button">Limpiar</button>
+        </div>
+        <div id="received-list" class="received-list"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="auth/auth.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    const user = getCurrentUser();
+
+    if (!user) {
+      window.location.href = "registro.html?next=recibidos.html";
+    }
+
+    if (isAdminUser(user)) {
+      window.location.href = "admin.html";
+    }
+
+    if (isTeacherUser(user)) {
+      window.location.href = "profesor.html";
+    }
+
+    const packageNames = { inicial: "Inicial", academico: "Académico", premium: "Premium" };
+    const searchFilter = document.getElementById("search-filter");
+    const fromFilter = document.getElementById("from-filter");
+    const toFilter = document.getElementById("to-filter");
+    const receivedList = document.getElementById("received-list");
+
+    function escapeHTML(value) {
+      return String(value || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+    }
+
+    function formatDate(value) {
+      if (!value) return "-";
+      return new Intl.DateTimeFormat("es", { year: "numeric", month: "short", day: "numeric" }).format(new Date(value));
+    }
+
+    function formatFileSize(bytes) {
+      if (!bytes) return "";
+      return bytes < 1048576 ? `${Math.ceil(bytes / 1024)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
+    }
+
+    function getDeliveryDate(request) {
+      return new Date(request.deliveredAt || request.updatedAt || request.assignedAt || request.createdAt);
+    }
+
+    function isReceivedArchiveReady(request) {
+      if (!request.delivery || !(request.delivery.url || request.delivery.dataUrl)) {
+        return false;
+      }
+
+      const deliveredAt = getDeliveryDate(request);
+      return Number.isFinite(deliveredAt.getTime()) && Date.now() - deliveredAt.getTime() >= 24 * 60 * 60 * 1000;
+    }
+
+    function getFilterDate(value, endOfDay = false) {
+      if (!value) return null;
+      const date = new Date(`${value}T${endOfDay ? "23:59:59" : "00:00:00"}`);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function getReceivedRequests() {
+      const query = searchFilter.value.trim().toLowerCase();
+      const from = getFilterDate(fromFilter.value);
+      const to = getFilterDate(toFilter.value, true);
+
+      return getCurrentUserRequests()
+        .filter(isReceivedArchiveReady)
+        .filter((request) => {
+          const deliveryDate = getDeliveryDate(request);
+          const haystack = [
+            request.documentType,
+            request.helpType,
+            request.instructions,
+            request.delivery?.name,
+            packageNames[request.package] || request.package
+          ].join(" ").toLowerCase();
+
+          return (!query || haystack.includes(query))
+            && (!from || deliveryDate >= from)
+            && (!to || deliveryDate <= to);
+        })
+        .sort((a, b) => getDeliveryDate(b) - getDeliveryDate(a));
+    }
+
+    function renderReceived() {
+      const requests = getReceivedRequests();
+
+      if (!requests.length) {
+        receivedList.innerHTML = `
+          <div class="empty-state">
+            <strong>Sin trabajos recibidos</strong>
+            <p>No hay entregas con más de 24 horas que coincidan con tus filtros.</p>
+          </div>
+        `;
+        return;
+      }
+
+      receivedList.innerHTML = requests.map((request) => `
+        <article class="received-card">
+          <div class="received-top">
+            <div>
+              <h2>${escapeHTML(request.documentType || "Documento académico")}</h2>
+              <p class="muted">Recibido: ${formatDate(getDeliveryDate(request))}</p>
+            </div>
+            <span class="pill">Recibido</span>
+          </div>
+          <div class="meta">
+            <span><strong>Paquete:</strong> ${escapeHTML(packageNames[request.package] || request.package || "-")}</span>
+            <span><strong>Ayuda:</strong> ${escapeHTML(request.helpType || "-")}</span>
+            <span><strong>Páginas:</strong> ${escapeHTML(request.pages || "-")}</span>
+            <span><strong>Trabajo enviado:</strong> ${formatDate(request.createdAt)}</span>
+            <span><strong>Formato:</strong> ${escapeHTML(request.format || "-")}</span>
+            <span><strong>Hora acordada:</strong> ${escapeHTML(request.deliveryTime || "-")}</span>
+          </div>
+          <div class="delivery">
+            <strong>Archivo final</strong><br />
+            <a href="${request.delivery.url || request.delivery.dataUrl}" download="${escapeHTML(request.delivery.name)}">${escapeHTML(request.delivery.name || "Trabajo final")} ${formatFileSize(request.delivery.size)}</a>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    [searchFilter, fromFilter, toFilter].forEach((input) => input.addEventListener("input", renderReceived));
+    document.getElementById("clear-filters").addEventListener("click", () => {
+      searchFilter.value = "";
+      fromFilter.value = "";
+      toFilter.value = "";
+      renderReceived();
+    });
+
+    renderReceived();
+  </script>
+</body>
+</html>

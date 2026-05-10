@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Administración - Originalidad Académica</title>
+  <title>Administración - ZeroCopy IA</title>
   <link rel="stylesheet" href="css/notifications.css" />
   <style>
     * {
@@ -928,15 +928,9 @@
     <div class="container">
       <nav class="nav">
         <a href="admin.html" class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 48 48">
-              <path d="M24 4 40 10v12c0 11-6.8 18.2-16 22C14.8 40.2 8 33 8 22V10l16-6Z"></path>
-              <path d="M17 24h14"></path>
-              <path d="M24 17v14"></path>
-            </svg>
-          </span>
+          <span class="brand-mark brand-logo" aria-hidden="true" style="width:72px;height:48px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;"><img src="assets/zerocopy-logo-header.png" alt="" style="width:100%;height:100%;object-fit:contain;display:block;" /></span>
           <span>
-            <span class="brand-title">Originalidad Académica</span>
+            <span class="brand-title" style="white-space:nowrap;">ZeroCopy IA <small style="color:#2b7a68;font-family:Arial, Helvetica, sans-serif;font-size:10px;font-weight:800;letter-spacing:0;margin-left:4px;vertical-align:middle;white-space:nowrap;">by RT</small></span>
             <span class="brand-subtitle">Panel privado de administración</span>
           </span>
         </a>
@@ -1044,13 +1038,15 @@
             <option value="premium">Paquete Premium</option>
           </select>
           <select id="payment-status" required>
-            <option value="Activa">Activa</option>
+            <option value="Pagado">Pagado</option>
             <option value="Pendiente">Pendiente</option>
-            <option value="Cancelada">Cancelada</option>
-            <option value="Expirada">Expirada</option>
+            <option value="Rechazado">Rechazado</option>
+            <option value="Reembolsado">Reembolsado</option>
           </select>
           <input id="payment-expires" type="date" required />
-          <input id="payment-token" type="text" placeholder="Referencia de pago opcional" />
+          <input id="payment-amount" type="number" min="1" step="0.01" placeholder="Monto" required />
+          <input id="payment-method" type="text" placeholder="Metodo: Yappy, transferencia..." required />
+          <input id="payment-token" type="text" placeholder="Referencia o transaccion" required />
           <button class="btn" type="submit">Registrar pago</button>
         </form>
 
@@ -1103,7 +1099,7 @@
     };
 
     const statusOptions = ["Pendiente de pago", "Recibida", "Asignada", "Visto", "Trabajando", "En proceso", "Lista", "Entrega subida", "Entregada"];
-    const subscriptionStatusOptions = ["Activa", "Pendiente", "Cancelada", "Expirada"];
+    const subscriptionStatusOptions = ["Pendiente", "Pagado", "Rechazado", "Reembolsado"];
     const clientsList = document.getElementById("clients-list");
     const clientSearch = document.getElementById("client-search");
     const adminAlert = document.getElementById("admin-alert");
@@ -1252,7 +1248,7 @@
     }
 
     function isSubscriptionActive(subscription) {
-      return Boolean(subscription && subscription.status === "Activa" && new Date(subscription.expiresAt) >= new Date());
+      return Boolean(subscription && isPaidSubscription(subscription));
     }
 
     function createTemporaryPassword() {
@@ -1442,7 +1438,9 @@
             ${subscriptionStatusOptions.map((status) => `<option value="${status}">${status}</option>`).join("")}
           </select>
           <input name="expiresAt" type="date" value="${getDefaultExpiryDate()}" required />
-          <input name="paymentToken" type="text" placeholder="Referencia opcional" />
+          <input name="amount" type="number" min="1" step="0.01" placeholder="Monto" required />
+          <input name="paymentMethod" type="text" placeholder="Metodo: Yappy, transferencia..." required />
+          <input name="paymentToken" type="text" placeholder="Referencia o transaccion" required />
           <button class="btn" type="submit">Registrar pago</button>
         </form>
       `;
@@ -1465,6 +1463,8 @@
               <div>
                 <strong>${escapeHTML(packageNames[subscription.plan] || subscription.plan)}</strong>
                 <p class="muted">Inicio: ${formatDate(subscription.startsAt)} · Vence: ${formatDate(subscription.expiresAt)}</p>
+                <p class="muted">Monto: ${formatMoney(subscription.amount || 0)} ${escapeHTML(subscription.currency || "USD")} · Metodo: ${escapeHTML(subscription.paymentMethod || "-")} · Ref: ${escapeHTML(subscription.transactionId || subscription.paymentToken || "-")}</p>
+                ${subscription.paymentProof ? `<a class="mini-action" href="${escapeHTML(subscription.paymentProof.url)}" target="_blank" rel="noopener">Ver comprobante</a>` : `<span class="pill">Sin comprobante</span>`}
               </div>
               <div class="work-actions">
                 <select class="subscription-plan-select" data-subscription-id="${escapeHTML(subscription.id)}" ${subscription.inferred ? "disabled" : ""}>
@@ -1700,7 +1700,10 @@
             plan: data.get("plan"),
             status: data.get("status"),
             expiresAt: data.get("expiresAt"),
-            paymentToken: data.get("paymentToken")
+            amount: data.get("amount"),
+            paymentMethod: data.get("paymentMethod"),
+            paymentToken: data.get("paymentToken"),
+            transactionId: data.get("paymentToken")
           });
           renderPaymentsBoard();
           renderClients();
@@ -1730,6 +1733,8 @@
           <div>
             <strong>${escapeHTML(subscription.client.name)} - ${escapeHTML(packageNames[subscription.plan] || subscription.plan)}</strong>
             <p class="muted">${escapeHTML(subscription.client.email)} · Inicio: ${formatDate(subscription.startsAt)} · Vence: ${formatDate(subscription.expiresAt)}</p>
+            <p class="muted">Monto: ${formatMoney(subscription.amount || 0)} ${escapeHTML(subscription.currency || "USD")} · Metodo: ${escapeHTML(subscription.paymentMethod || "-")} · Ref: ${escapeHTML(subscription.transactionId || subscription.paymentToken || "-")}</p>
+            ${subscription.paymentProof ? `<a class="mini-action" href="${escapeHTML(subscription.paymentProof.url)}" target="_blank" rel="noopener">Ver comprobante</a>` : `<span class="pill">Sin comprobante</span>`}
           </div>
           <div class="work-actions">
             <select class="subscription-plan-select" data-subscription-id="${escapeHTML(subscription.id)}" ${subscription.inferred ? "disabled" : ""}>
@@ -1780,11 +1785,11 @@
           ${client.teacher ? `<button class="ghost-btn clear-client-teacher" type="button" data-client-id="${escapeHTML(client.id)}">Quitar profesor fijo</button>` : ""}
         </div>
         <form class="urgent-email-form" data-client-id="${escapeHTML(client.id)}">
-          <strong>Correo urgente</strong>
+          <strong>Mensaje de soporte</strong>
           <p class="muted">Úsalo solo cuando la plataforma necesite avisar algo importante al cliente.</p>
-          <input name="subject" type="text" value="Mensaje urgente sobre tu solicitud" required />
-          <textarea name="message" placeholder="Escribe el mensaje urgente para el cliente." required></textarea>
-          <button class="ghost-btn" type="submit">Enviar correo urgente</button>
+          <input name="subject" type="text" value="Mensaje de soporte de ZeroCopy IA" required />
+          <textarea name="message" placeholder="Escribe el mensaje de soporte para el cliente." required></textarea>
+          <button class="ghost-btn" type="submit">Enviar mensaje de soporte</button>
           <span class="urgent-email-message" aria-live="polite"></span>
         </form>
         ${credentialBox}
@@ -1876,7 +1881,7 @@
       clientsList.innerHTML = visibleClients.map((client) => {
         const subscription = client.activeSubscription || client.latestSubscription;
         const planName = subscription ? packageNames[subscription.plan] || subscription.plan : "Sin plan";
-        const statusLabel = client.activeSubscription ? "Activa" : "Sin suscripción activa";
+        const statusLabel = client.activeSubscription ? "Pagado" : "Sin suscripción pagada";
         const expiryText = subscription ? `${formatDate(subscription.expiresAt)} · ${daysUntil(subscription.expiresAt)}` : "-";
         const pendingCount = client.requests.filter((request) => !request.teacherId || request.status === "Recibida").length;
 
@@ -2021,9 +2026,14 @@
           plan: document.getElementById("payment-plan").value,
           status: document.getElementById("payment-status").value,
           expiresAt: paymentExpires.value,
-          paymentToken: document.getElementById("payment-token").value.trim()
+          amount: document.getElementById("payment-amount").value,
+          paymentMethod: document.getElementById("payment-method").value.trim(),
+          paymentToken: document.getElementById("payment-token").value.trim(),
+          transactionId: document.getElementById("payment-token").value.trim()
         });
         document.getElementById("payment-token").value = "";
+        document.getElementById("payment-amount").value = "";
+        document.getElementById("payment-method").value = "";
         renderPaymentsBoard();
         renderClients();
       });

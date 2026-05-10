@@ -79,14 +79,15 @@
   }
 
   function buildTeacherNotifications(user) {
-    const requests = getTeacherRequests().map((request) => ({
+    const teacherRequests = getTeacherRequests();
+    const requests = teacherRequests.map((request) => ({
       title: `Trabajo ${getTeacherRequestStatusLabel(request.status).toLowerCase()}`,
       text: `${request.user && request.user.name ? request.user.name : "Cliente"} · ${request.documentType || "Documento académico"}`,
       date: request.updatedAt || request.assignedAt || request.createdAt,
       tone: request.status === "Lista" || request.status === "Entrega subida" || request.status === "Entregada" ? "success" : "info"
     }));
 
-    const assignedClientIds = new Set(getTeacherRequests().map((request) => request.userId));
+    const assignedClientIds = new Set(teacherRequests.map((request) => request.userId));
     const usersById = getUsers().reduce((result, item) => {
       result[item.id] = item;
       return result;

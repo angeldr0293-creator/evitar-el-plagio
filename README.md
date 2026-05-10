@@ -1,6 +1,6 @@
-# Evitar el Plagio
+# ZeroCopy IA
 
-Proyecto web para gestionar usuarios, solicitudes, paneles y notificaciones de Originalidad Academica.
+Proyecto web de ZeroCopy IA para gestionar usuarios, solicitudes, paneles, archivos, profesores y notificaciones.
 
 ## Instalacion
 
@@ -13,21 +13,24 @@ npm install
 Copia `.env.example` como `.env` y ajusta los valores locales o de hosting:
 
 ```text
-ADMIN_EMAIL=admin@tu-dominio.com
+ADMIN_EMAIL=admin@zerocopyia.com
 ADMIN_PASSWORD=cambia-esta-clave
 PORT=5173
 HOST=0.0.0.0
-PUBLIC_APP_URL=https://tu-dominio.com
-ALLOWED_ORIGINS=https://tu-dominio.com,http://localhost:5173
+PUBLIC_APP_URL=https://zerocopyia.com
+ALLOWED_ORIGINS=https://zerocopyia.com,https://www.zerocopyia.com,http://localhost:5173
+CANONICAL_HOST=zerocopyia.com
 SESSION_SECRET=cambia-este-secreto-largo-y-privado
 EMAIL_PROVIDER=resend
-EMAIL_FROM="Originalidad Académica <notificaciones@tu-dominio.com>"
-EMAIL_REPLY_TO=soporte@tu-dominio.com
+EMAIL_FROM="ZeroCopy IA <resolviendot@gmail.com>"
+EMAIL_REPLY_TO=resolviendot@gmail.com
 RESEND_API_KEY=re_xxxxxxxxx
+TURNSTILE_SITE_KEY=0x4AA...
+TURNSTILE_SECRET_KEY=0x4AA...
 ```
 
 El archivo `.env` no debe subirse al repositorio.
-`ALLOWED_ORIGINS` acepta uno o varios origenes separados por coma. En desarrollo puedes dejar `http://localhost:5173`; en produccion reemplaza `https://tu-dominio.com` por tu dominio real.
+`ALLOWED_ORIGINS` acepta uno o varios origenes separados por coma. En desarrollo puedes dejar `http://localhost:5173`; en produccion usa `https://zerocopyia.com` y `https://www.zerocopyia.com`.
 
 ## Ejecutar el proyecto
 
@@ -106,17 +109,20 @@ npm install
 
 ```text
 NODE_ENV=production
-ADMIN_EMAIL=admin@tu-dominio.com
+ADMIN_EMAIL=admin@zerocopyia.com
 ADMIN_PASSWORD=cambia-esta-clave
 PORT=5173
 HOST=0.0.0.0
-PUBLIC_APP_URL=https://tu-dominio.com
-ALLOWED_ORIGINS=https://tu-dominio.com
+PUBLIC_APP_URL=https://zerocopyia.com
+ALLOWED_ORIGINS=https://zerocopyia.com,https://www.zerocopyia.com
+CANONICAL_HOST=zerocopyia.com
 SESSION_SECRET=cambia-este-secreto-largo-y-privado
 EMAIL_PROVIDER=resend
-EMAIL_FROM="Originalidad Académica <notificaciones@tu-dominio.com>"
-EMAIL_REPLY_TO=soporte@tu-dominio.com
+EMAIL_FROM="ZeroCopy IA <resolviendot@gmail.com>"
+EMAIL_REPLY_TO=resolviendot@gmail.com
 RESEND_API_KEY=re_xxxxxxxxx
+TURNSTILE_SITE_KEY=0x4AA...
+TURNSTILE_SECRET_KEY=0x4AA...
 ```
 
 3. Configura el hosting para ejecutar:
@@ -158,25 +164,38 @@ NODE_ENV=production
 HOST=0.0.0.0
 PUBLIC_APP_URL=https://zerocopyia.com
 ALLOWED_ORIGINS=https://zerocopyia.com,https://www.zerocopyia.com
+CANONICAL_HOST=zerocopyia.com
 ADMIN_EMAIL=admin@zerocopyia.com
 ADMIN_PASSWORD=crea-una-clave-larga
 SESSION_SECRET=crea-un-secreto-largo-y-unico
 EMAIL_PROVIDER=resend
-EMAIL_FROM="ZeroCopyIA <notificaciones@zerocopyia.com>"
-EMAIL_REPLY_TO=soporte@zerocopyia.com
+EMAIL_FROM="ZeroCopy IA <resolviendot@gmail.com>"
+EMAIL_REPLY_TO=resolviendot@gmail.com
 RESEND_API_KEY=re_xxxxxxxxx
+TURNSTILE_SITE_KEY=0x4AA...
+TURNSTILE_SECRET_KEY=0x4AA...
 ```
 
-En Railway, agrega el dominio personalizado desde el servicio y copia en Hostinger los registros DNS que Railway te indique. Railway puede pedir un `CNAME` para enrutar y un `TXT` para verificar propiedad.
+En Railway, agrega los dominios personalizados `zerocopyia.com` y `www.zerocopyia.com` desde el servicio y copia en Hostinger los registros DNS que Railway te indique. Railway puede pedir un `CNAME`, `A`/`ALIAS` o `TXT` para enrutar y verificar propiedad.
 
 ## Dominio y produccion
 
-- Define dominio o subdominio antes de publicar, por ejemplo `https://app.tu-dominio.com`.
+- Dominio principal: `https://zerocopyia.com`. Tambien se deja permitido `https://www.zerocopyia.com`.
 - Usa ese dominio en `PUBLIC_APP_URL`.
 - Usa el mismo origen en `ALLOWED_ORIGINS`.
+- Usa `CANONICAL_HOST=zerocopyia.com` para redirigir `www.zerocopyia.com` al dominio principal en produccion.
 - En produccion, `NODE_ENV=production` activa HTTPS obligatorio y HSTS.
 - No compartas `ADMIN_PASSWORD`, `SESSION_SECRET` ni `RESEND_API_KEY`.
 - Usa un `SESSION_SECRET` largo, unico y privado.
+
+### DNS en Hostinger
+
+Cuando el servicio exista en Railway, configura los registros que Railway muestre para:
+
+- `zerocopyia.com`
+- `www.zerocopyia.com`
+
+Luego confirma que ambos carguen con HTTPS y que `https://www.zerocopyia.com` redirija a `https://zerocopyia.com`.
 
 ## Checklist de pruebas
 
@@ -233,7 +252,7 @@ No agregues librerias para funciones pequenas si pueden resolverse con codigo lo
 ## Estructura del proyecto
 
 ```text
-evitar-el-plagio/
+zerocopy-ia/
 ├── server/
 │   ├── server.js
 │   ├── routes/
@@ -286,13 +305,14 @@ evitar-el-plagio/
 
 - En produccion (`NODE_ENV=production`) se exige HTTPS y se activa HSTS.
 - Hay rate limiting para login, registro, solicitudes y acciones administrativas.
-- Registro incluye barrera anti-spam basica con honeypot y verificacion simple.
+- Registro incluye rate limiting, honeypot, tiempo minimo de envio y Cloudflare Turnstile cuando `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY` estan configuradas. Sin Turnstile, queda activo el fallback local de verificacion simple.
 - Se aplican headers de seguridad similares a Helmet.
 - No se sirven `.env`, SQLite, backups, logs ni carpetas internas del servidor.
 - Las paginas legales estan en `/privacidad.html`, `/terminos.html`, `/reembolsos.html` e `/integridad.html`.
-- Contacto visible: por ahora solo formulario de soporte en `/soporte.html`; no se publica WhatsApp ni correo.
-- Datos del negocio visibles: nombre comercial por definir, ubicacion general Panama y canal oficial Instagram `@resolviendotrabajos`.
+- Contacto visible: formulario de soporte, correo publico `resolviendot@gmail.com` y WhatsApp `+507 0000-0000`.
+- Datos del negocio visibles: nombre comercial `ZeroCopy IA`, dominio `zerocopyia.com`, ubicacion general Panama, correo publico `resolviendot@gmail.com`, Instagram `@resolviendotrabajos` y WhatsApp `+507 0000-0000`.
+- Pagos: la pantalla muestra PayPal y Banco General como metodos automaticos por conectar. El respaldo manual Yappy/transferencia crea pagos `Pendiente` con monto, referencia y comprobante; solo pasan a `Pagado` con confirmacion real del proveedor o revision del admin.
 - Panel admin controlado: usuarios, profesores, solicitudes, pagos/suscripciones y estados se gestionan desde acciones del panel y endpoints especificos, sin editar datos manualmente.
 - Operacion interna: las cuentas, solicitudes, pagos, archivos, estados, entregas y soporte se gestionan exclusivamente dentro de la plataforma para evitar seguimiento manual por chats externos.
-- Notificaciones: la app muestra confirmaciones por pantalla y campana interna. El correo se usa solo para solicitud enviada, entrega lista y mensajes urgentes del admin; WhatsApp no se usa para seguimiento operativo.
+- Notificaciones: la app muestra confirmaciones por pantalla y campana interna. El correo real se envia solo en tres casos: cuando el cliente envia un trabajo, cuando soporte/admin envia un mensaje manual al cliente y cuando el profesor sube la entrega final. WhatsApp queda publicado como contacto de soporte, pero no envia mensajes automaticos.
 - Estados visibles: cliente ve pendiente de pago, recibido, asignado, en proceso, listo o entregado; profesor ve asignado, descargado/visto, trabajando y entrega subida.

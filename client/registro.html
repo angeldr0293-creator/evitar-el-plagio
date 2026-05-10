@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Crear cuenta - Originalidad Académica</title>
+  <title>Crear cuenta - ZeroCopy IA</title>
   <link rel="stylesheet" href="css/notifications.css" />
   <style>
     * {
@@ -171,6 +171,14 @@
       overflow: hidden;
     }
 
+    .captcha-field[hidden] {
+      display: none;
+    }
+
+    .turnstile-box {
+      min-height: 65px;
+    }
+
     label {
       color: #26364d;
       font-size: 14px;
@@ -193,6 +201,28 @@
     select:focus {
       border-color: #2b7a68;
       box-shadow: 0 0 0 4px rgba(43,122,104,0.12);
+    }
+
+    .password-control {
+      position: relative;
+    }
+
+    .password-control input {
+      padding-right: 76px;
+    }
+
+    .toggle-password {
+      background: transparent;
+      border: 0;
+      color: #071832;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 800;
+      padding: 8px 10px;
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
     }
 
     .phone-control {
@@ -349,15 +379,9 @@
   <div class="container">
     <header class="topbar">
       <a href="index.html" class="brand">
-        <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 48 48">
-            <path d="M24 4 40 10v12c0 11-6.8 18.2-16 22C14.8 40.2 8 33 8 22V10l16-6Z"></path>
-            <path d="M24 13v22"></path>
-            <path d="m16 23 5 5 11-12"></path>
-          </svg>
-        </span>
+        <span class="brand-mark brand-logo" aria-hidden="true" style="width:72px;height:48px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;"><img src="assets/zerocopy-logo-header.png" alt="" style="width:100%;height:100%;object-fit:contain;display:block;" /></span>
         <span>
-          <span class="brand-title">Originalidad Académica</span>
+          <span class="brand-title" style="white-space:nowrap;">ZeroCopy IA <small style="color:#2b7a68;font-family:Arial, Helvetica, sans-serif;font-size:10px;font-weight:800;letter-spacing:0;margin-left:4px;vertical-align:middle;white-space:nowrap;">by RT</small></span>
           <span class="brand-subtitle">Tu espacio privado de revisión.</span>
         </span>
       </a>
@@ -414,7 +438,18 @@
 
           <div class="field">
             <label for="register-password">Contraseña</label>
-            <input type="password" id="register-password" autocomplete="new-password" minlength="6" placeholder="Mínimo 6 caracteres" required />
+            <div class="password-control">
+              <input type="password" id="register-password" autocomplete="new-password" minlength="6" placeholder="Mínimo 6 caracteres" required />
+              <button class="toggle-password" type="button" data-password-toggle="register-password" aria-label="Mostrar contraseña">Ver</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="register-password-confirm">Confirmar contraseña</label>
+            <div class="password-control">
+              <input type="password" id="register-password-confirm" autocomplete="new-password" minlength="6" placeholder="Repite tu contraseña" required />
+              <button class="toggle-password" type="button" data-password-toggle="register-password-confirm" aria-label="Mostrar confirmación de contraseña">Ver</button>
+            </div>
           </div>
 
           <div class="field hp-field" aria-hidden="true">
@@ -427,7 +462,13 @@
             <input type="text" id="register-captcha" autocomplete="off" placeholder="ORIGINAL" required />
           </div>
 
-          <button class="btn" type="submit">Crear mi cuenta</button>
+          <div class="field captcha-field" id="turnstile-field" hidden>
+            <label>Verificacion anti-spam</label>
+            <div class="turnstile-box" id="turnstile-widget"></div>
+            <input type="hidden" id="turnstile-token" autocomplete="off" />
+          </div>
+
+          <button class="btn" id="register-submit" type="submit">Crear mi cuenta</button>
         </form>
 
         <form id="login-form" class="form">
@@ -458,6 +499,11 @@
     const nextPage = params.get("next") || "";
     const existingUser = getCurrentUser();
     const registerFormStartedAt = Date.now();
+    const captchaState = {
+      siteKey: "",
+      widgetId: null,
+      ready: false
+    };
     const phoneCountries = [
       { iso: "pa", name: "Panamá", code: "+507" },
       { iso: "mx", name: "México", code: "+52" },
@@ -544,6 +590,59 @@
     function showMessage(text, type) {
       message.textContent = text;
       message.className = `message show ${type}`;
+    }
+
+    function setTurnstileToken(token = "") {
+      document.getElementById("turnstile-token").value = token;
+    }
+
+    function renderTurnstileWidget() {
+      if (!captchaState.siteKey || !window.turnstile || captchaState.widgetId !== null) {
+        return;
+      }
+
+      captchaState.widgetId = window.turnstile.render("#turnstile-widget", {
+        sitekey: captchaState.siteKey,
+        callback: setTurnstileToken,
+        "expired-callback": () => setTurnstileToken(""),
+        "error-callback": () => setTurnstileToken("")
+      });
+      captchaState.ready = true;
+    }
+
+    function loadTurnstile(siteKey) {
+      captchaState.siteKey = siteKey || "";
+
+      if (!captchaState.siteKey) {
+        return;
+      }
+
+      const fallbackCaptcha = document.getElementById("register-captcha");
+      fallbackCaptcha.required = false;
+      fallbackCaptcha.closest(".field").hidden = true;
+      document.getElementById("turnstile-field").hidden = false;
+
+      if (window.turnstile) {
+        renderTurnstileWidget();
+        return;
+      }
+
+      window.onTurnstileLoaded = renderTurnstileWidget;
+      const script = document.createElement("script");
+      script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoaded&render=explicit";
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+
+    async function setupRegistrationCaptcha() {
+      try {
+        const response = await fetch("/api/public-config", { credentials: "include" });
+        const config = response.ok ? await response.json() : {};
+        loadTurnstile(config.turnstileSiteKey);
+      } catch (error) {
+        // Si la configuracion publica no esta disponible, queda activo el fallback local.
+      }
     }
 
     function getHomeForUser(user) {
@@ -659,6 +758,16 @@
 
     setupCountryCodePicker(document.querySelector("[data-country-picker]"));
 
+    document.querySelectorAll("[data-password-toggle]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const input = document.getElementById(button.dataset.passwordToggle);
+        const shouldShow = input.type === "password";
+        input.type = shouldShow ? "text" : "password";
+        button.textContent = window.OAI18N?.t(shouldShow ? "Ocultar" : "Ver") || (shouldShow ? "Ocultar" : "Ver");
+        button.setAttribute("aria-label", window.OAI18N?.t(shouldShow ? "Ocultar contraseña" : "Mostrar contraseña") || (shouldShow ? "Ocultar contraseña" : "Mostrar contraseña"));
+      });
+    });
+
     tabs.forEach((tab) => {
       tab.addEventListener("click", () => {
         tabs.forEach((item) => item.classList.remove("active"));
@@ -673,13 +782,22 @@
       event.preventDefault();
 
       try {
+        const password = document.getElementById("register-password").value;
+        const passwordConfirm = document.getElementById("register-password-confirm").value;
+
+        if (password !== passwordConfirm) {
+          showMessage(window.OAI18N?.t("Las contraseñas no coinciden.") || "Las contraseñas no coinciden.", "error");
+          return;
+        }
+
         const user = registerUser({
           name: document.getElementById("register-name").value.trim(),
           email: document.getElementById("register-email").value.trim(),
           phone: getFullPhone("register-country-code", "register-phone"),
-          password: document.getElementById("register-password").value,
+          password,
           website: document.getElementById("register-website").value,
           captchaAnswer: document.getElementById("register-captcha").value,
+          turnstileToken: document.getElementById("turnstile-token").value,
           formStartedAt: registerFormStartedAt
         });
 
@@ -708,6 +826,8 @@
         showMessage(error.message, "error");
       }
     });
+
+    setupRegistrationCaptcha();
   </script>
 </body>
 </html>

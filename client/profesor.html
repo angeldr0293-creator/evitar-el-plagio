@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Panel del profesor - Originalidad Académica</title>
+  <title>Panel del profesor - ZeroCopy IA</title>
   <link rel="stylesheet" href="css/notifications.css" />
   <style>
     * {
@@ -327,15 +327,33 @@
       white-space: pre-wrap;
     }
 
-    .status-select {
+    .status-control {
       align-self: start;
+      display: grid;
+      gap: 8px;
+      margin-top: 62px;
+      min-width: 150px;
+    }
+
+    .status-select {
       background: #edf6f3;
       border: 1px solid #cfe2dc;
       border-radius: 999px;
       color: #11493f;
       font-size: 13px;
       font-weight: 800;
-      margin-top: 62px;
+      padding: 8px 12px;
+    }
+
+    .save-status-btn {
+      background: #071832;
+      border: 0;
+      border-radius: 999px;
+      color: white;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 800;
+      min-height: 34px;
       padding: 8px 12px;
     }
 
@@ -469,7 +487,7 @@
         width: fit-content;
       }
 
-      .status-select {
+      .status-control {
         margin-top: 0;
       }
     }
@@ -485,7 +503,9 @@
         padding: 22px;
       }
 
+      .status-control,
       .status-select,
+      .save-status-btn,
       .delivery-actions .ghost-btn {
         width: 100%;
       }
@@ -516,16 +536,9 @@
     <div class="container">
       <nav class="nav">
         <a href="profesor.html" class="brand">
-          <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 48 48">
-              <path d="M24 4 40 10v12c0 11-6.8 18.2-16 22C14.8 40.2 8 33 8 22V10l16-6Z"></path>
-              <path d="M16 17h16"></path>
-              <path d="M16 24h16"></path>
-              <path d="M16 31h10"></path>
-            </svg>
-          </span>
+          <span class="brand-mark brand-logo" aria-hidden="true" style="width:72px;height:48px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;"><img src="assets/zerocopy-logo-header.png" alt="" style="width:100%;height:100%;object-fit:contain;display:block;" /></span>
           <span>
-            <span class="brand-title">Originalidad Académica</span>
+            <span class="brand-title" style="white-space:nowrap;">ZeroCopy IA <small style="color:#2b7a68;font-family:Arial, Helvetica, sans-serif;font-size:10px;font-weight:800;letter-spacing:0;margin-left:4px;vertical-align:middle;white-space:nowrap;">by RT</small></span>
             <span class="brand-subtitle">Panel del profesor</span>
           </span>
         </a>
@@ -583,9 +596,8 @@
 
   <script src="auth/auth.js"></script>
   <script src="js/i18n.js"></script>
-  <script src="js/notifications.js"></script>
   <script>
-    const currentUser = getCurrentUser();
+    let currentUser = JSON.parse(localStorage.getItem("oa_current_user") || "null");
 
     if (!currentUser) {
       window.location.href = `registro.html?next=${encodeURIComponent("profesor.html")}`;
@@ -601,7 +613,6 @@
 
     const statusOptions = [
       { value: "Asignada", label: "Asignado" },
-      { value: "Visto", label: "Descargado/visto" },
       { value: "Trabajando", label: "Trabajando" },
       { value: "Entrega subida", label: "Entrega subida" }
     ];
@@ -610,6 +621,109 @@
     const workTabs = document.querySelectorAll(".work-tab");
     let activeView = "new";
     let countdownTimer = null;
+    let teacherState = {
+      oa_users: [],
+      oa_requests: [],
+      oa_subscriptions: []
+    };
+
+    function getTeacherStateEndpoint() {
+      const baseUrl = (window.OA_API_BASE_URL || "").replace(/\/$/, "");
+      return `${baseUrl}/api/state`;
+    }
+
+    function getTeacherStateUsers() {
+      return Array.isArray(teacherState.oa_users) ? teacherState.oa_users : [];
+    }
+
+    function getTeacherStateRequests() {
+      return Array.isArray(teacherState.oa_requests) ? teacherState.oa_requests : [];
+    }
+
+    function loadTeacherStateFromStorage() {
+      teacherState = {
+        oa_users: JSON.parse(localStorage.getItem("oa_users") || "[]"),
+        oa_requests: JSON.parse(localStorage.getItem("oa_requests") || "[]"),
+        oa_subscriptions: JSON.parse(localStorage.getItem("oa_subscriptions") || "[]")
+      };
+    }
+
+    function saveTeacherStateToStorage() {
+      try {
+        localStorage.setItem("oa_requests", JSON.stringify(getTeacherStateRequests()));
+      } catch (error) {
+        // El servidor sigue siendo la fuente principal si el navegador no puede guardar.
+      }
+    }
+
+    function syncCurrentTeacher() {
+      const teacher = getTeacherStateUsers().find((user) => (
+        user.role === "teacher" && (
+          user.id === currentUser.id
+          || String(user.email || "").toLowerCase() === String(currentUser.email || "").toLowerCase()
+        )
+      ));
+
+      if (!teacher) {
+        return;
+      }
+
+      currentUser = {
+        id: teacher.id,
+        name: teacher.name,
+        email: teacher.email,
+        phone: teacher.phone,
+        role: "teacher"
+      };
+      localStorage.setItem("oa_current_user", JSON.stringify(currentUser));
+    }
+
+    async function loadTeacherState() {
+      const response = await fetch(getTeacherStateEndpoint(), {
+        credentials: "include",
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        throw new Error("No se pudo cargar el panel del profesor.");
+      }
+
+      teacherState = await response.json();
+      syncCurrentTeacher();
+      saveTeacherStateToStorage();
+    }
+
+    function replaceTeacherRequest(updatedRequest) {
+      if (!updatedRequest || !updatedRequest.id) {
+        return;
+      }
+
+      const requests = getTeacherStateRequests();
+      const index = requests.findIndex((request) => request.id === updatedRequest.id);
+
+      if (index >= 0) {
+        requests[index] = { ...requests[index], ...updatedRequest };
+      } else if (updatedRequest.teacherId === currentUser.id) {
+        requests.push(updatedRequest);
+      }
+
+      teacherState.oa_requests = requests;
+      saveTeacherStateToStorage();
+    }
+
+    function getTeacherRequests() {
+      const usersById = getTeacherStateUsers().reduce((result, item) => {
+        result[item.id] = item;
+        return result;
+      }, {});
+
+      return getTeacherStateRequests()
+        .filter((request) => request.teacherId === currentUser.id)
+        .map((request) => ({
+          ...request,
+          user: request.user || usersById[request.userId] || null
+        }));
+    }
 
     function escapeHTML(value) {
       return String(value || "")
@@ -688,7 +802,7 @@
     }
 
     function isDeliverySaved(requestId) {
-      const savedRequest = getRequests().find((request) => request.id === requestId);
+      const savedRequest = getTeacherStateRequests().find((request) => request.id === requestId);
       return Boolean(savedRequest && savedRequest.delivery && (savedRequest.delivery.url || savedRequest.delivery.dataUrl));
     }
 
@@ -906,17 +1020,23 @@
               </details>
               ${renderDelivery(request)}
             </div>
-            <select class="status-select" data-request-id="${escapeHTML(request.id)}" aria-label="Cambiar estado">
-              ${selectedOptions}
-            </select>
+            <div class="status-control">
+              <select class="status-select" data-request-id="${escapeHTML(request.id)}" aria-label="Cambiar estado">
+                ${selectedOptions}
+              </select>
+              <button class="save-status-btn" type="button" data-request-id="${escapeHTML(request.id)}">Guardar progreso</button>
+            </div>
           </article>
         `;
       }).join("");
 
-      document.querySelectorAll(".status-select").forEach((select) => {
-        select.addEventListener("change", (event) => {
-          updateRequestStatus(event.currentTarget.dataset.requestId, event.currentTarget.value);
-          window.showScreenNotification?.(`Estado actualizado: ${getTeacherRequestStatusLabel(event.currentTarget.value)}.`);
+      document.querySelectorAll(".save-status-btn").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          const requestId = event.currentTarget.dataset.requestId;
+          const select = document.querySelector(`.status-select[data-request-id="${CSS.escape(requestId)}"]`);
+          const updatedRequest = updateRequestStatus(requestId, select.value);
+          replaceTeacherRequest(updatedRequest);
+          window.showScreenNotification?.(`Progreso guardado: ${getTeacherRequestStatusLabel(select.value)}.`);
           window.refreshNotifications?.();
           renderWorks();
         });
@@ -974,7 +1094,8 @@
             await new Promise((resolve) => setTimeout(resolve, 30));
 
             const delivery = await fileToAttachment(file);
-            saveTeacherDelivery(requestId, delivery);
+            const updatedRequest = saveTeacherDelivery(requestId, delivery);
+            replaceTeacherRequest(updatedRequest);
 
             if (!isDeliverySaved(requestId)) {
               throw new Error("No se pudo confirmar el guardado. Recarga la página e intenta otra vez.");
@@ -1011,7 +1132,29 @@
     });
 
     if (isTeacherUser(currentUser)) {
-      renderWorks();
+      worksList.innerHTML = `
+        <div class="empty-state">
+          <h3>Cargando trabajos...</h3>
+          <p>Estamos preparando tu panel.</p>
+        </div>
+      `;
+
+      loadTeacherState()
+        .then(renderWorks)
+        .catch((error) => {
+          loadTeacherStateFromStorage();
+          syncCurrentTeacher();
+          renderWorks();
+
+          if (!getTeacherRequests().length) {
+            worksList.innerHTML = `
+              <div class="empty-state">
+                <h3>No se pudo cargar el panel</h3>
+                <p>${escapeHTML(error.message || "Recarga la pÃ¡gina e intenta de nuevo.")}</p>
+              </div>
+            `;
+          }
+        });
     }
   </script>
 </body>

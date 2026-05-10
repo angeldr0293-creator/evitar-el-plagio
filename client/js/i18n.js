@@ -4,8 +4,8 @@
   const SUPPORTED_LANGUAGES = ["es", "en"];
 
   const dictionary = {
-    "Originalidad Académica": "Academic Originality",
-    "Originalidad Acad&eacute;mica": "Academic Originality",
+    "ZeroCopy IA": "Academic Originality",
+    "ZeroCopy IA": "Academic Originality",
     "Escribe con integridad. Destaca con originalidad.": "Write with integrity. Stand out with originality.",
     "Tu espacio privado de revisión.": "Your private review space.",
     "Panel personalizado del estudiante": "Personalized student dashboard",
@@ -208,6 +208,11 @@
     "Teléfono": "Phone",
     "Contraseña": "Password",
     "Mínimo 6 caracteres": "Minimum 6 characters",
+    "Confirmar contraseña": "Confirm password",
+    "Repite tu contraseña": "Repeat your password",
+    "Ver": "Show",
+    "Ocultar": "Hide",
+    "Las contraseñas no coinciden.": "Passwords do not match.",
     "Tu contraseña": "Your password",
     "Ya tengo cuenta": "I already have an account",
     "Crear mi cuenta": "Create my account",

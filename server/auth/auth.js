@@ -1,4 +1,4 @@
-﻿const AUTH_USER_KEY = "oa_current_user";
+const AUTH_USER_KEY = "oa_current_user";
 const AUTH_USERS_KEY = "oa_users";
 const AUTH_REQUESTS_KEY = "oa_requests";
 const AUTH_SUBSCRIPTIONS_KEY = "oa_subscriptions";
@@ -19,9 +19,18 @@ const API_LOGIN_ENDPOINTS = createApiEndpoints("/api/login");
 const API_ADMIN_LOGIN_ENDPOINTS = createApiEndpoints("/api/admin/login");
 const API_ADMIN_EMAIL_CHECK_ENDPOINTS = createApiEndpoints("/api/admin/email-check");
 const API_LOGOUT_ENDPOINTS = createApiEndpoints("/api/logout");
+let sharedStateCache = null;
+let sharedStateCacheAt = 0;
+const SHARED_STATE_CACHE_MS = 500;
+
+function clearSharedStateCache() {
+  sharedStateCache = null;
+  sharedStateCacheAt = 0;
+}
 
 function postApiAction(pathname, payload = {}) {
   const result = postJSONToFirstEndpoint(createApiEndpoints(pathname), payload);
+  clearSharedStateCache();
 
   if (!result || !result.ok) {
     throw new Error(result?.error || "No se pudo completar la solicitud.");
@@ -60,6 +69,10 @@ function getDefaultSharedValue(key) {
 }
 
 function getSharedState() {
+  if (sharedStateCache && Date.now() - sharedStateCacheAt < SHARED_STATE_CACHE_MS) {
+    return sharedStateCache;
+  }
+
   for (const endpoint of API_STATE_ENDPOINTS) {
     try {
       const request = new XMLHttpRequest();
@@ -68,7 +81,9 @@ function getSharedState() {
       request.send();
 
       if (request.status >= 200 && request.status < 300) {
-        return JSON.parse(request.responseText || "{}");
+        sharedStateCache = JSON.parse(request.responseText || "{}");
+        sharedStateCacheAt = Date.now();
+        return sharedStateCache;
       }
     } catch (error) {
       // Se prueba el siguiente endpoint disponible.
@@ -87,6 +102,8 @@ function saveSharedState(state) {
       request.withCredentials = true;
       request.send(JSON.stringify(state));
       if (request.status >= 200 && request.status < 300) {
+        sharedStateCache = state;
+        sharedStateCacheAt = Date.now();
         return true;
       }
     } catch (error) {
@@ -223,8 +240,10 @@ function getCurrentUser() {
     return storedUser;
   }
 
+  const storedEmail = String(storedUser.email || "").toLowerCase();
   const savedUser = getUsers().find((user) => (
-    user.id === storedUser.id || user.email.toLowerCase() === storedUser.email.toLowerCase()
+    user.id === storedUser.id
+    || (storedEmail && String(user.email || "").toLowerCase() === storedEmail)
   ));
 
   if (!savedUser) {
@@ -293,6 +312,13 @@ function getPlanFinanceConfig() {
     academico: { name: "Académico", price: 21.99, includedPages: 50, teacherShare: 0.5, platformShare: 0.5 },
     premium: { name: "Premium", price: 36.99, includedPages: 100, teacherShare: 0.5, platformShare: 0.5 }
   };
+}
+
+function isPaidSubscription(subscription) {
+  return Boolean(subscription && (
+    subscription.status === "Pagado"
+    || subscription.status === "Activa"
+  ) && (!subscription.expiresAt || new Date(subscription.expiresAt) >= new Date()));
 }
 
 function getPlanValuePerPage(config) {
@@ -395,13 +421,14 @@ function getRequestPages(request) {
 
 function getClientCreditSummary(requests = getCurrentUserRequests(), subscriptions = getCurrentUserSubscriptions()) {
   const planCredits = getPlanCreditConfig();
-  const purchasedCredits = subscriptions.reduce((total, subscription) => (
+  const paidSubscriptions = subscriptions.filter(isPaidSubscription);
+  const purchasedCredits = paidSubscriptions.reduce((total, subscription) => (
     total + (planCredits[subscription.plan]?.credits || 0)
   ), 0);
-  const purchasedPages = subscriptions.reduce((total, subscription) => (
+  const purchasedPages = paidSubscriptions.reduce((total, subscription) => (
     total + (planCredits[subscription.plan]?.pages || 0)
   ), 0);
-  const inferredPlans = subscriptions.length ? [] : requests.map((request) => request.package);
+  const inferredPlans = paidSubscriptions.length || subscriptions.length ? [] : requests.map((request) => request.package);
   const inferredCredits = inferredPlans.reduce((total, plan) => total + (planCredits[plan]?.credits || 0), 0);
   const inferredPages = inferredPlans.reduce((total, plan) => total + (planCredits[plan]?.pages || 0), 0);
   const totalCredits = purchasedCredits || inferredCredits;
@@ -565,14 +592,18 @@ function changeOwnPassword(currentPassword, newPassword) {
   return postApiAction("/api/me/password", { currentPassword, newPassword }).user;
 }
 
-function registerSubscription(plan, paymentToken = "") {
+function registerSubscription(plan, paymentData = "") {
   const user = getCurrentUser();
 
   if (!user) {
     throw new Error("Debes iniciar sesión para guardar la suscripción.");
   }
 
-  return postApiAction("/api/subscriptions", { plan, paymentToken }).subscription;
+  const payload = typeof paymentData === "object" && paymentData
+    ? { plan, ...paymentData }
+    : { plan, paymentToken: paymentData };
+
+  return postApiAction("/api/subscriptions", payload).subscription;
 }
 
 function createAdminSubscription(data) {
@@ -603,12 +634,13 @@ function registerPendingSubscription() {
   const allowedPlans = ["inicial", "academico", "premium"];
   const plan = sessionStorage.getItem("oa_selected_plan");
   const paymentToken = sessionStorage.getItem("oa_payment_token");
+  const paymentData = JSON.parse(sessionStorage.getItem("oa_payment_data") || "{}");
 
   if (!allowedPlans.includes(plan) || !paymentToken || !getCurrentUser()) {
     return null;
   }
 
-  return registerSubscription(plan, paymentToken);
+  return registerSubscription(plan, { ...paymentData, paymentToken, transactionId: paymentData.transactionId || paymentToken });
 }
 
 function createRequest(data) {
@@ -672,7 +704,7 @@ function getAdminClients() {
       id: `inferred-${request.id}`,
       userId: client.id,
       plan: request.package,
-      status: "Activa",
+      status: "Pagado",
       paymentToken: "",
       createdAt: request.createdAt,
       startsAt: request.createdAt,
@@ -691,9 +723,7 @@ function getAdminClients() {
       requests: clientRequests,
       subscriptions: clientSubscriptions,
       latestSubscription,
-      activeSubscription: clientSubscriptions.find((subscription) => (
-        subscription.status === "Activa" && new Date(subscription.expiresAt) >= new Date()
-      )) || null
+      activeSubscription: clientSubscriptions.find(isPaidSubscription) || null
     };
   });
 }
@@ -713,7 +743,7 @@ function updateRequestStatus(requestId, status) {
 function saveTeacherDelivery(requestId, delivery) {
   const user = getCurrentUser();
   const request = getRequests().find((item) => item.id === requestId);
-  const canDeliver = isTeacherUser(user) && request && request.teacherId === user.id;
+  const canDeliver = user && user.role === "teacher" && request && request.teacherId === user.id;
 
   if (!canDeliver) {
     throw new Error("Solo el profesor asignado puede subir la entrega.");

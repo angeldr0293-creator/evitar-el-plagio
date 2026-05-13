@@ -57,7 +57,10 @@
     return {
       inicial: "Inicial",
       academico: "Académico",
-      premium: "Premium"
+      premium: "Premium",
+      creditos10: "10 creditos",
+      creditos20: "20 creditos",
+      creditos50: "50 creditos"
     }[plan] || plan || "plan";
   }
 
@@ -119,10 +122,10 @@
     }));
 
     const subscriptionNotifications = getSubscriptions().map((subscription) => ({
-      title: "Cliente suscrito",
+      title: subscription.paymentMethod === "ach-deposito" && subscription.status === "Pendiente" ? "Pago bancario solicitado" : "Cliente suscrito",
       text: `${usersById[subscription.userId] ? usersById[subscription.userId].name : "Cliente"} contrató ${getPlanName(subscription.plan)}`,
       date: subscription.createdAt,
-      tone: "success"
+      tone: subscription.paymentMethod === "ach-deposito" && subscription.status === "Pendiente" ? "info" : "success"
     }));
 
     return workNotifications.concat(subscriptionNotifications);

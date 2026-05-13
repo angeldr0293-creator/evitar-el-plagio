@@ -31,6 +31,8 @@
     .detail-card, .history-row { background: #f8faf9; border: 1px solid #e8eef1; border-radius: 14px; color: #475569; padding: 14px; }
     .detail-card strong, .history-row strong { color: #071832; display: block; margin-bottom: 3px; }
     .history-list { display: grid; gap: 10px; }
+    .mini-btn { background: white; border: 1px solid #d8e0e5; border-radius: 10px; color: #071832; cursor: pointer; font-weight: 800; margin-top: 10px; min-height: 36px; padding: 8px 12px; }
+    .mini-btn.danger { border-color: #f0b8b8; color: #8b1e1e; }
     .password-form { display: grid; gap: 12px; }
     .password-form input { border: 1px solid #d8e0e5; border-radius: 12px; color: #071832; font: inherit; padding: 12px; width: 100%; }
     .message { color: #11493f; font-size: 13px; font-weight: 800; }
@@ -121,8 +123,31 @@
 
     const packageNames = { inicial: "Inicial", academico: "Académico", premium: "Premium" };
 
+    Object.assign(packageNames, {
+      creditos10: "10 creditos",
+      creditos20: "20 creditos",
+      creditos50: "50 creditos"
+    });
+
     function escapeHTML(value) {
       return String(value || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+    }
+
+    function renderPaymentProofStatus(subscription) {
+      if (subscription.paymentProof) {
+        return `<a href="${escapeHTML(subscription.paymentProof.url)}" target="_blank" rel="noopener">Ver comprobante</a>`;
+      }
+
+      return (subscription.paymentMethod === "paypal" || subscription.paymentMethod === "paypal-subscription" || subscription.paymentMethod === "paypal-credits") && ["Pagado", "Activa"].includes(subscription.status)
+        ? "Confirmado automÃ¡ticamente por PayPal"
+        : "Comprobante pendiente";
+    }
+
+    function canCancelSubscription(subscription) {
+      return subscription.paymentMethod === "paypal-subscription"
+        && subscription.paypalSubscriptionId
+        && ["Pagado", "Activa"].includes(subscription.status)
+        && (!subscription.expiresAt || new Date(subscription.expiresAt) >= new Date());
     }
 
     function formatDate(value) {
@@ -149,7 +174,9 @@
             Registro: ${formatDate(subscription.createdAt || subscription.startsAt)}<br />
             Vence: ${formatDate(subscription.expiresAt)}<br />
             Referencia: ${escapeHTML(subscription.transactionId || subscription.paymentToken || "Sin referencia")}<br />
-            ${subscription.paymentProof ? `<a href="${escapeHTML(subscription.paymentProof.url)}" target="_blank" rel="noopener">Ver comprobante</a>` : "Comprobante pendiente"}
+            ${subscription.paymentContact ? `WhatsApp: ${escapeHTML(subscription.paymentContact)}<br />` : ""}
+            ${renderPaymentProofStatus(subscription)}
+            ${canCancelSubscription(subscription) ? `<br /><button class="mini-btn danger" type="button" data-cancel-subscription="${escapeHTML(subscription.id)}">Cancelar suscripcion</button>` : ""}
           </article>
         `).join("")
         : `<div class="history-row">Sin pagos registrados.</div>`;
@@ -174,6 +201,30 @@
         message.textContent = "Contraseña actualizada.";
       } catch (error) {
         message.textContent = error.message || "No se pudo cambiar la contraseña.";
+      }
+    });
+
+    document.getElementById("payment-history").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-cancel-subscription]");
+
+      if (!button) {
+        return;
+      }
+
+      if (!confirm("Quieres cancelar la renovacion automatica? Mantendras el acceso hasta la fecha ya pagada.")) {
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Cancelando...";
+
+      try {
+        cancelPayPalSubscription(button.dataset.cancelSubscription);
+        renderProfile();
+      } catch (error) {
+        alert(error.message || "No se pudo cancelar la suscripcion.");
+        button.disabled = false;
+        button.textContent = "Cancelar suscripcion";
       }
     });
 

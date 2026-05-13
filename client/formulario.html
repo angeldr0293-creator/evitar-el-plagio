@@ -1168,7 +1168,7 @@
     }
 
     const params = new URLSearchParams(window.location.search);
-    const allowedPlans = ["inicial", "academico", "premium"];
+    const allowedPlans = ["inicial", "academico", "premium", "creditos10", "creditos20", "creditos50"];
     const planFromPayment = sessionStorage.getItem("oa_selected_plan");
     const planFromUrl = params.get("plan");
     const purchasedPlan = allowedPlans.includes(planFromPayment) ? planFromPayment : null;
@@ -1179,7 +1179,10 @@
     const planGuides = {
       inicial: { name: "Paquete Inicial", works: 5, pages: 5 },
       academico: { name: "Paquete Académico", works: 5, pages: 10 },
-      premium: { name: "Paquete Premium", works: 10, pages: 10 }
+      premium: { name: "Paquete Premium", works: 10, pages: 10 },
+      creditos10: { name: "10 creditos", works: 1, pages: 5 },
+      creditos20: { name: "20 creditos", works: 1, pages: 10 },
+      creditos50: { name: "50 creditos", works: 5, pages: 5 }
     };
     const activePlanGuide = planGuides[requestPlan] || null;
     const fileInput = document.getElementById("archivo");

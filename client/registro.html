@@ -148,6 +148,66 @@
       box-shadow: 0 8px 18px rgba(7,24,50,0.08);
     }
 
+    .oauth-panel {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .google-btn {
+      align-items: center;
+      background: #ffffff;
+      border: 1px solid #d8e0e5;
+      border-radius: 12px;
+      color: #071832;
+      display: flex;
+      font-weight: 900;
+      gap: 12px;
+      justify-content: center;
+      min-height: 52px;
+      padding: 12px 16px;
+      text-decoration: none;
+      transition: 0.2s ease;
+    }
+
+    .google-btn:hover {
+      border-color: #b9c8d0;
+      box-shadow: 0 12px 24px rgba(7,24,50,0.08);
+      transform: translateY(-1px);
+    }
+
+    .google-mark {
+      align-items: center;
+      border: 1px solid #d8e0e5;
+      border-radius: 50%;
+      color: #1a73e8;
+      display: inline-flex;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 18px;
+      font-weight: 900;
+      height: 30px;
+      justify-content: center;
+      width: 30px;
+    }
+
+    .oauth-divider {
+      align-items: center;
+      color: #64748b;
+      display: grid;
+      font-size: 12px;
+      font-weight: 800;
+      gap: 12px;
+      grid-template-columns: 1fr auto 1fr;
+      text-transform: uppercase;
+    }
+
+    .oauth-divider::before,
+    .oauth-divider::after {
+      background: #dfe7ea;
+      content: "";
+      height: 1px;
+    }
+
     .form {
       display: none;
     }
@@ -410,6 +470,14 @@
 
         <div id="message" class="message"></div>
 
+        <div class="oauth-panel">
+          <a id="google-login-link" class="google-btn" href="/api/auth/google/start">
+            <span class="google-mark" aria-hidden="true">G</span>
+            Continuar con Google
+          </a>
+          <div class="oauth-divider"><span>o usa tu correo</span></div>
+        </div>
+
         <form id="register-form" class="form active">
           <div class="field">
             <label for="register-name">Nombre completo</label>
@@ -497,6 +565,7 @@
     const message = document.getElementById("message");
     const params = new URLSearchParams(window.location.search);
     const nextPage = params.get("next") || "";
+    const authError = params.get("auth_error") || "";
     const existingUser = getCurrentUser();
     const registerFormStartedAt = Date.now();
     const captchaState = {
@@ -590,6 +659,18 @@
     function showMessage(text, type) {
       message.textContent = text;
       message.className = `message show ${type}`;
+    }
+
+    function getGoogleLoginUrl() {
+      return nextPage
+        ? `/api/auth/google/start?next=${encodeURIComponent(nextPage)}`
+        : "/api/auth/google/start";
+    }
+
+    document.getElementById("google-login-link").href = getGoogleLoginUrl();
+
+    if (authError) {
+      showMessage(authError, "error");
     }
 
     function setTurnstileToken(token = "") {

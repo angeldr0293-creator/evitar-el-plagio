@@ -695,12 +695,18 @@
     const packageNames = {
       inicial: "Inicial",
       academico: "Académico",
-      premium: "Premium"
+      premium: "Premium",
+      creditos10: "10 creditos",
+      creditos20: "20 creditos",
+      creditos50: "50 creditos"
     };
     const planCredits = {
       inicial: { credits: 50, pages: 25 },
       academico: { credits: 100, pages: 50 },
-      premium: { credits: 200, pages: 100 }
+      premium: { credits: 200, pages: 100 },
+      creditos10: { credits: 10, pages: 5 },
+      creditos20: { credits: 20, pages: 10 },
+      creditos50: { credits: 50, pages: 25 }
     };
 
     function formatDate(value) {
@@ -784,34 +790,7 @@
     }
 
     function getCreditSummary(requests) {
-      const subscriptions = getCurrentUserSubscriptions();
-      const purchasedCredits = subscriptions.reduce((total, subscription) => (
-        total + (planCredits[subscription.plan]?.credits || 0)
-      ), 0);
-      const purchasedPages = subscriptions.reduce((total, subscription) => (
-        total + (planCredits[subscription.plan]?.pages || 0)
-      ), 0);
-
-      const inferredPlans = subscriptions.length ? [] : requests.map((request) => request.package);
-      const inferredCredits = inferredPlans.reduce((total, plan) => total + (planCredits[plan]?.credits || 0), 0);
-      const inferredPages = inferredPlans.reduce((total, plan) => total + (planCredits[plan]?.pages || 0), 0);
-
-      const totalCredits = purchasedCredits || inferredCredits;
-      const totalPages = purchasedPages || inferredPages;
-      const usedPages = requests.reduce((total, request) => total + getRequestPages(request), 0);
-      const usedCredits = usedPages * 2;
-      const availableCredits = Math.max(totalCredits - usedCredits, 0);
-      const availablePages = Math.floor(availableCredits / 2);
-      const percentage = totalCredits ? Math.round((availableCredits / totalCredits) * 100) : 0;
-
-      return {
-        availableCredits,
-        availablePages,
-        totalCredits,
-        totalPages,
-        usedCredits,
-        percentage
-      };
+      return getClientCreditSummary(requests);
     }
 
     function renderPanel() {

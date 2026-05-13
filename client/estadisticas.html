@@ -84,7 +84,7 @@
       </div>
 
       <section class="stats">
-        <article class="stat"><strong id="stat-subscription-income">$0.00</strong><span>Ingresos por suscripciones del mes</span></article>
+        <article class="stat"><strong id="stat-subscription-income">$0.00</strong><span>Ingresos cobrados del mes</span></article>
         <article class="stat"><strong id="stat-total-net">$0.00</strong><span>Utilidad neta real del mes</span></article>
         <article class="stat"><strong id="stat-page-gross">$0.00</strong><span>Valor generado por páginas entregadas</span></article>
         <article class="stat"><strong id="stat-teacher-pay">$0.00</strong><span>Pagos a profesores</span></article>
@@ -123,7 +123,7 @@
         </section>
 
         <section class="panel">
-          <h2>Suscripciones</h2>
+          <h2>Pagos y suscripciones</h2>
           <div id="subscription-report" class="table"></div>
         </section>
 
@@ -181,17 +181,47 @@
       `;
     }
 
+    function getSubscriptionSeriesKey(subscription) {
+      return subscription.paypalSubscriptionId || subscription.id;
+    }
+
+    function isCollectedSubscription(subscription) {
+      if (!subscription) {
+        return false;
+      }
+
+      if (subscription.status === "Pagado") {
+        return true;
+      }
+
+      if (subscription.paymentMethod === "paypal-subscription") {
+        return ["Activa", "Cancelada"].includes(subscription.status)
+          && Number(subscription.billingCycle || 1) <= 1;
+      }
+
+      return ["Activa", "Cancelada"].includes(subscription.status);
+    }
+
+    function getCollectedSubscriptionsForMonth(subscriptions, monthKey) {
+      return subscriptions.filter((subscription) => (
+        isCollectedSubscription(subscription)
+        && getMonthKey(subscription.reviewedAt || subscription.createdAt || subscription.startsAt) === monthKey
+      ));
+    }
+
+    function isRecurringPlan(plan) {
+      return getRecurringPlanKeys().includes(plan);
+    }
+
     function getSubscriptionIncome(subscriptions, monthKey) {
       const config = getPlanFinanceConfig();
-      return subscriptions
-        .filter((subscription) => isPaidSubscription(subscription) && getMonthKey(subscription.reviewedAt || subscription.createdAt || subscription.startsAt) === monthKey)
+      return getCollectedSubscriptionsForMonth(subscriptions, monthKey)
         .reduce((total, subscription) => total + (Number(subscription.amount) || config[subscription.plan]?.price || 0), 0);
     }
 
     function getSubscriptionCapacity(subscriptions, monthKey) {
       const config = getPlanFinanceConfig();
-      return subscriptions
-        .filter((subscription) => isPaidSubscription(subscription) && getMonthKey(subscription.reviewedAt || subscription.createdAt || subscription.startsAt) === monthKey)
+      return getCollectedSubscriptionsForMonth(subscriptions, monthKey)
         .reduce((summary, subscription) => {
           const plan = config[subscription.plan];
           if (!plan) return summary;
@@ -202,10 +232,21 @@
     }
 
     function getActiveSubscriptions(subscriptions) {
-      const now = new Date();
-      return subscriptions.filter((subscription) => (
-        isPaidSubscription(subscription)
-      ));
+      const activeBySeries = new Map();
+
+      subscriptions
+        .filter(isPaidSubscription)
+        .filter((subscription) => isRecurringPlan(subscription.plan))
+        .sort((a, b) => new Date(b.expiresAt || b.createdAt || b.startsAt) - new Date(a.expiresAt || a.createdAt || a.startsAt))
+        .forEach((subscription) => {
+          const key = getSubscriptionSeriesKey(subscription);
+
+          if (!activeBySeries.has(key)) {
+            activeBySeries.set(key, subscription);
+          }
+        });
+
+      return Array.from(activeBySeries.values());
     }
 
     function groupBy(items, getKey) {
@@ -261,7 +302,7 @@
       renderTeacherChart(delivered);
       renderDailyReport(delivered);
       renderMonthlyReport(requests.filter(isRequestDelivered));
-      renderSubscriptionReport(clients, subscriptions);
+      renderSubscriptionReport(clients, subscriptions, monthKey);
       renderWorkReport(delivered);
     }
 
@@ -269,7 +310,7 @@
       const max = Math.max(summary.subscriptionIncome, summary.realNet, summary.unusedValue, summary.teacherTotal, 1);
       document.getElementById("real-profit-report").innerHTML = `
         ${renderBarRow({
-          title: "Ingresos cobrados por suscripciones",
+          title: "Ingresos cobrados",
           value: formatMoney(summary.subscriptionIncome),
           max,
           meta: `${summary.capacityPages} páginas vendidas como capacidad del mes`
@@ -292,7 +333,7 @@
           title: "Utilidad neta real del mes",
           value: formatMoney(summary.realNet),
           max,
-          meta: "Ingresos por suscripciones menos pagos devengados a profesores"
+          meta: "Ingresos cobrados menos pagos devengados a profesores"
         })}
       `;
     }
@@ -359,7 +400,7 @@
       })).join("") : `<div class="row">Sin entregas históricas.</div>`;
     }
 
-    function renderSubscriptionReport(clients, subscriptions) {
+    function renderSubscriptionReport(clients, subscriptions, monthKey) {
       const usersById = clients.reduce((result, client) => {
         result[client.id] = client;
         return result;
@@ -367,13 +408,15 @@
       const rows = subscriptions
         .slice()
         .sort((a, b) => new Date(b.createdAt || b.startsAt) - new Date(a.createdAt || a.startsAt));
+      const collectedIds = new Set(getCollectedSubscriptionsForMonth(subscriptions, monthKey).map((subscription) => subscription.id));
       document.getElementById("subscription-report").innerHTML = rows.length ? `
         <table>
-          <thead><tr><th>Cliente</th><th>Plan</th><th>Estado</th><th>Inicio</th><th>Vence</th><th>Ingreso</th></tr></thead>
+          <thead><tr><th>Cliente</th><th>Plan</th><th>Estado</th><th>Inicio</th><th>Vence</th><th>Ingreso contado</th></tr></thead>
           <tbody>
             ${rows.map((subscription) => {
               const client = usersById[subscription.userId] || {};
               const plan = getPlanFinanceConfig()[subscription.plan];
+              const counted = collectedIds.has(subscription.id);
               return `
                 <tr>
                   <td>${escapeHTML(client.subscriberId || getSubscriberId(client) || subscription.userId)}</td>
@@ -381,7 +424,7 @@
                   <td>${escapeHTML(subscription.status || "Pendiente")}</td>
                   <td>${formatDate(subscription.createdAt || subscription.startsAt)}</td>
                   <td>${formatDate(subscription.expiresAt)}</td>
-                  <td>${formatMoney(plan?.price || 0)}</td>
+                  <td>${counted ? formatMoney(Number(subscription.amount) || plan?.price || 0) : "-"}</td>
                 </tr>
               `;
             }).join("")}

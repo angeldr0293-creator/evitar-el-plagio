@@ -59,7 +59,25 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY || "";
 const TURNSTILE_SITE_KEY = process.env.TURNSTILE_SITE_KEY || "";
 const TURNSTILE_SECRET_KEY = process.env.TURNSTILE_SECRET_KEY || "";
 const CANONICAL_HOST = (process.env.CANONICAL_HOST || "").toLowerCase();
+const PAYPAL_CLIENT_ID = process.env.PAYPAL_CLIENT_ID || "";
+const PAYPAL_CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET || "";
+const PAYPAL_ENVIRONMENT = (process.env.PAYPAL_ENVIRONMENT || "sandbox").toLowerCase();
+const PAYPAL_CURRENCY = "USD";
+const PAYPAL_SUBSCRIPTION_PLAN_IDS = {
+  inicial: process.env.PAYPAL_PLAN_ID_INICIAL || "",
+  academico: process.env.PAYPAL_PLAN_ID_ACADEMICO || "",
+  premium: process.env.PAYPAL_PLAN_ID_PREMIUM || ""
+};
+const PAYPAL_WEBHOOK_ID = process.env.PAYPAL_WEBHOOK_ID || "";
+const PAYPAL_API_BASE = PAYPAL_ENVIRONMENT === "live"
+  ? "https://api-m.paypal.com"
+  : "https://api-m.sandbox.paypal.com";
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${PUBLIC_APP_URL.replace(/\/$/, "")}/api/auth/google/callback`;
 const SESSION_COOKIE_NAME = "oa_session";
+const GOOGLE_OAUTH_STATE_COOKIE_NAME = "oa_google_oauth_state";
+const GOOGLE_OAUTH_SCOPE = "openid email profile";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 const FORCE_HTTPS = process.env.FORCE_HTTPS === "true" || process.env.NODE_ENV === "production";
 const database = require("./data/database");
@@ -72,13 +90,13 @@ const defaultState = {
 
 const ALLOWED_USER_ROLES = ["client", "teacher"];
 const ALLOWED_REQUEST_STATUSES = ["Pendiente de pago", "Recibida", "Asignada", "Visto", "Trabajando", "En proceso", "Lista", "Entrega subida", "Entregada"];
-const ALLOWED_SUBSCRIPTION_STATUSES = ["Pendiente", "Pagado", "Rechazado", "Reembolsado", "Expirado"];
+const ALLOWED_SUBSCRIPTION_STATUSES = ["Pendiente", "Pagado", "Activa", "Cancelada", "Rechazado", "Reembolsado", "Expirado", "Suspendida", "Pago fallido"];
 const LEGACY_SUBSCRIPTION_STATUS_MAP = {
-  Activa: "Pagado",
-  Cancelada: "Rechazado",
   Expirada: "Expirado"
 };
-const ALLOWED_PLANS = ["inicial", "academico", "premium"];
+const SUBSCRIPTION_PLANS = ["inicial", "academico", "premium"];
+const CREDIT_PACK_PLANS = ["creditos10", "creditos20", "creditos50"];
+const ALLOWED_PLANS = [...SUBSCRIPTION_PLANS, ...CREDIT_PACK_PLANS];
 const ALLOWED_REQUEST_PACKAGES = [...ALLOWED_PLANS, "creditos"];
 const REQUEST_FILE_EXTENSIONS = [".doc", ".docx", ".pdf", ".txt"];
 const DELIVERY_FILE_EXTENSIONS = [".doc", ".docx", ".pdf", ".txt"];
@@ -496,7 +514,10 @@ function sanitizePaymentAmount(value, plan) {
   const planPrices = {
     inicial: 14.99,
     academico: 21.99,
-    premium: 36.99
+    premium: 36.99,
+    creditos10: 3.99,
+    creditos20: 6.99,
+    creditos50: 14.99
   };
   const amount = Number(value || planPrices[plan] || 0);
 
@@ -507,10 +528,200 @@ function sanitizePaymentAmount(value, plan) {
   return Number(amount.toFixed(2));
 }
 
+function getPlanPrice(plan) {
+  return sanitizePaymentAmount(null, plan);
+}
+
+function isCreditPackPlan(plan) {
+  return CREDIT_PACK_PLANS.includes(plan);
+}
+
+function isPayPalConfigured() {
+  return Boolean(PAYPAL_CLIENT_ID && PAYPAL_CLIENT_SECRET);
+}
+
+function getPayPalSubscriptionPlanId(plan) {
+  return PAYPAL_SUBSCRIPTION_PLAN_IDS[plan] || "";
+}
+
+function getPlanFromPayPalPlanId(planId) {
+  return Object.entries(PAYPAL_SUBSCRIPTION_PLAN_IDS)
+    .find(([, paypalPlanId]) => paypalPlanId && paypalPlanId === planId)?.[0] || "";
+}
+
+function arePayPalSubscriptionsConfigured() {
+  return Boolean(isPayPalConfigured() && SUBSCRIPTION_PLANS.every((plan) => getPayPalSubscriptionPlanId(plan)));
+}
+
+async function getPayPalAccessToken() {
+  if (!isPayPalConfigured()) {
+    throw createPublicError(503, "PayPal no esta configurado todavia.");
+  }
+
+  const credentials = Buffer.from(`${PAYPAL_CLIENT_ID}:${PAYPAL_CLIENT_SECRET}`).toString("base64");
+  const response = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: "grant_type=client_credentials"
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok || !payload.access_token) {
+    throw createPublicError(502, "PayPal no autorizo la conexion.");
+  }
+
+  return payload.access_token;
+}
+
+async function requestPayPal(pathname, options = {}) {
+  const accessToken = await getPayPalAccessToken();
+  const response = await fetch(`${PAYPAL_API_BASE}${pathname}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    logSecurityEvent("paypal_api_error", {
+      status: response.status,
+      pathname,
+      details: payload?.name || payload?.message || "paypal_error"
+    });
+    throw createPublicError(502, "PayPal no pudo completar la operacion.");
+  }
+
+  return payload;
+}
+
+function getPayPalCaptureDetails(order) {
+  const purchaseUnit = Array.isArray(order?.purchase_units) ? order.purchase_units[0] : null;
+  const captures = purchaseUnit?.payments?.captures || [];
+  const capture = captures.find((item) => item.status === "COMPLETED") || captures[0] || null;
+  return { purchaseUnit, capture };
+}
+
+function verifyPayPalCapture(order, plan) {
+  const expectedAmount = getPlanPrice(plan).toFixed(2);
+  const { purchaseUnit, capture } = getPayPalCaptureDetails(order);
+  const paidAmount = capture?.amount?.value || purchaseUnit?.amount?.value || "";
+  const paidCurrency = capture?.amount?.currency_code || purchaseUnit?.amount?.currency_code || "";
+
+  if (order?.status !== "COMPLETED" || !capture || capture.status !== "COMPLETED") {
+    throw createPublicError(409, "El pago de PayPal no aparece como completado.");
+  }
+
+  if (paidCurrency !== PAYPAL_CURRENCY || Number(paidAmount).toFixed(2) !== expectedAmount) {
+    throw createPublicError(409, "El monto confirmado por PayPal no coincide con el plan.");
+  }
+
+  return capture;
+}
+
+function getPayPalSubscriptionNextBilling(subscription, fallbackDate = new Date()) {
+  return sanitizeOptionalDate(
+    subscription?.billing_info?.next_billing_time || addDays(fallbackDate, 30).toISOString(),
+    "La fecha de proxima renovacion",
+    true
+  );
+}
+
+function verifyPayPalSubscriptionDetails(subscription, plan) {
+  const expectedPlanId = getPayPalSubscriptionPlanId(plan);
+
+  if (!expectedPlanId) {
+    throw createPublicError(503, "El plan recurrente de PayPal no esta configurado.");
+  }
+
+  if (!subscription?.id || subscription.plan_id !== expectedPlanId) {
+    throw createPublicError(409, "La suscripcion de PayPal no coincide con el plan.");
+  }
+
+  if (!["APPROVED", "ACTIVE"].includes(subscription.status)) {
+    throw createPublicError(409, "La suscripcion de PayPal no aparece activa todavia.");
+  }
+
+  return subscription;
+}
+
+function getPayPalSubscriptionUserId(subscription, fallbackUserId = "") {
+  const customId = toCleanString(subscription?.custom_id, 120);
+  return customId.includes(":") ? customId.split(":")[0] : customId || fallbackUserId;
+}
+
 function isPaidSubscription(subscription) {
   return subscription
-    && subscription.status === "Pagado"
+    && ["Pagado", "Activa", "Cancelada"].includes(subscription.status)
     && (!subscription.expiresAt || new Date(subscription.expiresAt) >= new Date());
+}
+
+function getPlanCreditConfig() {
+  return {
+    inicial: { credits: 50, pages: 25 },
+    academico: { credits: 100, pages: 50 },
+    premium: { credits: 200, pages: 100 },
+    creditos10: { credits: 10, pages: 5 },
+    creditos20: { credits: 20, pages: 10 },
+    creditos50: { credits: 50, pages: 25 }
+  };
+}
+
+function isCreditGrantSubscription(subscription, activeRecurringSubscriptionIds = new Set()) {
+  if (!subscription || !["Pagado", "Activa", "Cancelada"].includes(subscription.status)) {
+    return false;
+  }
+
+  if (subscription.paymentMethod === "paypal-subscription" && subscription.paypalSubscriptionId) {
+    return activeRecurringSubscriptionIds.has(subscription.paypalSubscriptionId);
+  }
+
+  return !subscription.expiresAt || new Date(subscription.expiresAt) >= new Date();
+}
+
+function getRequestPages(request) {
+  const directPages = Number(request?.pages);
+
+  if (Number.isFinite(directPages) && directPages > 0) {
+    return directPages;
+  }
+
+  if (Array.isArray(request?.pageDetails)) {
+    return request.pageDetails.reduce((total, item) => total + (Number(item.pages) || 0), 0);
+  }
+
+  return 0;
+}
+
+function getClientCreditSummaryForUser(userId, requests = [], subscriptions = []) {
+  const planCredits = getPlanCreditConfig();
+  const clientSubscriptions = subscriptions.filter((subscription) => subscription.userId === userId);
+  const activeRecurringSubscriptionIds = new Set(
+    clientSubscriptions
+      .filter((subscription) => subscription.paymentMethod === "paypal-subscription" && isPaidSubscription(subscription) && subscription.paypalSubscriptionId)
+      .map((subscription) => subscription.paypalSubscriptionId)
+  );
+  const creditSubscriptions = clientSubscriptions.filter((subscription) => isCreditGrantSubscription(subscription, activeRecurringSubscriptionIds));
+  const purchasedCredits = creditSubscriptions.reduce((total, subscription) => (
+    total + (planCredits[subscription.plan]?.credits || 0)
+  ), 0);
+  const clientRequests = requests.filter((request) => request.userId === userId);
+  const inferredPlans = creditSubscriptions.length || clientSubscriptions.length ? [] : clientRequests.map((request) => request.package);
+  const inferredCredits = inferredPlans.reduce((total, plan) => total + (planCredits[plan]?.credits || 0), 0);
+  const totalCredits = purchasedCredits || inferredCredits;
+  const usedCredits = clientRequests.reduce((total, request) => total + (getRequestPages(request) * 2), 0);
+  const availableCredits = Math.max(totalCredits - usedCredits, 0);
+
+  return {
+    totalCredits,
+    usedCredits,
+    availableCredits
+  };
 }
 
 function sanitizePageDetails(pageDetails, validFileNames) {
@@ -812,20 +1023,34 @@ function getSessionCookieOptions(maxAgeSeconds = SESSION_MAX_AGE_SECONDS) {
   return options.join("; ");
 }
 
+function appendSetCookie(response, cookieValue) {
+  const currentValue = response.getHeader("Set-Cookie");
+
+  if (!currentValue) {
+    response.setHeader("Set-Cookie", cookieValue);
+    return;
+  }
+
+  response.setHeader(
+    "Set-Cookie",
+    Array.isArray(currentValue) ? [...currentValue, cookieValue] : [currentValue, cookieValue]
+  );
+}
+
 function setSessionCookie(response, user) {
   const token = createAuthToken(user);
 
   if (token) {
-    response.setHeader(
-      "Set-Cookie",
+    appendSetCookie(
+      response,
       `${SESSION_COOKIE_NAME}=${encodeURIComponent(token)}; ${getSessionCookieOptions()}`
     );
   }
 }
 
 function clearSessionCookie(response) {
-  response.setHeader(
-    "Set-Cookie",
+  appendSetCookie(
+    response,
     `${SESSION_COOKIE_NAME}=; ${getSessionCookieOptions(0)}`
   );
 }
@@ -857,7 +1082,7 @@ function sanitizeUser(user) {
     return null;
   }
 
-  const { password, ...safeUser } = user;
+  const { password, googleId, ...safeUser } = user;
   return {
     ...safeUser,
     subscriberId: (safeUser.role || "client") === "client"
@@ -921,6 +1146,185 @@ function requireAuth(request, response) {
   }
 
   return { state, user };
+}
+
+function isGoogleAuthConfigured() {
+  return Boolean(SESSION_SECRET && GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_REDIRECT_URI);
+}
+
+function sanitizeOAuthNextPath(value = "") {
+  const cleanValue = toCleanString(value, 300).replace(/^\/+/, "");
+
+  if (
+    !cleanValue
+    || cleanValue.includes("\\")
+    || cleanValue.startsWith("//")
+    || /^[a-z][a-z0-9+.-]*:/i.test(cleanValue)
+  ) {
+    return "panel.html";
+  }
+
+  const pathname = cleanValue.split(/[?#]/)[0].toLowerCase();
+  const blockedPaths = new Set(["admin.html", "profesor.html", "registro.html"]);
+
+  if (blockedPaths.has(pathname) || pathname.startsWith("api/")) {
+    return "panel.html";
+  }
+
+  return cleanValue;
+}
+
+function createGoogleOAuthStateToken(nextPath) {
+  if (!SESSION_SECRET) {
+    throw createPublicError(503, "El inicio de sesion con Google no esta configurado todavia.");
+  }
+
+  const payload = base64UrlJSON({
+    nonce: crypto.randomBytes(16).toString("base64url"),
+    next: sanitizeOAuthNextPath(nextPath),
+    issuedAt: Date.now()
+  });
+
+  return `${payload}.${signTokenPayload(payload)}`;
+}
+
+function parseGoogleOAuthStateToken(token) {
+  const [payload, signature] = String(token || "").split(".");
+
+  if (!payload || !signature || !SESSION_SECRET || signTokenPayload(payload) !== signature) {
+    throw createPublicError(400, "La sesion de Google expiro. Intenta nuevamente.");
+  }
+
+  const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+  const ageMs = Date.now() - Number(parsed.issuedAt || 0);
+
+  if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > 10 * 60 * 1000) {
+    throw createPublicError(400, "La sesion de Google expiro. Intenta nuevamente.");
+  }
+
+  return {
+    next: sanitizeOAuthNextPath(parsed.next),
+    nonce: toCleanString(parsed.nonce, 80)
+  };
+}
+
+function setGoogleOAuthStateCookie(response, token) {
+  appendSetCookie(
+    response,
+    `${GOOGLE_OAUTH_STATE_COOKIE_NAME}=${encodeURIComponent(token)}; ${getSessionCookieOptions(10 * 60)}`
+  );
+}
+
+function clearGoogleOAuthStateCookie(response) {
+  appendSetCookie(
+    response,
+    `${GOOGLE_OAUTH_STATE_COOKIE_NAME}=; ${getSessionCookieOptions(0)}`
+  );
+}
+
+function getGoogleOAuthUrl(stateToken) {
+  const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  url.searchParams.set("client_id", GOOGLE_CLIENT_ID);
+  url.searchParams.set("redirect_uri", GOOGLE_REDIRECT_URI);
+  url.searchParams.set("response_type", "code");
+  url.searchParams.set("scope", GOOGLE_OAUTH_SCOPE);
+  url.searchParams.set("state", stateToken);
+  url.searchParams.set("prompt", "select_account");
+  return url.toString();
+}
+
+function redirectToGoogleAuthError(response, message) {
+  clearGoogleOAuthStateCookie(response);
+  response.redirect(`/registro.html?auth_error=${encodeURIComponent(message)}`);
+}
+
+function getRootRelativeRedirectPath(pathname) {
+  return `/${sanitizeOAuthNextPath(pathname).replace(/^\/+/, "")}`;
+}
+
+async function exchangeGoogleCodeForTokens(code) {
+  const body = new URLSearchParams();
+  body.set("code", code);
+  body.set("client_id", GOOGLE_CLIENT_ID);
+  body.set("client_secret", GOOGLE_CLIENT_SECRET);
+  body.set("redirect_uri", GOOGLE_REDIRECT_URI);
+  body.set("grant_type", "authorization_code");
+
+  const response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok || !payload.access_token) {
+    logSecurityEvent("google_token_exchange_failed", { status: response.status });
+    throw createPublicError(502, "Google no pudo confirmar el inicio de sesion.");
+  }
+
+  return payload;
+}
+
+async function getGoogleProfile(accessToken) {
+  const response = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  const profile = await response.json().catch(() => ({}));
+
+  if (!response.ok || !profile.sub || !profile.email) {
+    logSecurityEvent("google_profile_failed", { status: response.status });
+    throw createPublicError(502, "No se pudo leer tu perfil de Google.");
+  }
+
+  if (profile.email_verified === false) {
+    throw createPublicError(403, "Tu correo de Google debe estar verificado.");
+  }
+
+  return profile;
+}
+
+function findOrCreateGoogleClient(profile) {
+  const state = readState();
+  const email = requireValidEmail(profile.email);
+
+  if (ADMIN_EMAIL && email === ADMIN_EMAIL.toLowerCase()) {
+    throw createPublicError(403, "Usa el acceso de administrador con contrasena.");
+  }
+
+  const googleId = requireCleanString(profile.sub, "El id de Google", 120);
+  let user = state.oa_users.find((item) => (
+    item.googleId === googleId || normalizeEmail(item.email) === email
+  ));
+
+  if (user && (user.role || "client") !== "client") {
+    throw createPublicError(403, "Esta cuenta debe iniciar sesion con correo y contrasena.");
+  }
+
+  if (user) {
+    user.googleId = googleId;
+    user.authProvider = user.authProvider || "google";
+    user.name = toCleanString(user.name, 120) || toCleanString(profile.name, 120) || email.split("@")[0];
+    user.avatarUrl = toCleanString(profile.picture, 300);
+    saveState(state);
+    return sanitizeUser(user);
+  }
+
+  user = sanitizeUserForStorage({
+    id: crypto.randomUUID(),
+    name: toCleanString(profile.name, 120) || email.split("@")[0],
+    email,
+    phone: "",
+    password: hashPassword(crypto.randomBytes(32).toString("base64url")),
+    role: "client",
+    authProvider: "google",
+    googleId,
+    avatarUrl: toCleanString(profile.picture, 300),
+    createdAt: new Date().toISOString()
+  });
+
+  state.oa_users.push(user);
+  saveState(state);
+  return sanitizeUser(user);
 }
 
 function filterStateForUser(state, user) {
@@ -994,6 +1398,9 @@ function sanitizeUserForStorage(user) {
     specialty: role === "teacher" ? toCleanString(user.specialty, 120) : "",
     teacherId: role === "client" ? toCleanString(user.teacherId, 80) : "",
     teacherName: role === "client" ? toCleanString(user.teacherName, 120) : "",
+    authProvider: role === "client" ? toCleanString(user.authProvider, 40) : "",
+    googleId: role === "client" ? toCleanString(user.googleId, 120) : "",
+    avatarUrl: role === "client" ? toCleanString(user.avatarUrl, 300) : "",
     createdAt: sanitizeOptionalDate(user.createdAt || new Date().toISOString(), "La fecha de creacion")
   };
 }
@@ -1021,6 +1428,14 @@ function sanitizeSubscription(subscription, usersById) {
     transactionId: toCleanString(subscription.transactionId || subscription.paymentToken, 120),
     paymentToken: toCleanString(subscription.paymentToken || subscription.transactionId, 120),
     paymentProof: sanitizePaymentProof(subscription.paymentProof),
+    paymentContact: toCleanString(subscription.paymentContact, 80),
+    paymentNote: toCleanString(subscription.paymentNote, 240),
+    paypalSubscriptionId: toCleanString(subscription.paypalSubscriptionId, 120),
+    paypalPlanId: toCleanString(subscription.paypalPlanId, 120),
+    billingCycle: Math.max(0, Math.floor(Number(subscription.billingCycle || 0))),
+    cancelledAt: sanitizeOptionalDate(subscription.cancelledAt, "La fecha de cancelacion", true),
+    cancellationEffectiveAt: sanitizeOptionalDate(subscription.cancellationEffectiveAt, "La fecha efectiva de cancelacion", true),
+    lastPaymentFailedAt: sanitizeOptionalDate(subscription.lastPaymentFailedAt, "La fecha de pago fallido", true),
     reviewedAt: sanitizeOptionalDate(subscription.reviewedAt, "La fecha de revision", true),
     reviewedBy: toCleanString(subscription.reviewedBy, 80),
     createdAt: sanitizeOptionalDate(subscription.createdAt || new Date().toISOString(), "La fecha de creacion"),
@@ -1180,6 +1595,198 @@ function saveValidatedState(state) {
   saveState(validateStateForStorage(state));
 }
 
+function createPayPalSubscriptionRecord(state, {
+  userId,
+  plan,
+  paypalSubscriptionId,
+  paypalPlanId,
+  transactionId,
+  status = "Activa",
+  amount,
+  startsAt,
+  expiresAt,
+  reviewedBy = "paypal",
+  paymentNote = ""
+}) {
+  const usersById = new Map(state.oa_users.map((user) => [user.id, user]));
+  const existingByTransaction = transactionId
+    ? state.oa_subscriptions.find((subscription) => (
+      subscription.paypalSubscriptionId === paypalSubscriptionId
+      && subscription.transactionId === transactionId
+    ))
+    : null;
+
+  if (existingByTransaction) {
+    return existingByTransaction;
+  }
+
+  const placeholder = state.oa_subscriptions.find((subscription) => (
+    subscription.paypalSubscriptionId === paypalSubscriptionId
+    && subscription.transactionId === paypalSubscriptionId
+    && new Date(subscription.expiresAt) >= new Date(startsAt || Date.now())
+  ));
+
+  if (placeholder && transactionId && transactionId !== paypalSubscriptionId) {
+    placeholder.transactionId = transactionId;
+    placeholder.paymentToken = paypalSubscriptionId;
+    placeholder.status = status;
+    placeholder.amount = amount;
+    placeholder.reviewedAt = new Date().toISOString();
+    placeholder.reviewedBy = reviewedBy;
+    placeholder.paymentNote = paymentNote || placeholder.paymentNote;
+    return sanitizeSubscription(placeholder, usersById);
+  }
+
+  const currentCycles = state.oa_subscriptions.filter((subscription) => (
+    subscription.paypalSubscriptionId === paypalSubscriptionId
+    && ["Pagado", "Activa", "Cancelada", "Expirado"].includes(subscription.status)
+  )).length;
+  const createdAt = new Date();
+  const subscription = sanitizeSubscription({
+    id: crypto.randomUUID(),
+    userId,
+    plan,
+    status,
+    paymentMethod: "paypal-subscription",
+    amount,
+    currency: PAYPAL_CURRENCY,
+    transactionId: transactionId || paypalSubscriptionId,
+    paymentToken: paypalSubscriptionId,
+    paymentProof: null,
+    paymentNote,
+    paypalSubscriptionId,
+    paypalPlanId,
+    billingCycle: currentCycles + 1,
+    reviewedAt: createdAt.toISOString(),
+    reviewedBy,
+    createdAt: startsAt || createdAt.toISOString(),
+    startsAt: startsAt || createdAt.toISOString(),
+    expiresAt: expiresAt || addDays(createdAt, 30).toISOString()
+  }, usersById);
+
+  state.oa_subscriptions.unshift(subscription);
+  return subscription;
+}
+
+async function verifyPayPalWebhook(request) {
+  if (!PAYPAL_WEBHOOK_ID) {
+    throw createPublicError(503, "PAYPAL_WEBHOOK_ID no esta configurado.");
+  }
+
+  const rawBody = Buffer.isBuffer(request.body) ? request.body.toString("utf8") : JSON.stringify(request.body || {});
+  const webhookEvent = JSON.parse(rawBody || "{}");
+  const verification = await requestPayPal("/v1/notifications/verify-webhook-signature", {
+    method: "POST",
+    body: JSON.stringify({
+      auth_algo: request.get("paypal-auth-algo"),
+      cert_url: request.get("paypal-cert-url"),
+      transmission_id: request.get("paypal-transmission-id"),
+      transmission_sig: request.get("paypal-transmission-sig"),
+      transmission_time: request.get("paypal-transmission-time"),
+      webhook_id: PAYPAL_WEBHOOK_ID,
+      webhook_event: webhookEvent
+    })
+  });
+
+  if (verification.verification_status !== "SUCCESS") {
+    throw createPublicError(401, "No se pudo verificar el webhook de PayPal.");
+  }
+
+  return webhookEvent;
+}
+
+async function handlePayPalSubscriptionWebhook(event) {
+  const state = getValidatedState();
+  const resource = event.resource || {};
+  const eventType = event.event_type || "";
+  const paypalSubscriptionId = toCleanString(
+    resource.billing_agreement_id || resource.billing_agreementId || resource.subscription_id || resource.id,
+    120
+  );
+
+  if (!paypalSubscriptionId) {
+    logSecurityEvent("paypal_webhook_ignored", { eventType, reason: "missing_subscription_id" });
+    return null;
+  }
+
+  const subscriptionDetails = await requestPayPal(`/v1/billing/subscriptions/${encodeURIComponent(paypalSubscriptionId)}`, {
+    method: "GET"
+  });
+  const plan = getPlanFromPayPalPlanId(subscriptionDetails.plan_id);
+  const existingSeriesSubscription = state.oa_subscriptions.find((subscription) => subscription.paypalSubscriptionId === paypalSubscriptionId);
+  const userId = getPayPalSubscriptionUserId(subscriptionDetails, existingSeriesSubscription?.userId || "");
+  const user = state.oa_users.find((item) => item.id === userId);
+
+  if (!plan || !user) {
+    logSecurityEvent("paypal_webhook_ignored", { eventType, paypalSubscriptionId, reason: "unknown_plan_or_user" });
+    return null;
+  }
+
+  if (eventType === "PAYMENT.SALE.COMPLETED") {
+    const paidAt = sanitizeOptionalDate(resource.create_time || event.create_time || new Date().toISOString(), "La fecha del pago", true);
+    const saleId = toCleanString(resource.id, 120) || paypalSubscriptionId;
+    const amount = sanitizePaymentAmount(resource.amount?.total || resource.amount?.value || getPlanPrice(plan), plan);
+    const handled = createPayPalSubscriptionRecord(state, {
+      userId,
+      plan,
+      paypalSubscriptionId,
+      paypalPlanId: subscriptionDetails.plan_id,
+      transactionId: saleId,
+      status: "Pagado",
+      amount,
+      startsAt: paidAt,
+      expiresAt: getPayPalSubscriptionNextBilling(subscriptionDetails, new Date(paidAt)),
+      paymentNote: "Renovacion PayPal confirmada"
+    });
+    saveValidatedState(state);
+    return handled;
+  }
+
+  if (eventType === "BILLING.SUBSCRIPTION.ACTIVATED") {
+    const handled = createPayPalSubscriptionRecord(state, {
+      userId,
+      plan,
+      paypalSubscriptionId,
+      paypalPlanId: subscriptionDetails.plan_id,
+      transactionId: paypalSubscriptionId,
+      status: "Activa",
+      amount: getPlanPrice(plan),
+      startsAt: sanitizeOptionalDate(event.create_time || new Date().toISOString(), "La fecha de activacion", true),
+      expiresAt: getPayPalSubscriptionNextBilling(subscriptionDetails),
+      paymentNote: "Suscripcion PayPal activada"
+    });
+    saveValidatedState(state);
+    return handled;
+  }
+
+  const latest = state.oa_subscriptions.find((subscription) => subscription.paypalSubscriptionId === paypalSubscriptionId);
+
+  if (latest && eventType === "BILLING.SUBSCRIPTION.CANCELLED") {
+    latest.status = "Cancelada";
+    latest.cancelledAt = sanitizeOptionalDate(resource.status_update_time || event.create_time || new Date().toISOString(), "La fecha de cancelacion", true);
+    latest.cancellationEffectiveAt = latest.expiresAt;
+    latest.paymentNote = "Cancelada en PayPal";
+    saveValidatedState(state);
+    return latest;
+  }
+
+  if (latest && eventType === "BILLING.SUBSCRIPTION.SUSPENDED") {
+    latest.status = "Suspendida";
+    latest.paymentNote = "Suspendida en PayPal";
+    saveValidatedState(state);
+    return latest;
+  }
+
+  if (latest && eventType === "BILLING.SUBSCRIPTION.PAYMENT.FAILED") {
+    latest.lastPaymentFailedAt = sanitizeOptionalDate(event.create_time || new Date().toISOString(), "La fecha de pago fallido", true);
+    latest.paymentNote = "PayPal reporto un pago fallido";
+    saveValidatedState(state);
+    return latest;
+  }
+
+  return latest;
+}
+
 function findStoredFile(state, storageKey) {
   for (const request of state.oa_requests) {
     const attachment = (request.attachments || []).find((file) => file.storageKey === storageKey);
@@ -1322,7 +1929,7 @@ app.use((request, response, next) => {
   response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
   response.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    "default-src 'self'; img-src 'self' data: https://www.paypalobjects.com https://*.paypal.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.paypal.com https://www.paypalobjects.com; connect-src 'self' https://challenges.cloudflare.com https://*.paypal.com https://*.paypalobjects.com; frame-src https://challenges.cloudflare.com https://www.paypal.com https://*.paypal.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://*.paypal.com"
   );
 
   if (FORCE_HTTPS) {
@@ -1377,6 +1984,21 @@ app.use((request, response, next) => {
   next();
 });
 
+app.post("/api/paypal/webhooks", express.raw({ type: "application/json", limit: "2mb" }), async (request, response) => {
+  try {
+    const event = await verifyPayPalWebhook(request);
+    const handledSubscription = await handlePayPalSubscriptionWebhook(event);
+
+    logSecurityEvent("paypal_webhook_received", {
+      eventType: event.event_type || "",
+      paypalSubscriptionId: handledSubscription?.paypalSubscriptionId || ""
+    });
+    response.json({ ok: true });
+  } catch (error) {
+    sendError(response, error, "No se pudo procesar el webhook de PayPal.");
+  }
+});
+
 app.use(express.json({ limit: "25mb" }));
 
 app.use((error, request, response, next) => {
@@ -1418,6 +2040,64 @@ const loginRateLimit = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, ke
 const registerRateLimit = createRateLimiter({ windowMs: 60 * 60 * 1000, max: 5, keyPrefix: "register" });
 const formRateLimit = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 8, keyPrefix: "form" });
 const adminActionRateLimit = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: "admin-action" });
+
+app.get("/api/me", (request, response) => {
+  const auth = requireAuth(request, response);
+
+  if (!auth) {
+    return;
+  }
+
+  response.json({ ok: true, user: auth.user });
+});
+
+app.get("/api/auth/google/start", loginRateLimit, (request, response) => {
+  try {
+    if (!isGoogleAuthConfigured()) {
+      throw createPublicError(503, "El inicio de sesion con Google no esta configurado todavia.");
+    }
+
+    const stateToken = createGoogleOAuthStateToken(request.query?.next || "");
+    setGoogleOAuthStateCookie(response, stateToken);
+    response.redirect(getGoogleOAuthUrl(stateToken));
+  } catch (error) {
+    logSecurityEvent("google_oauth_start_failed", { ip: getClientIp(request), reason: error.publicMessage || error.message });
+    redirectToGoogleAuthError(response, getPublicErrorMessage(error, "No se pudo iniciar sesion con Google."));
+  }
+});
+
+app.get("/api/auth/google/callback", loginRateLimit, async (request, response) => {
+  try {
+    if (!isGoogleAuthConfigured()) {
+      throw createPublicError(503, "El inicio de sesion con Google no esta configurado todavia.");
+    }
+
+    if (request.query?.error) {
+      throw createPublicError(400, "Google cancelo el inicio de sesion.");
+    }
+
+    const code = requireCleanString(request.query?.code, "El codigo de Google", 1600);
+    const stateToken = requireCleanString(request.query?.state, "La sesion de Google", 3000);
+    const stateCookie = readCookie(request, GOOGLE_OAUTH_STATE_COOKIE_NAME);
+
+    if (!stateCookie || stateCookie !== stateToken) {
+      throw createPublicError(400, "La sesion de Google expiro. Intenta nuevamente.");
+    }
+
+    const oauthState = parseGoogleOAuthStateToken(stateToken);
+    const googleTokens = await exchangeGoogleCodeForTokens(code);
+    const googleProfile = await getGoogleProfile(googleTokens.access_token);
+    const safeUser = findOrCreateGoogleClient(googleProfile);
+
+    setSessionCookie(response, safeUser);
+    clearGoogleOAuthStateCookie(response);
+    logSecurityEvent("google_oauth_success", { userId: safeUser.id, ip: getClientIp(request) });
+    response.redirect(getRootRelativeRedirectPath(oauthState.next || "panel.html"));
+  } catch (error) {
+    logSecurityEvent("google_oauth_callback_failed", { ip: getClientIp(request), reason: error.publicMessage || error.message });
+    redirectToGoogleAuthError(response, getPublicErrorMessage(error, "No se pudo iniciar sesion con Google."));
+  }
+});
 
 app.post("/api/teachers", adminActionRateLimit, (request, response) => {
   const auth = requireAuth(request, response);
@@ -1612,20 +2292,23 @@ app.post("/api/admin/subscriptions", adminActionRateLimit, (request, response) =
     const usersById = new Map(state.oa_users.map((user) => [user.id, user]));
     const createdAt = new Date();
     const startsAt = sanitizeOptionalDate(request.body?.startsAt || createdAt.toISOString(), "La fecha de inicio", true);
-    const expiresAt = sanitizeOptionalDate(request.body?.expiresAt || addDays(createdAt, 30).toISOString(), "La fecha de expiracion", true);
+    const plan = requireAllowedValue(request.body?.plan, ALLOWED_PLANS, "El plan");
+    const status = requireAllowedValue(normalizeSubscriptionStatus(request.body?.status || "Pagado"), ALLOWED_SUBSCRIPTION_STATUSES, "El estado de la suscripcion");
+    const isConfirmedPayment = ["Pagado", "Activa"].includes(status);
+    const expiresAt = sanitizeOptionalDate(request.body?.expiresAt || (isCreditPackPlan(plan) ? "" : addDays(createdAt, 30).toISOString()), "La fecha de expiracion", true);
     const subscription = sanitizeSubscription({
       id: crypto.randomUUID(),
       userId: request.body?.userId,
-      plan: request.body?.plan,
-      status: request.body?.status || "Pagado",
+      plan,
+      status,
       paymentMethod: request.body?.paymentMethod || "manual-admin",
       amount: request.body?.amount,
       currency: request.body?.currency || "USD",
       transactionId: request.body?.transactionId || request.body?.paymentToken || `admin-${crypto.randomUUID()}`,
       paymentToken: request.body?.paymentToken || request.body?.transactionId || `admin-${crypto.randomUUID()}`,
       paymentProof: request.body?.paymentProof || null,
-      reviewedAt: request.body?.status === "Pagado" || !request.body?.status ? createdAt.toISOString() : "",
-      reviewedBy: request.body?.status === "Pagado" || !request.body?.status ? auth.user.id : "",
+      reviewedAt: isConfirmedPayment ? createdAt.toISOString() : "",
+      reviewedBy: isConfirmedPayment ? auth.user.id : "",
       createdAt: createdAt.toISOString(),
       startsAt,
       expiresAt
@@ -1676,8 +2359,10 @@ app.post("/api/subscriptions/:subscriptionId", adminActionRateLimit, (request, r
       targetSubscription.paymentProof = sanitizePaymentProof(request.body.paymentProof);
     }
 
-    if (nextStatus === "Pagado") {
-      targetSubscription.reviewedAt = new Date().toISOString();
+    if (["Pagado", "Activa"].includes(nextStatus)) {
+      if (!targetSubscription.reviewedAt) {
+        targetSubscription.reviewedAt = new Date().toISOString();
+      }
       targetSubscription.reviewedBy = auth.user.id;
       state.oa_requests.forEach((item) => {
         if (item.subscriptionId === targetSubscription.id && item.status === "Pendiente de pago") {
@@ -1693,6 +2378,293 @@ app.post("/api/subscriptions/:subscriptionId", adminActionRateLimit, (request, r
     response.json({ ok: true, subscription: targetSubscription });
   } catch (error) {
     sendError(response, error, "No se pudo actualizar el pago.");
+  }
+});
+
+app.get("/api/paypal/config", (request, response) => {
+  response.json({
+    ok: true,
+    enabled: isPayPalConfigured(),
+    subscriptionsEnabled: arePayPalSubscriptionsConfigured(),
+    clientId: PAYPAL_CLIENT_ID,
+    currency: PAYPAL_CURRENCY,
+    environment: PAYPAL_ENVIRONMENT === "live" ? "live" : "sandbox",
+    planIds: PAYPAL_SUBSCRIPTION_PLAN_IDS
+  });
+});
+
+app.post("/api/paypal/orders", formRateLimit, async (request, response) => {
+  const auth = requireAuth(request, response);
+
+  if (!auth) {
+    return;
+  }
+
+  if (auth.user.role !== "client") {
+    sendError(response, createPublicError(403, "Solo clientes pueden pagar planes."));
+    return;
+  }
+
+  try {
+    const plan = requireAllowedValue(request.body?.plan, ALLOWED_PLANS, "El plan");
+    const amount = getPlanPrice(plan).toFixed(2);
+    const order = await requestPayPal("/v2/checkout/orders", {
+      method: "POST",
+      body: JSON.stringify({
+        intent: "CAPTURE",
+        purchase_units: [{
+          reference_id: plan,
+          custom_id: `${auth.user.id}:${plan}`,
+          description: `ZeroCopy IA - ${plan}`,
+          amount: {
+            currency_code: PAYPAL_CURRENCY,
+            value: amount
+          }
+        }]
+      })
+    });
+
+    logSecurityEvent("paypal_order_created", { userId: auth.user.id, orderId: order.id, plan });
+    response.json({ ok: true, id: order.id });
+  } catch (error) {
+    sendError(response, error, "No se pudo crear la orden de PayPal.");
+  }
+});
+
+app.post("/api/paypal/orders/:orderId/capture", formRateLimit, async (request, response) => {
+  const auth = requireAuth(request, response);
+
+  if (!auth) {
+    return;
+  }
+
+  if (auth.user.role !== "client") {
+    sendError(response, createPublicError(403, "Solo clientes pueden confirmar pagos."));
+    return;
+  }
+
+  try {
+    const state = getValidatedState();
+    const usersById = new Map(state.oa_users.map((user) => [user.id, user]));
+    const plan = requireAllowedValue(request.body?.plan, ALLOWED_PLANS, "El plan");
+    const orderId = requireCleanString(request.params.orderId, "La orden de PayPal", 120);
+    const existingByToken = state.oa_subscriptions.find((subscription) => (
+      subscription.userId === auth.user.id && subscription.paymentToken === orderId
+    ));
+
+    if (existingByToken) {
+      response.json({ ok: true, subscription: existingByToken });
+      return;
+    }
+
+    const order = await requestPayPal(`/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, {
+      method: "POST",
+      body: "{}"
+    });
+    const capture = verifyPayPalCapture(order, plan);
+    const createdAt = new Date();
+    const subscription = sanitizeSubscription({
+      id: crypto.randomUUID(),
+      userId: auth.user.id,
+      plan,
+      status: "Pagado",
+      paymentMethod: isCreditPackPlan(plan) ? "paypal-credits" : "paypal",
+      amount: getPlanPrice(plan),
+      currency: PAYPAL_CURRENCY,
+      transactionId: capture.id || orderId,
+      paymentToken: orderId,
+      paymentProof: null,
+      paymentNote: isCreditPackPlan(plan) ? "Compra unica de creditos" : "",
+      reviewedAt: createdAt.toISOString(),
+      reviewedBy: "paypal",
+      createdAt: createdAt.toISOString(),
+      startsAt: createdAt.toISOString(),
+      expiresAt: isCreditPackPlan(plan) ? "" : addDays(createdAt, 30).toISOString()
+    }, usersById);
+
+    state.oa_subscriptions.unshift(subscription);
+    state.oa_requests.forEach((item) => {
+      if (item.subscriptionId === subscription.id && item.status === "Pendiente de pago") {
+        item.status = "Recibida";
+        item.updatedAt = new Date().toISOString();
+        appendStatusHistory(item, "Recibida", auth.user, { note: "Pago PayPal confirmado" });
+      }
+    });
+
+    saveValidatedState(state);
+    logSecurityEvent("paypal_order_captured", { userId: auth.user.id, orderId, captureId: capture.id, subscriptionId: subscription.id });
+    response.json({ ok: true, subscription });
+  } catch (error) {
+    sendError(response, error, "No se pudo confirmar el pago de PayPal.");
+  }
+});
+
+app.post("/api/paypal/subscriptions/:paypalSubscriptionId/activate", formRateLimit, async (request, response) => {
+  const auth = requireAuth(request, response);
+
+  if (!auth) {
+    return;
+  }
+
+  if (auth.user.role !== "client") {
+    sendError(response, createPublicError(403, "Solo clientes pueden confirmar suscripciones."));
+    return;
+  }
+
+  try {
+    const state = getValidatedState();
+    const plan = requireAllowedValue(request.body?.plan, SUBSCRIPTION_PLANS, "El plan");
+    const paypalSubscriptionId = requireCleanString(request.params.paypalSubscriptionId, "La suscripcion de PayPal", 120);
+    const existing = state.oa_subscriptions.find((subscription) => (
+      subscription.userId === auth.user.id
+      && subscription.paypalSubscriptionId === paypalSubscriptionId
+    ));
+
+    if (existing) {
+      response.json({ ok: true, subscription: existing });
+      return;
+    }
+
+    const paypalSubscription = await requestPayPal(`/v1/billing/subscriptions/${encodeURIComponent(paypalSubscriptionId)}`, {
+      method: "GET"
+    });
+
+    verifyPayPalSubscriptionDetails(paypalSubscription, plan);
+
+    const paypalUserId = getPayPalSubscriptionUserId(paypalSubscription, auth.user.id);
+
+    if (paypalUserId !== auth.user.id) {
+      throw createPublicError(403, "La suscripcion de PayPal pertenece a otro cliente.");
+    }
+
+    const createdAt = new Date();
+    const subscription = createPayPalSubscriptionRecord(state, {
+      userId: auth.user.id,
+      plan,
+      paypalSubscriptionId,
+      paypalPlanId: paypalSubscription.plan_id,
+      transactionId: paypalSubscriptionId,
+      status: "Activa",
+      amount: getPlanPrice(plan),
+      startsAt: createdAt.toISOString(),
+      expiresAt: getPayPalSubscriptionNextBilling(paypalSubscription, createdAt),
+      paymentNote: "Suscripcion PayPal aprobada"
+    });
+
+    saveValidatedState(state);
+    logSecurityEvent("paypal_subscription_activated", { userId: auth.user.id, paypalSubscriptionId, subscriptionId: subscription.id, plan });
+    response.json({ ok: true, subscription });
+  } catch (error) {
+    sendError(response, error, "No se pudo activar la suscripcion de PayPal.");
+  }
+});
+
+app.post("/api/subscriptions/:subscriptionId/cancel", formRateLimit, async (request, response) => {
+  const auth = requireAuth(request, response);
+
+  if (!auth) {
+    return;
+  }
+
+  try {
+    const state = getValidatedState();
+    const subscriptionId = requireCleanString(request.params.subscriptionId, "La suscripcion", 80);
+    const targetSubscription = state.oa_subscriptions.find((subscription) => subscription.id === subscriptionId);
+
+    if (!targetSubscription) {
+      throw createPublicError(404, "Suscripcion no encontrada.");
+    }
+
+    if (auth.user.role !== "admin" && targetSubscription.userId !== auth.user.id) {
+      throw createPublicError(403, "No tienes permiso para cancelar esta suscripcion.");
+    }
+
+    if (targetSubscription.paymentMethod !== "paypal-subscription" || !targetSubscription.paypalSubscriptionId) {
+      throw createPublicError(409, "Esta suscripcion no es recurrente de PayPal.");
+    }
+
+    await requestPayPal(`/v1/billing/subscriptions/${encodeURIComponent(targetSubscription.paypalSubscriptionId)}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Cancelada desde ZeroCopy IA" })
+    });
+
+    const cancelledAt = new Date().toISOString();
+    state.oa_subscriptions.forEach((subscription) => {
+      if (subscription.paypalSubscriptionId === targetSubscription.paypalSubscriptionId && ["Pagado", "Activa"].includes(subscription.status)) {
+        subscription.status = "Cancelada";
+        subscription.cancelledAt = cancelledAt;
+        subscription.cancellationEffectiveAt = subscription.expiresAt;
+        subscription.paymentNote = "Cancelada desde la plataforma";
+      }
+    });
+
+    saveValidatedState(state);
+    logSecurityEvent("paypal_subscription_cancelled", { actorId: auth.user.id, subscriptionId, paypalSubscriptionId: targetSubscription.paypalSubscriptionId });
+    response.json({ ok: true, subscription: targetSubscription });
+  } catch (error) {
+    sendError(response, error, "No se pudo cancelar la suscripcion.");
+  }
+});
+
+app.post("/api/bank-payment-requests", formRateLimit, (request, response) => {
+  const auth = requireAuth(request, response);
+
+  if (!auth) {
+    return;
+  }
+
+  if (auth.user.role !== "client") {
+    sendError(response, createPublicError(403, "Solo clientes pueden solicitar datos bancarios."));
+    return;
+  }
+
+  try {
+    const state = getValidatedState();
+    const usersById = new Map(state.oa_users.map((user) => [user.id, user]));
+    const plan = requireAllowedValue(request.body?.plan, ALLOWED_PLANS, "El plan");
+    const whatsapp = requireCleanString(request.body?.whatsapp || auth.user.phone, "El WhatsApp", 40);
+    const existingPending = state.oa_subscriptions.find((subscription) => (
+      subscription.userId === auth.user.id
+      && subscription.plan === plan
+      && subscription.paymentMethod === "ach-deposito"
+      && subscription.status === "Pendiente"
+    ));
+
+    if (existingPending) {
+      existingPending.paymentContact = whatsapp;
+      existingPending.paymentNote = "Cliente solicita datos bancarios por WhatsApp.";
+      existingPending.updatedAt = new Date().toISOString();
+      saveValidatedState(state);
+      response.json({ ok: true, subscription: existingPending });
+      return;
+    }
+
+    const createdAt = new Date();
+    const paymentToken = `bank-${crypto.randomUUID()}`;
+    const subscription = sanitizeSubscription({
+      id: crypto.randomUUID(),
+      userId: auth.user.id,
+      plan,
+      status: "Pendiente",
+      paymentMethod: "ach-deposito",
+      amount: getPlanPrice(plan),
+      currency: PAYPAL_CURRENCY,
+      transactionId: paymentToken,
+      paymentToken,
+      paymentProof: null,
+      paymentContact: whatsapp,
+      paymentNote: "Cliente solicita datos bancarios por WhatsApp.",
+      createdAt: createdAt.toISOString(),
+      startsAt: createdAt.toISOString(),
+      expiresAt: isCreditPackPlan(plan) ? "" : addDays(createdAt, 30).toISOString()
+    }, usersById);
+
+    state.oa_subscriptions.unshift(subscription);
+    saveValidatedState(state);
+    logSecurityEvent("bank_payment_requested", { userId: auth.user.id, subscriptionId: subscription.id, plan });
+    response.json({ ok: true, subscription });
+  } catch (error) {
+    sendError(response, error, "No se pudo solicitar el pago bancario.");
   }
 });
 
@@ -1755,7 +2727,7 @@ app.post("/api/subscriptions", formRateLimit, (request, response) => {
       paymentProof,
       createdAt: createdAt.toISOString(),
       startsAt: createdAt.toISOString(),
-      expiresAt: addDays(createdAt, 30).toISOString()
+      expiresAt: isCreditPackPlan(plan) ? "" : addDays(createdAt, 30).toISOString()
     };
 
     state.oa_subscriptions.unshift(subscription);
@@ -1800,6 +2772,19 @@ app.post("/api/requests", formRateLimit, (request, response) => {
       teacherName: assignedTeacher && initialStatus !== "Pendiente de pago" ? assignedTeacher.name : "",
       assignedAt: assignedTeacher && initialStatus !== "Pendiente de pago" ? new Date().toISOString() : ""
     }, usersById, subscriptionsById);
+    const creditSummary = getClientCreditSummaryForUser(auth.user.id, state.oa_requests, state.oa_subscriptions);
+    const requiredCredits = getRequestPages(nextRequest) * 2;
+
+    if (!creditSummary.totalCredits) {
+      throw createPublicError(402, "Para enviar tu solicitud, primero debes elegir y comprar un plan o creditos.");
+    }
+
+    if (requiredCredits > creditSummary.availableCredits) {
+      throw createPublicError(
+        409,
+        `Credito insuficiente. Este envio requiere ${requiredCredits} credito(s) y tienes ${creditSummary.availableCredits} disponible(s).`
+      );
+    }
 
     appendStatusHistory(nextRequest, "Recibida", auth.user, { note: "Solicitud creada" });
 

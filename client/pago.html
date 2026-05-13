@@ -327,10 +327,6 @@
       color: #2b7a68;
     }
 
-    .payment-logo.transfer {
-      color: #475569;
-    }
-
     .method strong {
       display: block;
       margin-bottom: 2px;
@@ -371,6 +367,102 @@
 
     .payment-panel[hidden] {
       display: none;
+    }
+
+    .paypal-checkout {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 22px;
+    }
+
+    .paypal-status {
+      color: #475569;
+      font-size: 14px;
+    }
+
+    .paypal-status.error {
+      color: #b42318;
+      font-weight: 800;
+    }
+
+    .paypal-status.success {
+      color: #2b7a68;
+      font-weight: 800;
+    }
+
+    .method-status {
+      color: #475569;
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin-top: 5px;
+    }
+
+    .method-status.error {
+      color: #b42318;
+    }
+
+    .paypal-checkout[hidden] {
+      display: none;
+    }
+
+    .bank-support-note {
+      background: #fff8e8;
+      border: 1px solid #f4d38b;
+      border-radius: 16px;
+      color: #5d4306;
+      display: grid;
+      gap: 8px;
+      margin-bottom: 22px;
+      padding: 16px;
+    }
+
+    .bank-support-note[hidden] {
+      display: none;
+    }
+
+    .bank-support-note strong {
+      color: #071832;
+    }
+
+    .bank-support-note .inline-actions {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr auto;
+      margin-top: 6px;
+    }
+
+    .bank-support-note .mini-submit {
+      background: #071832;
+      border: 0;
+      border-radius: 10px;
+      color: white;
+      cursor: pointer;
+      font-weight: 800;
+      min-height: 46px;
+      padding: 0 16px;
+      white-space: nowrap;
+    }
+
+    .bank-support-note .mini-submit:disabled {
+      cursor: wait;
+      opacity: 0.72;
+    }
+
+    .bank-support-note .status {
+      color: #11493f;
+      font-size: 14px;
+      font-weight: 800;
+      min-height: 20px;
+    }
+
+    .bank-support-note .status.error {
+      color: #b42318;
+    }
+
+    .bank-support-note a {
+      color: #071832;
+      font-weight: 800;
     }
 
     .form-grid {
@@ -620,6 +712,10 @@
       .form-grid {
         grid-template-columns: 1fr;
       }
+
+      .bank-support-note .inline-actions {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -696,86 +792,75 @@
 
         <div class="section-heading">
           <h2>Datos para realizar el pago</h2>
-          <p>Elige un m&eacute;todo. PayPal y Banco General quedar&aacute;n listos para activaci&oacute;n autom&aacute;tica cuando conectemos sus credenciales.</p>
+          <p>Elige un m&eacute;todo. PayPal confirma el pago autom&aacute;ticamente; si prefieres banco, solicita los datos por WhatsApp.</p>
         </div>
 
         <form id="payment-form">
           <div class="payment-methods" aria-label="M&eacute;todos de pago">
-            <label class="method disabled">
-              <input type="radio" name="payment-method" value="paypal" />
+            <label class="method" id="paypal-method">
+              <input type="radio" name="payment-method" value="paypal" checked />
               <span class="method-content">
                 <span class="payment-logo paypal">Pay<span>Pal</span></span>
                 <span>
                   <strong>PayPal <span class="method-badge">Autom&aacute;tico</span></strong>
-                  <span>Se activar&aacute; cuando conectemos tu cuenta empresarial de PayPal.</span>
+                  <span>Paga con PayPal y activa tu plan al instante.</span>
+                  <small id="paypal-method-status" class="method-status"></small>
                 </span>
               </span>
             </label>
 
             <label class="method disabled">
-              <input type="radio" name="payment-method" value="banco-general" />
+              <input type="radio" name="payment-method" value="banco-general" disabled />
               <span class="method-content">
                 <span class="payment-logo bank">BG</span>
                 <span>
-                  <strong>Banco General <span class="method-badge">Autom&aacute;tico</span></strong>
-                  <span>Listo para integrar el bot&oacute;n o enlace de pago bancario.</span>
+                  <strong>Banco General <span class="method-badge">Pr&oacute;ximamente</span></strong>
+                  <span>Pago autom&aacute;tico por Banco General estar&aacute; disponible m&aacute;s adelante.</span>
                 </span>
               </span>
             </label>
 
-            <label class="method">
-              <input type="radio" name="payment-method" value="yappy" checked />
+            <label class="method disabled">
+              <input type="radio" name="payment-method" value="yappy" disabled />
               <span class="method-content">
                 <span class="payment-logo yappy">Yappy</span>
                 <span>
-                  <strong>Yappy / transferencia <span class="method-badge">Manual</span></strong>
-                  <span>Env&iacute;a el pago, sube comprobante y soporte lo confirma.</span>
+                  <strong>Yappy <span class="method-badge">Panam&aacute;</span></strong>
+                  <span>Disponible solo para Panam&aacute;. Lo activaremos m&aacute;s adelante.</span>
                 </span>
               </span>
             </label>
 
             <label class="method">
-              <input type="radio" name="payment-method" value="transferencia" />
+              <input type="radio" name="payment-method" value="ach-deposito" />
               <span class="method-content">
-                <span class="payment-logo transfer">ACH</span>
+                <span class="payment-logo bank">ACH</span>
                 <span>
-                  <strong>Transferencia bancaria</strong>
-                  <span>Recibe instrucciones para completar el pago manualmente.</span>
+                  <strong>ACH o dep&oacute;sito bancario <span class="method-badge">Soporte</span></strong>
+                  <span>Solicita los datos bancarios y deja tu WhatsApp para seguimiento.</span>
                 </span>
               </span>
             </label>
           </div>
 
-          <div id="automatic-payment-panel" class="payment-panel" hidden>
-            <strong>M&eacute;todo autom&aacute;tico en preparaci&oacute;n</strong>
-            <span>Este bot&oacute;n se conectar&aacute; al proveedor elegido para confirmar el pago y activar el plan al instante. Por ahora usa Yappy o transferencia manual.</span>
+          <div id="paypal-checkout" class="paypal-checkout" hidden>
+            <div id="paypal-button-container"></div>
+            <p id="paypal-status" class="paypal-status"></p>
           </div>
 
-          <div class="form-grid" id="manual-payment-fields">
-            <div class="field full">
-              <label for="payment-reference">Referencia o n&uacute;mero de transacci&oacute;n</label>
-              <input type="text" id="payment-reference" placeholder="Ej. Yappy 123456 / transferencia 000123" required />
+          <div class="bank-support-note" id="bank-support-note" hidden>
+            <strong>&iquest;Prefieres pagar por banco?</strong>
+            <span>Deja tu WhatsApp y soporte te enviar&aacute; los datos bancarios. Cuando el administrador confirme el pago, activar&aacute; tus cr&eacute;ditos del plan solicitado.</span>
+            <div class="inline-actions">
+              <input id="bank-whatsapp" type="tel" placeholder="WhatsApp con c&oacute;digo de pa&iacute;s" autocomplete="tel" />
+              <button class="mini-submit" id="bank-request-button" type="button">Solicitar datos</button>
             </div>
-
-            <div class="field full">
-              <label for="payment-proof">Comprobante de pago</label>
-              <input type="file" id="payment-proof" accept=".pdf,.png,.jpg,.jpeg" required />
-            </div>
-
-            <div class="field">
-              <label for="payment-amount">Monto pagado</label>
-              <input type="number" id="payment-amount" min="1" step="0.01" required />
-            </div>
-
-            <div class="field">
-              <label for="payment-note">Nota opcional</label>
-              <input type="text" id="payment-note" placeholder="Nombre usado en el pago" />
-            </div>
+            <p id="bank-request-status" class="status" role="status"></p>
           </div>
 
           <div class="divider"></div>
 
-          <button class="btn btn-primary" type="submit">Registrar pago pendiente y continuar</button>
+          <button class="btn btn-primary" type="submit" hidden disabled>Registrar pago pendiente y continuar</button>
           <a id="change-plan" class="btn btn-secondary" href="precios.html">Cambiar de plan</a>
         </form>
       </section>
@@ -878,6 +963,51 @@
           "Apoyo con citas y referencias.",
           "Acompa&ntilde;amiento m&aacute;s completo para varias entregas."
         ]
+      },
+      creditos10: {
+        name: "10 cr&eacute;ditos",
+        price: "$3.99",
+        works: "Compra &uacute;nica",
+        pages: "Equivalente a 5 p&aacute;ginas",
+        description: "Una recarga peque&ntilde;a para probar el servicio o completar un trabajo puntual sin suscripci&oacute;n.",
+        oneTime: true,
+        benefits: [
+          "Incluye 10 cr&eacute;ditos.",
+          "Equivalente a 5 p&aacute;ginas.",
+          "Pago &uacute;nico sin renovaci&oacute;n autom&aacute;tica.",
+          "Los cr&eacute;ditos se suman a tu saldo disponible.",
+          "Ideal para probar el servicio con un trabajo corto."
+        ]
+      },
+      creditos20: {
+        name: "20 cr&eacute;ditos",
+        price: "$6.99",
+        works: "Compra &uacute;nica",
+        pages: "Equivalente a 10 p&aacute;ginas",
+        description: "Cr&eacute;ditos sueltos para un trabajo mediano o para completar tu saldo sin cambiar de plan.",
+        oneTime: true,
+        benefits: [
+          "Incluye 20 cr&eacute;ditos.",
+          "Equivalente a 10 p&aacute;ginas.",
+          "Pago &uacute;nico sin renovaci&oacute;n autom&aacute;tica.",
+          "Los cr&eacute;ditos se suman a tu saldo disponible.",
+          "Puedes comprarlo aunque ya tengas un plan activo."
+        ]
+      },
+      creditos50: {
+        name: "50 cr&eacute;ditos",
+        price: "$14.99",
+        works: "Compra &uacute;nica",
+        pages: "Equivalente a 25 p&aacute;ginas",
+        description: "Recarga amplia para varios trabajos puntuales sin activar una suscripci&oacute;n mensual.",
+        oneTime: true,
+        benefits: [
+          "Incluye 50 cr&eacute;ditos.",
+          "Equivalente a 25 p&aacute;ginas.",
+          "Pago &uacute;nico sin renovaci&oacute;n autom&aacute;tica.",
+          "Los cr&eacute;ditos se suman a tu saldo disponible.",
+          "Buena opci&oacute;n antes de pasar a un plan mensual."
+        ]
       }
     };
 
@@ -890,11 +1020,12 @@
     const params = new URLSearchParams(window.location.search);
     const selectedPlanKey = plans[params.get("plan")] ? params.get("plan") : "academico";
     const selectedPlan = plans[selectedPlanKey];
+    const isOneTimePurchase = Boolean(selectedPlan.oneTime);
     const requestUrl = `solicitar.html?plan=${encodeURIComponent(selectedPlanKey)}`;
     const selectedPlanAmount = Number(selectedPlan.price.replace("$", ""));
 
     document.title = decodeHTML(`Pago ${selectedPlan.name} - ZeroCopy IA`);
-    document.getElementById("hero-title").textContent = decodeHTML(`Confirma tu ${selectedPlan.name}`);
+    document.getElementById("hero-title").textContent = decodeHTML(isOneTimePurchase ? `Compra ${selectedPlan.name}` : `Confirma tu ${selectedPlan.name}`);
     document.getElementById("hero-text").textContent = decodeHTML(selectedPlan.description);
     document.getElementById("plan-name").textContent = decodeHTML(selectedPlan.name);
     document.getElementById("plan-description").textContent = decodeHTML(selectedPlan.description);
@@ -903,8 +1034,6 @@
     document.getElementById("plan-pages").textContent = selectedPlan.pages;
     document.getElementById("summary-price").textContent = selectedPlan.price;
     document.getElementById("summary-name").textContent = decodeHTML(selectedPlan.name);
-    document.getElementById("payment-amount").value = selectedPlanAmount.toFixed(2);
-
     const benefitsList = document.getElementById("benefits-list");
     const summaryList = document.getElementById("summary-list");
 
@@ -914,84 +1043,229 @@
       benefitsList.appendChild(item);
     });
 
-    [selectedPlan.works, selectedPlan.pages, "Plan guardado para tu solicitud"].forEach((itemText) => {
+    [selectedPlan.works, selectedPlan.pages, isOneTimePurchase ? "Creditos listos para tu solicitud" : "Plan guardado para tu solicitud"].forEach((itemText) => {
       const item = document.createElement("li");
       item.textContent = decodeHTML(itemText);
       summaryList.appendChild(item);
     });
 
     const paymentMethodInputs = document.querySelectorAll("input[name='payment-method']");
-    const automaticPaymentPanel = document.getElementById("automatic-payment-panel");
-    const manualPaymentFields = document.getElementById("manual-payment-fields");
-    const manualFieldInputs = manualPaymentFields.querySelectorAll("input");
+    const bankSupportNote = document.getElementById("bank-support-note");
     const submitButton = document.querySelector("#payment-form button[type='submit']");
+    const paypalCheckout = document.getElementById("paypal-checkout");
+    const paypalStatus = document.getElementById("paypal-status");
+    const paypalMethodStatus = document.getElementById("paypal-method-status");
+    const paypalMethod = document.getElementById("paypal-method");
+    const paypalInput = document.querySelector("input[name='payment-method'][value='paypal']");
+    const bankWhatsapp = document.getElementById("bank-whatsapp");
+    const bankRequestButton = document.getElementById("bank-request-button");
+    const bankRequestStatus = document.getElementById("bank-request-status");
+    let paypalButtonsRendered = false;
+    const savedBankWhatsapp = sessionStorage.getItem("oa_bank_payment_whatsapp") || "";
+    const currentPaymentUser = getCurrentUser();
+
+    if (bankWhatsapp) {
+      bankWhatsapp.value = savedBankWhatsapp || currentPaymentUser?.phone || "";
+    }
+
+    function setPayPalStatus(message, type = "") {
+      paypalStatus.textContent = message;
+      paypalStatus.className = `paypal-status ${type}`.trim();
+      paypalMethodStatus.textContent = message;
+      paypalMethodStatus.className = `method-status ${type}`.trim();
+    }
 
     function syncPaymentMethod() {
       const selectedMethod = document.querySelector("input[name='payment-method']:checked").value;
-      const isAutomaticPlaceholder = selectedMethod === "paypal" || selectedMethod === "banco-general";
+      const isPayPal = selectedMethod === "paypal";
+      const isBankRequest = selectedMethod === "ach-deposito";
 
-      automaticPaymentPanel.hidden = !isAutomaticPlaceholder;
-      manualPaymentFields.hidden = isAutomaticPlaceholder;
-      submitButton.disabled = isAutomaticPlaceholder;
-      submitButton.textContent = isAutomaticPlaceholder
-        ? "Metodo automatico por conectar"
-        : "Registrar pago pendiente y continuar";
-
-      manualFieldInputs.forEach((input) => {
-        input.disabled = isAutomaticPlaceholder;
-      });
+      paypalCheckout.hidden = !isPayPal;
+      bankSupportNote.hidden = !isBankRequest;
+      submitButton.hidden = true;
+      submitButton.disabled = true;
     }
 
     paymentMethodInputs.forEach((input) => input.addEventListener("change", syncPaymentMethod));
     syncPaymentMethod();
 
-    function fileToAttachment(file) {
+    function apiUrl(pathname) {
+      const baseUrl = getApiBaseUrl();
+      return baseUrl ? `${baseUrl}${pathname}` : pathname;
+    }
+
+    async function fetchJSON(pathname, options = {}) {
+      const response = await fetch(apiUrl(pathname), {
+        credentials: "include",
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...(options.headers || {})
+        }
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || payload.ok === false) {
+        throw new Error(payload.error || "No se pudo completar la operacion.");
+      }
+
+      return payload;
+    }
+
+    function loadPayPalSDK(clientId, currency) {
       return new Promise((resolve, reject) => {
-        const reader = new FileReader();
+        if (window.paypal) {
+          resolve();
+          return;
+        }
 
-        reader.onload = () => {
-          resolve({
-            name: file.name,
-            type: file.type || "application/octet-stream",
-            size: file.size,
-            dataUrl: reader.result
-          });
-        };
-
-        reader.onerror = () => reject(reader.error);
-        reader.readAsDataURL(file);
+        const script = document.createElement("script");
+        const intent = isOneTimePurchase ? "capture" : "subscription";
+        const vault = isOneTimePurchase ? "" : "&vault=true";
+        script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&components=buttons&currency=${encodeURIComponent(currency)}${vault}&intent=${intent}`;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("No se pudo cargar el boton de PayPal."));
+        document.head.appendChild(script);
       });
     }
 
+    async function setupPayPalButton() {
+      try {
+        const config = await fetchJSON("/api/paypal/config", { method: "GET", headers: {} });
+
+        const paypalPlanId = isOneTimePurchase ? "" : config.planIds?.[selectedPlanKey] || "";
+
+        if (!config.enabled || !config.clientId || (!isOneTimePurchase && !paypalPlanId)) {
+          paypalMethod.classList.add("disabled");
+          paypalInput.disabled = true;
+          if (paypalInput.checked) {
+            document.querySelector("input[name='payment-method'][value='ach-deposito']").checked = true;
+            syncPaymentMethod();
+          }
+          setPayPalStatus("PayPal esta pendiente de configurar. Puedes solicitar los datos bancarios por WhatsApp mientras lo activamos.", "error");
+          return;
+        }
+
+        await loadPayPalSDK(config.clientId, config.currency || "USD");
+
+        if (!window.paypal || paypalButtonsRendered) {
+          return;
+        }
+
+        paypalMethod.classList.remove("disabled");
+        paypalInput.disabled = false;
+        setPayPalStatus(isOneTimePurchase ? "PayPal listo para compra unica de creditos." : "PayPal listo para suscripcion recurrente.", "success");
+
+        paypalButtonsRendered = true;
+        paypal.Buttons({
+          style: {
+            layout: "vertical",
+            color: "gold",
+            shape: "rect",
+            label: "paypal"
+          },
+          createOrder: isOneTimePurchase ? async () => {
+            if (!getCurrentUser()) {
+              window.location.href = `registro.html?next=${encodeURIComponent(`pago.html?plan=${selectedPlanKey}`)}`;
+              throw new Error("Debes iniciar sesion para pagar.");
+            }
+
+            setPayPalStatus("Creando orden segura en PayPal...");
+            const order = await fetchJSON("/api/paypal/orders", {
+              method: "POST",
+              body: JSON.stringify({ plan: selectedPlanKey })
+            });
+            return order.id;
+          } : undefined,
+          createSubscription: isOneTimePurchase ? undefined : async (data, actions) => {
+            if (!getCurrentUser()) {
+              window.location.href = `registro.html?next=${encodeURIComponent(`pago.html?plan=${selectedPlanKey}`)}`;
+              throw new Error("Debes iniciar sesion para pagar.");
+            }
+
+            setPayPalStatus("Creando suscripcion segura en PayPal...");
+            return actions.subscription.create({
+              plan_id: paypalPlanId,
+              custom_id: `${getCurrentUser().id}:${selectedPlanKey}`
+            });
+          },
+          onApprove: async (data) => {
+            setPayPalStatus(isOneTimePurchase ? "Confirmando pago con PayPal..." : "Confirmando suscripcion con PayPal...");
+            const subscription = isOneTimePurchase
+              ? registerPayPalOrder(selectedPlanKey, data.orderID)
+              : registerPayPalSubscription(selectedPlanKey, data.subscriptionID);
+            const paymentToken = subscription.paymentToken || data.subscriptionID || data.orderID;
+            sessionStorage.setItem("oa_selected_plan", selectedPlanKey);
+            sessionStorage.setItem("oa_payment_token", paymentToken);
+            sessionStorage.setItem("oa_payment_data", JSON.stringify({
+              paymentMethod: subscription.paymentMethod || (isOneTimePurchase ? "paypal-credits" : "paypal-subscription"),
+              amount: selectedPlanAmount,
+              currency: "USD",
+              transactionId: subscription.transactionId || data.subscriptionID || data.orderID,
+              paymentToken
+            }));
+            setPayPalStatus(isOneTimePurchase ? "Creditos confirmados. Te llevamos a tu solicitud." : "Suscripcion confirmada. Te llevamos a tu solicitud.", "success");
+            window.location.href = requestUrl;
+          },
+          onCancel: () => {
+            setPayPalStatus(isOneTimePurchase ? "Pago cancelado. Puedes intentarlo nuevamente cuando quieras." : "Suscripcion cancelada antes de confirmar. Puedes intentarlo nuevamente cuando quieras.");
+          },
+          onError: (error) => {
+            setPayPalStatus(error?.message || (isOneTimePurchase ? "PayPal no pudo completar el pago. Intenta nuevamente." : "PayPal no pudo completar la suscripcion. Intenta nuevamente."), "error");
+          }
+        }).render("#paypal-button-container");
+      } catch (error) {
+        paypalMethod.classList.add("disabled");
+        paypalInput.disabled = true;
+        if (paypalInput.checked) {
+          document.querySelector("input[name='payment-method'][value='ach-deposito']").checked = true;
+          syncPaymentMethod();
+        }
+        setPayPalStatus(error.message || "PayPal no esta disponible en este momento.", "error");
+      }
+    }
+
+    setupPayPalButton();
+
+    bankRequestButton.addEventListener("click", () => {
+      const whatsapp = bankWhatsapp.value.trim();
+
+      bankRequestStatus.className = "status";
+      bankRequestStatus.textContent = "";
+
+      if (!getCurrentUser()) {
+        sessionStorage.setItem("oa_bank_payment_plan", selectedPlanKey);
+        sessionStorage.setItem("oa_bank_payment_whatsapp", whatsapp);
+        window.location.href = `registro.html?next=${encodeURIComponent(`pago.html?plan=${selectedPlanKey}`)}`;
+        return;
+      }
+
+      if (!whatsapp) {
+        bankRequestStatus.className = "status error";
+        bankRequestStatus.textContent = "Escribe tu WhatsApp para enviarte los datos bancarios.";
+        return;
+      }
+
+      try {
+        bankRequestButton.disabled = true;
+        bankRequestButton.textContent = "Enviando...";
+        requestBankPaymentDetails(selectedPlanKey, whatsapp);
+        sessionStorage.removeItem("oa_selected_plan");
+        sessionStorage.removeItem("oa_payment_token");
+        sessionStorage.removeItem("oa_payment_data");
+        bankRequestStatus.className = "status";
+        bankRequestStatus.textContent = "Solicitud enviada. Soporte te contactara por WhatsApp. Cuando admin confirme el pago, tus creditos quedaran activos.";
+      } catch (error) {
+        bankRequestStatus.className = "status error";
+        bankRequestStatus.textContent = error.message || "No se pudo solicitar el pago bancario.";
+      } finally {
+        bankRequestButton.disabled = false;
+        bankRequestButton.textContent = "Solicitar datos";
+      }
+    });
+
     document.getElementById("payment-form").addEventListener("submit", async (event) => {
       event.preventDefault();
-      const selectedMethod = document.querySelector("input[name='payment-method']:checked").value;
-
-      if (selectedMethod === "paypal" || selectedMethod === "banco-general") {
-        return;
-      }
-
-      const proofFile = document.getElementById("payment-proof").files[0];
-      const transactionId = document.getElementById("payment-reference").value.trim();
-
-      if (!proofFile || !transactionId) {
-        return;
-      }
-
-      const proof = await fileToAttachment(proofFile);
-      sessionStorage.setItem("oa_selected_plan", selectedPlanKey);
-      sessionStorage.setItem("oa_payment_token", transactionId);
-      sessionStorage.setItem("oa_payment_data", JSON.stringify({
-        paymentMethod: document.querySelector("input[name='payment-method']:checked").value,
-        amount: Number(document.getElementById("payment-amount").value || selectedPlanAmount),
-        currency: "USD",
-        transactionId,
-        paymentToken: transactionId,
-        paymentNote: document.getElementById("payment-note").value.trim(),
-        paymentProof: proof
-      }));
-      registerPendingSubscription();
-      window.location.href = requestUrl;
     });
   </script>
 </body>

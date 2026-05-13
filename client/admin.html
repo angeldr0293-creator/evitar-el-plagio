@@ -191,7 +191,7 @@
 
     .stats {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 16px;
       margin-bottom: 24px;
     }
@@ -637,6 +637,60 @@
       gap: 12px;
     }
 
+    .data-table {
+      background: white;
+      border: 1px solid #e2e9ec;
+      border-radius: 14px;
+      overflow-x: auto;
+    }
+
+    .data-table table {
+      border-collapse: collapse;
+      min-width: 920px;
+      width: 100%;
+    }
+
+    .data-table th,
+    .data-table td {
+      border-bottom: 1px solid #e8eef1;
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .data-table th {
+      background: #f8faf9;
+      color: #475569;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .data-table tbody tr:hover {
+      background: #fbfdfc;
+    }
+
+    .data-table td {
+      font-size: 14px;
+    }
+
+    .spreadsheet-table th,
+    .spreadsheet-table td {
+      border-right: 1px solid #edf2f4;
+      white-space: nowrap;
+    }
+
+    .spreadsheet-table th:last-child,
+    .spreadsheet-table td:last-child {
+      border-right: 0;
+    }
+
+    .credits-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
     .work-board {
       grid-template-columns: repeat(3, 1fr);
     }
@@ -840,6 +894,7 @@
       }
 
       .stats,
+      .credits-summary,
       .detail-grid,
       .admin-form,
       .work-board,
@@ -901,6 +956,7 @@
       }
 
       .stats,
+      .credits-summary,
       .detail-grid,
       .admin-form,
       .teacher-row,
@@ -976,6 +1032,10 @@
           <span>Suscripciones</span>
         </article>
         <article class="stat">
+          <strong id="total-extra-credits">0</strong>
+          <span>Cr&eacute;ditos extra</span>
+        </article>
+        <article class="stat">
           <strong id="total-works">0</strong>
           <span>Trabajos enviados</span>
         </article>
@@ -987,6 +1047,7 @@
         <button class="admin-tab active" type="button" data-admin-view="clients">Clientes</button>
         <button class="admin-tab" type="button" data-admin-view="works">Trabajos <span id="works-tab-count" class="pill">0</span></button>
         <button class="admin-tab" type="button" data-admin-view="payments">Pagos</button>
+        <button class="admin-tab" type="button" data-admin-view="credits">Cr&eacute;ditos extra <span id="credits-tab-count" class="pill">0</span></button>
         <button class="admin-tab" type="button" data-admin-view="teachers">Profesores</button>
       </div>
 
@@ -1036,6 +1097,9 @@
             <option value="inicial">Paquete Inicial</option>
             <option value="academico">Paquete Académico</option>
             <option value="premium">Paquete Premium</option>
+            <option value="creditos10">10 creditos</option>
+            <option value="creditos20">20 creditos</option>
+            <option value="creditos50">50 creditos</option>
           </select>
           <select id="payment-status" required>
             <option value="Pagado">Pagado</option>
@@ -1043,7 +1107,7 @@
             <option value="Rechazado">Rechazado</option>
             <option value="Reembolsado">Reembolsado</option>
           </select>
-          <input id="payment-expires" type="date" required />
+          <input id="payment-expires" type="date" />
           <input id="payment-amount" type="number" min="1" step="0.01" placeholder="Monto" required />
           <input id="payment-method" type="text" placeholder="Metodo: Yappy, transferencia..." required />
           <input id="payment-token" type="text" placeholder="Referencia o transaccion" required />
@@ -1051,6 +1115,18 @@
         </form>
 
         <div id="payments-list" class="subscription-list"></div>
+      </section>
+
+      <section id="admin-credits-section" class="panel admin-section" hidden>
+        <div class="panel-head">
+          <div>
+            <h2>Cr&eacute;ditos extra</h2>
+            <p>Compras individuales de cr&eacute;ditos sin suscripci&oacute;n, organizadas como tabla de control.</p>
+          </div>
+          <input id="credits-search" class="filter" type="search" placeholder="Buscar por nombre, correo, c&oacute;digo o referencia" />
+        </div>
+        <div id="credits-extra-summary" class="credits-summary"></div>
+        <div id="credits-extra-list"></div>
       </section>
 
       <section id="admin-clients-section" class="panel admin-section">
@@ -1095,11 +1171,14 @@
     const packageNames = {
       inicial: "Inicial",
       academico: "Académico",
-      premium: "Premium"
+      premium: "Premium",
+      creditos10: "10 creditos",
+      creditos20: "20 creditos",
+      creditos50: "50 creditos"
     };
 
     const statusOptions = ["Pendiente de pago", "Recibida", "Asignada", "Visto", "Trabajando", "En proceso", "Lista", "Entrega subida", "Entregada"];
-    const subscriptionStatusOptions = ["Pendiente", "Pagado", "Rechazado", "Reembolsado"];
+    const subscriptionStatusOptions = ["Pendiente", "Pagado", "Activa", "Cancelada", "Rechazado", "Reembolsado", "Expirado", "Suspendida", "Pago fallido"];
     const clientsList = document.getElementById("clients-list");
     const clientSearch = document.getElementById("client-search");
     const adminAlert = document.getElementById("admin-alert");
@@ -1107,6 +1186,9 @@
     const paymentClient = document.getElementById("payment-client");
     const paymentExpires = document.getElementById("payment-expires");
     const paymentsList = document.getElementById("payments-list");
+    const creditsSearch = document.getElementById("credits-search");
+    const creditsExtraSummary = document.getElementById("credits-extra-summary");
+    const creditsExtraList = document.getElementById("credits-extra-list");
     const teacherForm = document.getElementById("teacher-form");
     const teacherList = document.getElementById("teacher-list");
     const teacherMessage = document.getElementById("teacher-message");
@@ -1118,6 +1200,7 @@
       clients: document.getElementById("admin-clients-section"),
       works: document.getElementById("admin-works-section"),
       payments: document.getElementById("admin-payments-section"),
+      credits: document.getElementById("admin-credits-section"),
       teachers: document.getElementById("admin-teachers-section")
     };
     const adminWorkBoard = document.getElementById("admin-work-board");
@@ -1131,6 +1214,22 @@
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
+    }
+
+    function renderPaymentProofBadge(subscription) {
+      if (subscription.paymentProof) {
+        return `<a class="mini-action" href="${escapeHTML(subscription.paymentProof.url)}" target="_blank" rel="noopener">Ver comprobante</a>`;
+      }
+
+      return (subscription.paymentMethod === "paypal" || subscription.paymentMethod === "paypal-credits" || subscription.paymentMethod === "paypal-subscription") && ["Pagado", "Activa"].includes(subscription.status)
+        ? `<span class="pill active">PayPal confirmado</span>`
+        : `<span class="pill">Sin comprobante</span>`;
+    }
+
+    function renderBankConfirmButton(subscription) {
+      return subscription.paymentMethod === "ach-deposito" && subscription.status === "Pendiente" && !subscription.inferred
+        ? `<button class="mini-action confirm-bank-subscription" type="button" data-subscription-id="${escapeHTML(subscription.id)}">Confirmar pago y activar cr&eacute;ditos</button>`
+        : "";
     }
 
     function formatDate(value) {
@@ -1251,6 +1350,18 @@
       return Boolean(subscription && isPaidSubscription(subscription));
     }
 
+    function isCreditPack(plan) {
+      return ["creditos10", "creditos20", "creditos50"].includes(plan);
+    }
+
+    function getClientCreditPurchases(client) {
+      return client.creditPurchases || client.payments?.filter((payment) => isCreditPack(payment.plan)) || [];
+    }
+
+    function getClientRecurringSubscriptions(client) {
+      return client.subscriptions.filter((subscription) => !isCreditPack(subscription.plan));
+    }
+
     function createTemporaryPassword() {
       const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
       const randomValues = new Uint32Array(12);
@@ -1268,13 +1379,17 @@
     }
 
     function renderStats(clients) {
-      const subscriptions = clients.flatMap((client) => client.subscriptions);
+      const subscriptions = clients.flatMap(getClientRecurringSubscriptions);
+      const creditPurchases = clients.flatMap(getClientCreditPurchases);
+      const extraCredits = creditPurchases.reduce((total, purchase) => total + (getPlanCreditConfig()[purchase.plan]?.credits || 0), 0);
       const works = clients.flatMap((client) => client.requests);
 
       document.getElementById("total-clients").textContent = clients.length;
       document.getElementById("active-clients").textContent = clients.filter((client) => client.activeSubscription).length;
       document.getElementById("total-subscriptions").textContent = subscriptions.length;
+      document.getElementById("total-extra-credits").textContent = extraCredits;
       document.getElementById("total-works").textContent = works.length;
+      document.getElementById("credits-tab-count").textContent = creditPurchases.length;
     }
 
     function renderAdminAlert(clients) {
@@ -1427,6 +1542,7 @@
     }
 
     function renderSubscriptions(client) {
+      const subscriptions = getClientRecurringSubscriptions(client);
       const paymentForm = `
         <form class="admin-form client-payment-form" data-client-id="${escapeHTML(client.id)}">
           <select name="plan" required>
@@ -1445,7 +1561,7 @@
         </form>
       `;
 
-      if (!client.subscriptions.length) {
+      if (!subscriptions.length) {
         return `
           ${paymentForm}
           <div class="empty-state">
@@ -1458,13 +1574,15 @@
       return `
         ${paymentForm}
         <div class="subscription-list">
-          ${client.subscriptions.map((subscription) => `
+          ${subscriptions.map((subscription) => `
             <div class="subscription-row">
               <div>
                 <strong>${escapeHTML(packageNames[subscription.plan] || subscription.plan)}</strong>
                 <p class="muted">Inicio: ${formatDate(subscription.startsAt)} · Vence: ${formatDate(subscription.expiresAt)}</p>
                 <p class="muted">Monto: ${formatMoney(subscription.amount || 0)} ${escapeHTML(subscription.currency || "USD")} · Metodo: ${escapeHTML(subscription.paymentMethod || "-")} · Ref: ${escapeHTML(subscription.transactionId || subscription.paymentToken || "-")}</p>
-                ${subscription.paymentProof ? `<a class="mini-action" href="${escapeHTML(subscription.paymentProof.url)}" target="_blank" rel="noopener">Ver comprobante</a>` : `<span class="pill">Sin comprobante</span>`}
+                ${subscription.paymentContact ? `<p class="muted">WhatsApp para pago: ${escapeHTML(subscription.paymentContact)}</p>` : ""}
+                ${renderPaymentProofBadge(subscription)}
+                ${renderBankConfirmButton(subscription)}
               </div>
               <div class="work-actions">
                 <select class="subscription-plan-select" data-subscription-id="${escapeHTML(subscription.id)}" ${subscription.inferred ? "disabled" : ""}>
@@ -1475,6 +1593,40 @@
                 </select>
                 <input class="subscription-expiry-input" data-subscription-id="${escapeHTML(subscription.id)}" type="date" value="${formatDateInput(subscription.expiresAt)}" ${subscription.inferred ? "disabled" : ""} />
                 ${subscription.inferred ? `<span class="pill">Inferida</span>` : `<button class="mini-action save-subscription" type="button" data-subscription-id="${escapeHTML(subscription.id)}">Guardar</button>`}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderCreditPurchases(client) {
+      const purchases = getClientCreditPurchases(client);
+      const totalCredits = purchases.reduce((total, purchase) => total + (getPlanCreditConfig()[purchase.plan]?.credits || 0), 0);
+
+      if (!purchases.length) {
+        return `
+          <div class="empty-state">
+            <h3>Sin compras de creditos</h3>
+            <p>Cuando este cliente compre creditos sin suscripcion, apareceran aqui.</p>
+          </div>
+        `;
+      }
+
+      return `
+        <p class="muted">Total comprado en creditos sueltos: ${totalCredits} creditos.</p>
+        <div class="subscription-list">
+          ${purchases.map((purchase) => `
+            <div class="subscription-row">
+              <div>
+                <strong>${escapeHTML(packageNames[purchase.plan] || purchase.plan)}</strong>
+                <p class="muted">Compra: ${formatDate(purchase.createdAt || purchase.startsAt)} · Monto: ${formatMoney(purchase.amount || 0)} ${escapeHTML(purchase.currency || "USD")}</p>
+                <p class="muted">Metodo: ${escapeHTML(purchase.paymentMethod || "-")} · Ref: ${escapeHTML(purchase.transactionId || purchase.paymentToken || "-")}</p>
+                ${renderPaymentProofBadge(purchase)}
+              </div>
+              <div class="work-actions">
+                <span class="pill ${isSubscriptionActive(purchase) ? "active" : ""}">${escapeHTML(purchase.status || "Pendiente")}</span>
+                <span class="pill">Compra unica</span>
               </div>
             </div>
           `).join("")}
@@ -1649,10 +1801,11 @@
             updateRequestStatus(requestId, status);
           }
 
-          window.showScreenNotification?.("Trabajo actualizado correctamente.");
-          window.refreshNotifications?.();
-          renderTeachers();
-          renderClients();
+      window.showScreenNotification?.("Trabajo actualizado correctamente.");
+      window.refreshNotifications?.();
+      renderTeachers();
+      renderClients();
+      renderCreditsExtraBoard();
 
           event.currentTarget.textContent = "Guardado";
           setTimeout(() => {
@@ -1664,8 +1817,103 @@
 
     function getPaymentRows() {
       return getAdminClients().flatMap((client) => (
-        client.subscriptions.map((subscription) => ({ ...subscription, client }))
+        (client.payments || client.subscriptions.concat(getClientCreditPurchases(client))).map((subscription) => ({ ...subscription, client }))
       ));
+    }
+
+    function getCreditPurchaseRows() {
+      return getAdminClients().flatMap((client) => (
+        getClientCreditPurchases(client).map((purchase) => ({
+          ...purchase,
+          client,
+          credits: getPlanCreditConfig()[purchase.plan]?.credits || 0
+        }))
+      )).sort((a, b) => new Date(b.createdAt || b.startsAt || 0) - new Date(a.createdAt || a.startsAt || 0));
+    }
+
+    function renderCreditsExtraBoard() {
+      const search = creditsSearch.value.trim().toLowerCase();
+      const rows = getCreditPurchaseRows();
+      const filteredRows = rows.filter((purchase) => {
+        const searchable = [
+          purchase.client.name,
+          purchase.client.email,
+          purchase.client.subscriberId || getSubscriberId(purchase.client),
+          packageNames[purchase.plan] || purchase.plan,
+          purchase.transactionId,
+          purchase.paymentToken,
+          purchase.paymentMethod,
+          purchase.status
+        ].join(" ").toLowerCase();
+        return searchable.includes(search);
+      });
+      const totalCredits = rows.reduce((total, purchase) => total + purchase.credits, 0);
+      const totalAmount = rows.reduce((total, purchase) => total + Number(purchase.amount || 0), 0);
+      const uniqueClients = new Set(rows.map((purchase) => purchase.client.id)).size;
+
+      creditsExtraSummary.innerHTML = `
+        <article class="detail-card"><strong>${rows.length}</strong>Compras registradas</article>
+        <article class="detail-card"><strong>${totalCredits}</strong>Creditos comprados</article>
+        <article class="detail-card"><strong>${formatMoney(totalAmount)}</strong>Ingresos por creditos</article>
+      `;
+
+      if (!rows.length) {
+        creditsExtraList.innerHTML = `
+          <div class="empty-state">
+            <h3>Sin compras de creditos extra</h3>
+            <p>Cuando un cliente compre creditos sin suscripcion, apareceran aqui.</p>
+          </div>
+        `;
+        return;
+      }
+
+      if (!filteredRows.length) {
+        creditsExtraList.innerHTML = `
+          <div class="empty-state">
+            <h3>Sin resultados</h3>
+            <p>No hay compras que coincidan con el filtro actual.</p>
+          </div>
+        `;
+        return;
+      }
+
+      creditsExtraList.innerHTML = `
+        <div class="data-table">
+          <table class="spreadsheet-table">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Codigo</th>
+                <th>Correo</th>
+                <th>Creditos</th>
+                <th>Paquete</th>
+                <th>Fecha de compra</th>
+                <th>Estado</th>
+                <th>Monto</th>
+                <th>Metodo</th>
+                <th>Referencia</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredRows.map((purchase) => `
+                <tr>
+                  <td>${escapeHTML(purchase.client.name || "-")}</td>
+                  <td>${escapeHTML(purchase.client.subscriberId || getSubscriberId(purchase.client) || "-")}</td>
+                  <td>${escapeHTML(purchase.client.email || "-")}</td>
+                  <td>${purchase.credits}</td>
+                  <td>${escapeHTML(packageNames[purchase.plan] || purchase.plan)}</td>
+                  <td>${formatDate(purchase.createdAt || purchase.startsAt)}</td>
+                  <td><span class="pill ${isSubscriptionActive(purchase) ? "active" : ""}">${escapeHTML(purchase.status || "Pendiente")}</span></td>
+                  <td>${formatMoney(purchase.amount || 0)} ${escapeHTML(purchase.currency || "USD")}</td>
+                  <td>${escapeHTML(purchase.paymentMethod || "-")}</td>
+                  <td>${escapeHTML(purchase.transactionId || purchase.paymentToken || "-")}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+        <p class="muted">${filteredRows.length} de ${rows.length} compra(s) mostradas. ${uniqueClients} cliente(s) con creditos extra.</p>
+      `;
     }
 
     function updatePaymentClientOptions(clients = getAdminClients()) {
@@ -1682,12 +1930,34 @@
       updateAdminSubscription(subscriptionId, { plan, status, expiresAt });
       renderPaymentsBoard();
       renderClients();
+      renderCreditsExtraBoard();
+    }
+
+    function confirmBankSubscription(subscriptionId, root = document) {
+      const plan = root.querySelector(`.subscription-plan-select[data-subscription-id="${CSS.escape(subscriptionId)}"]`)?.value;
+      const expiresAt = root.querySelector(`.subscription-expiry-input[data-subscription-id="${CSS.escape(subscriptionId)}"]`)?.value || getDefaultExpiryDate();
+
+      updateAdminSubscription(subscriptionId, {
+        plan,
+        status: "Pagado",
+        expiresAt,
+        paymentMethod: "ach-deposito"
+      });
+      renderPaymentsBoard();
+      renderClients();
+      renderCreditsExtraBoard();
     }
 
     function attachPaymentControls(root = document) {
       root.querySelectorAll(".save-subscription").forEach((button) => {
         button.addEventListener("click", (event) => {
           saveSubscriptionFromControls(event.currentTarget.dataset.subscriptionId, event.currentTarget.closest(".subscription-row") || root);
+        });
+      });
+
+      root.querySelectorAll(".confirm-bank-subscription").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          confirmBankSubscription(event.currentTarget.dataset.subscriptionId, event.currentTarget.closest(".subscription-row") || root);
         });
       });
 
@@ -1707,6 +1977,7 @@
           });
           renderPaymentsBoard();
           renderClients();
+          renderCreditsExtraBoard();
         });
       });
     }
@@ -1734,7 +2005,9 @@
             <strong>${escapeHTML(subscription.client.name)} - ${escapeHTML(packageNames[subscription.plan] || subscription.plan)}</strong>
             <p class="muted">${escapeHTML(subscription.client.email)} · Inicio: ${formatDate(subscription.startsAt)} · Vence: ${formatDate(subscription.expiresAt)}</p>
             <p class="muted">Monto: ${formatMoney(subscription.amount || 0)} ${escapeHTML(subscription.currency || "USD")} · Metodo: ${escapeHTML(subscription.paymentMethod || "-")} · Ref: ${escapeHTML(subscription.transactionId || subscription.paymentToken || "-")}</p>
-            ${subscription.paymentProof ? `<a class="mini-action" href="${escapeHTML(subscription.paymentProof.url)}" target="_blank" rel="noopener">Ver comprobante</a>` : `<span class="pill">Sin comprobante</span>`}
+            ${subscription.paymentContact ? `<p class="muted">WhatsApp para pago: ${escapeHTML(subscription.paymentContact)}</p>` : ""}
+            ${renderPaymentProofBadge(subscription)}
+            ${renderBankConfirmButton(subscription)}
           </div>
           <div class="work-actions">
             <select class="subscription-plan-select" data-subscription-id="${escapeHTML(subscription.id)}" ${subscription.inferred ? "disabled" : ""}>
@@ -1771,7 +2044,8 @@
           <div class="detail-card"><strong>Profesor responsable</strong>${escapeHTML(client.teacher ? client.teacher.name : "Sin profesor fijo")}</div>
           <div class="detail-card"><strong>Plan actual</strong>${escapeHTML(planName)}</div>
           <div class="detail-card"><strong>Vencimiento</strong>${escapeHTML(expiryText)}</div>
-          <div class="detail-card"><strong>Veces suscrito</strong>${client.subscriptions.length}</div>
+          <div class="detail-card"><strong>Veces suscrito</strong>${getClientRecurringSubscriptions(client).length}</div>
+          <div class="detail-card"><strong>Compras de creditos</strong>${getClientCreditPurchases(client).length}</div>
           <div class="detail-card"><strong>Cliente desde</strong>${formatDate(client.createdAt)}</div>
         </div>
         <form class="admin-form client-profile-form" data-client-id="${escapeHTML(client.id)}">
@@ -1879,6 +2153,8 @@
       }
 
       clientsList.innerHTML = visibleClients.map((client) => {
+        const recurringSubscriptions = getClientRecurringSubscriptions(client);
+        const creditPurchases = getClientCreditPurchases(client);
         const subscription = client.activeSubscription || client.latestSubscription;
         const planName = subscription ? packageNames[subscription.plan] || subscription.plan : "Sin plan";
         const statusLabel = client.activeSubscription ? "Pagado" : "Sin suscripción pagada";
@@ -1917,8 +2193,13 @@
               </details>
 
               <details class="subfolder">
-                <summary><strong>Suscripciones</strong><span class="pill">${client.subscriptions.length}</span></summary>
+                <summary><strong>Suscripciones</strong><span class="pill">${recurringSubscriptions.length}</span></summary>
                 <div class="subfolder-body">${renderSubscriptions(client)}</div>
+              </details>
+
+              <details class="subfolder">
+                <summary><strong>Compras de creditos</strong><span class="pill">${creditPurchases.length}</span></summary>
+                <div class="subfolder-body">${renderCreditPurchases(client)}</div>
               </details>
             </div>
           </details>
@@ -1956,6 +2237,7 @@
           });
           renderPaymentsBoard();
           renderClients();
+          renderCreditsExtraBoard();
         });
       });
 
@@ -2011,6 +2293,7 @@
       renderTeachers();
       renderAdminWorkBoard();
       renderPaymentsBoard();
+      renderCreditsExtraBoard();
       renderClients();
       adminTabs.forEach((tab) => {
         tab.addEventListener("click", () => {
@@ -2019,6 +2302,7 @@
         });
       });
       clientSearch.addEventListener("input", renderClients);
+      creditsSearch.addEventListener("input", renderCreditsExtraBoard);
       paymentAdminForm.addEventListener("submit", (event) => {
         event.preventDefault();
         createAdminSubscription({
@@ -2036,6 +2320,7 @@
         document.getElementById("payment-method").value = "";
         renderPaymentsBoard();
         renderClients();
+        renderCreditsExtraBoard();
       });
       teacherForm.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -2062,6 +2347,7 @@
           renderTeachers();
           renderAdminWorkBoard();
           renderClients();
+          renderCreditsExtraBoard();
         } catch (error) {
           teacherMessage.textContent = error.message;
           teacherCredentials.classList.remove("show");

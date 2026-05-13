@@ -19,6 +19,7 @@ const API_LOGIN_ENDPOINTS = createApiEndpoints("/api/login");
 const API_ADMIN_LOGIN_ENDPOINTS = createApiEndpoints("/api/admin/login");
 const API_ADMIN_EMAIL_CHECK_ENDPOINTS = createApiEndpoints("/api/admin/email-check");
 const API_LOGOUT_ENDPOINTS = createApiEndpoints("/api/logout");
+const API_CURRENT_USER_ENDPOINTS = createApiEndpoints("/api/me");
 let sharedStateCache = null;
 let sharedStateCacheAt = 0;
 const SHARED_STATE_CACHE_MS = 500;
@@ -228,12 +229,36 @@ function saveUsers(users) {
   setSharedItem(AUTH_USERS_KEY, users);
 }
 
+function getCurrentUserFromServer() {
+  for (const endpoint of API_CURRENT_USER_ENDPOINTS) {
+    try {
+      const request = new XMLHttpRequest();
+      request.open("GET", endpoint, false);
+      request.withCredentials = true;
+      request.send();
+
+      if (request.status >= 200 && request.status < 300) {
+        const result = JSON.parse(request.responseText || "{}");
+
+        if (result && result.ok && result.user) {
+          setCurrentUser(result.user);
+          return result.user;
+        }
+      }
+    } catch (error) {
+      // Se prueba el siguiente endpoint disponible.
+    }
+  }
+
+  return null;
+}
+
 function getCurrentUser() {
   localStorage.removeItem("oa_auth_token");
   const storedUser = JSON.parse(localStorage.getItem(AUTH_USER_KEY) || "null");
 
   if (!storedUser) {
-    return null;
+    return getCurrentUserFromServer();
   }
 
   if (storedUser.role === "admin") {
@@ -302,7 +327,10 @@ function getPlanCreditConfig() {
   return {
     inicial: { credits: 50, pages: 25 },
     academico: { credits: 100, pages: 50 },
-    premium: { credits: 200, pages: 100 }
+    premium: { credits: 200, pages: 100 },
+    creditos10: { credits: 10, pages: 5 },
+    creditos20: { credits: 20, pages: 10 },
+    creditos50: { credits: 50, pages: 25 }
   };
 }
 
@@ -310,15 +338,47 @@ function getPlanFinanceConfig() {
   return {
     inicial: { name: "Inicial", price: 14.99, includedPages: 25, teacherShare: 0.5, platformShare: 0.5 },
     academico: { name: "Académico", price: 21.99, includedPages: 50, teacherShare: 0.5, platformShare: 0.5 },
-    premium: { name: "Premium", price: 36.99, includedPages: 100, teacherShare: 0.5, platformShare: 0.5 }
+    premium: { name: "Premium", price: 36.99, includedPages: 100, teacherShare: 0.5, platformShare: 0.5 },
+    creditos10: { name: "10 creditos", price: 3.99, includedPages: 5, teacherShare: 0.5, platformShare: 0.5 },
+    creditos20: { name: "20 creditos", price: 6.99, includedPages: 10, teacherShare: 0.5, platformShare: 0.5 },
+    creditos50: { name: "50 creditos", price: 14.99, includedPages: 25, teacherShare: 0.5, platformShare: 0.5 }
   };
+}
+
+function getAllowedPlanKeys() {
+  return Object.keys(getPlanCreditConfig());
+}
+
+function getRecurringPlanKeys() {
+  return ["inicial", "academico", "premium"];
+}
+
+function isCreditPackPlan(plan) {
+  return ["creditos10", "creditos20", "creditos50"].includes(plan);
+}
+
+function isRecurringPlan(plan) {
+  return getRecurringPlanKeys().includes(plan);
 }
 
 function isPaidSubscription(subscription) {
   return Boolean(subscription && (
     subscription.status === "Pagado"
     || subscription.status === "Activa"
+    || subscription.status === "Cancelada"
   ) && (!subscription.expiresAt || new Date(subscription.expiresAt) >= new Date()));
+}
+
+function isCreditGrantSubscription(subscription, activeRecurringSubscriptionIds = new Set()) {
+  if (!subscription || !["Pagado", "Activa", "Cancelada"].includes(subscription.status)) {
+    return false;
+  }
+
+  if (subscription.paymentMethod === "paypal-subscription" && subscription.paypalSubscriptionId) {
+    return activeRecurringSubscriptionIds.has(subscription.paypalSubscriptionId);
+  }
+
+  return !subscription.expiresAt || new Date(subscription.expiresAt) >= new Date();
 }
 
 function getPlanValuePerPage(config) {
@@ -421,14 +481,19 @@ function getRequestPages(request) {
 
 function getClientCreditSummary(requests = getCurrentUserRequests(), subscriptions = getCurrentUserSubscriptions()) {
   const planCredits = getPlanCreditConfig();
-  const paidSubscriptions = subscriptions.filter(isPaidSubscription);
-  const purchasedCredits = paidSubscriptions.reduce((total, subscription) => (
+  const activeRecurringSubscriptionIds = new Set(
+    subscriptions
+      .filter((subscription) => subscription.paymentMethod === "paypal-subscription" && isPaidSubscription(subscription) && subscription.paypalSubscriptionId)
+      .map((subscription) => subscription.paypalSubscriptionId)
+  );
+  const creditSubscriptions = subscriptions.filter((subscription) => isCreditGrantSubscription(subscription, activeRecurringSubscriptionIds));
+  const purchasedCredits = creditSubscriptions.reduce((total, subscription) => (
     total + (planCredits[subscription.plan]?.credits || 0)
   ), 0);
-  const purchasedPages = paidSubscriptions.reduce((total, subscription) => (
+  const purchasedPages = creditSubscriptions.reduce((total, subscription) => (
     total + (planCredits[subscription.plan]?.pages || 0)
   ), 0);
-  const inferredPlans = paidSubscriptions.length || subscriptions.length ? [] : requests.map((request) => request.package);
+  const inferredPlans = creditSubscriptions.length || subscriptions.length ? [] : requests.map((request) => request.package);
   const inferredCredits = inferredPlans.reduce((total, plan) => total + (planCredits[plan]?.credits || 0), 0);
   const inferredPages = inferredPlans.reduce((total, plan) => total + (planCredits[plan]?.pages || 0), 0);
   const totalCredits = purchasedCredits || inferredCredits;
@@ -631,7 +696,7 @@ function sendUrgentClientEmail(userId, data) {
 }
 
 function registerPendingSubscription() {
-  const allowedPlans = ["inicial", "academico", "premium"];
+  const allowedPlans = getAllowedPlanKeys();
   const plan = sessionStorage.getItem("oa_selected_plan");
   const paymentToken = sessionStorage.getItem("oa_payment_token");
   const paymentData = JSON.parse(sessionStorage.getItem("oa_payment_data") || "{}");
@@ -640,7 +705,60 @@ function registerPendingSubscription() {
     return null;
   }
 
+  if (["paypal", "paypal-subscription", "paypal-credits"].includes(paymentData.paymentMethod)) {
+    return getCurrentUserSubscriptions().find((subscription) => (
+      subscription.plan === plan
+      && (
+        subscription.paymentToken === paymentToken
+        || subscription.transactionId === paymentData.transactionId
+        || subscription.paypalSubscriptionId === paymentToken
+      )
+    )) || null;
+  }
+
   return registerSubscription(plan, { ...paymentData, paymentToken, transactionId: paymentData.transactionId || paymentToken });
+}
+
+function registerPayPalSubscription(plan, orderId) {
+  const allowedPlans = getRecurringPlanKeys();
+
+  if (!allowedPlans.includes(plan) || !orderId || !getCurrentUser()) {
+    throw new Error("Debes iniciar sesion para confirmar el pago.");
+  }
+
+  const result = postApiAction(`/api/paypal/subscriptions/${encodeURIComponent(orderId)}/activate`, { plan });
+  return result.subscription;
+}
+
+function registerPayPalOrder(plan, orderId) {
+  const allowedPlans = getAllowedPlanKeys();
+
+  if (!allowedPlans.includes(plan) || !orderId || !getCurrentUser()) {
+    throw new Error("Debes iniciar sesion para confirmar el pago.");
+  }
+
+  const result = postApiAction(`/api/paypal/orders/${encodeURIComponent(orderId)}/capture`, { plan });
+  return result.subscription;
+}
+
+function cancelPayPalSubscription(subscriptionId) {
+  if (!getCurrentUser()) {
+    throw new Error("Debes iniciar sesion para cancelar la suscripcion.");
+  }
+
+  const result = postApiAction(`/api/subscriptions/${encodeURIComponent(subscriptionId)}/cancel`, {});
+  return result.subscription;
+}
+
+function requestBankPaymentDetails(plan, whatsapp) {
+  const allowedPlans = getAllowedPlanKeys();
+
+  if (!allowedPlans.includes(plan) || !getCurrentUser()) {
+    throw new Error("Debes iniciar sesion para solicitar datos bancarios.");
+  }
+
+  const result = postApiAction("/api/bank-payment-requests", { plan, whatsapp });
+  return result.subscription;
 }
 
 function createRequest(data) {
@@ -699,7 +817,9 @@ function getAdminClients() {
 
   return getUsers().filter((user) => (user.role || "client") === "client").map((client) => {
     const clientRequests = requests.filter((request) => request.userId === client.id);
-    const savedSubscriptions = subscriptions.filter((subscription) => subscription.userId === client.id);
+    const clientPayments = subscriptions.filter((subscription) => subscription.userId === client.id);
+    const savedSubscriptions = clientPayments.filter((subscription) => isRecurringPlan(subscription.plan));
+    const creditPurchases = clientPayments.filter((subscription) => isCreditPackPlan(subscription.plan));
     const inferredSubscriptions = savedSubscriptions.length ? [] : clientRequests.map((request) => ({
       id: `inferred-${request.id}`,
       userId: client.id,
@@ -722,6 +842,8 @@ function getAdminClients() {
       teacher,
       requests: clientRequests,
       subscriptions: clientSubscriptions,
+      creditPurchases,
+      payments: clientPayments,
       latestSubscription,
       activeSubscription: clientSubscriptions.find(isPaidSubscription) || null
     };

@@ -27,10 +27,18 @@ EMAIL_REPLY_TO=resolviendot@gmail.com
 RESEND_API_KEY=re_xxxxxxxxx
 TURNSTILE_SITE_KEY=0x4AA...
 TURNSTILE_SECRET_KEY=0x4AA...
+PAYPAL_ENVIRONMENT=sandbox
+PAYPAL_CLIENT_ID=tu-client-id
+PAYPAL_CLIENT_SECRET=tu-client-secret
+GOOGLE_CLIENT_ID=tu-id-de-cliente-google
+GOOGLE_CLIENT_SECRET=tu-secreto-google
+GOOGLE_REDIRECT_URI=https://zerocopyia.com/api/auth/google/callback
 ```
 
 El archivo `.env` no debe subirse al repositorio.
 `ALLOWED_ORIGINS` acepta uno o varios origenes separados por coma. En desarrollo puedes dejar `http://localhost:5173`; en produccion usa `https://zerocopyia.com` y `https://www.zerocopyia.com`.
+Para activar el boton de PayPal usa `PAYPAL_ENVIRONMENT=sandbox` durante pruebas y cambia a `live` con las credenciales reales cuando vayas a cobrar en produccion.
+Para activar Google, crea un cliente OAuth de tipo aplicacion web y agrega `GOOGLE_REDIRECT_URI` tambien en los URI de redireccionamiento autorizados de Google Cloud.
 
 ## Ejecutar el proyecto
 
@@ -123,6 +131,9 @@ EMAIL_REPLY_TO=resolviendot@gmail.com
 RESEND_API_KEY=re_xxxxxxxxx
 TURNSTILE_SITE_KEY=0x4AA...
 TURNSTILE_SECRET_KEY=0x4AA...
+GOOGLE_CLIENT_ID=tu-id-de-cliente-google
+GOOGLE_CLIENT_SECRET=tu-secreto-google
+GOOGLE_REDIRECT_URI=https://zerocopyia.com/api/auth/google/callback
 ```
 
 3. Configura el hosting para ejecutar:
@@ -196,6 +207,18 @@ Cuando el servicio exista en Railway, configura los registros que Railway muestr
 - `www.zerocopyia.com`
 
 Luego confirma que ambos carguen con HTTPS y que `https://www.zerocopyia.com` redirija a `https://zerocopyia.com`.
+
+## Checklist previo al lanzamiento
+
+- Confirmar que el hosting ejecuta `npm start` como aplicacion Node.
+- Confirmar que existe volumen persistente para SQLite, uploads y logs.
+- Confirmar que `NODE_ENV=production`, `PUBLIC_APP_URL`, `ALLOWED_ORIGINS`, `CANONICAL_HOST`, `SESSION_SECRET`, `ADMIN_EMAIL` y `ADMIN_PASSWORD` estan definidos.
+- Confirmar que `EMAIL_PROVIDER=resend`, `EMAIL_FROM`, `EMAIL_REPLY_TO` y `RESEND_API_KEY` estan definidos si se enviaran correos reales.
+- Confirmar que `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` y `GOOGLE_REDIRECT_URI` coinciden con el cliente OAuth de Google Cloud.
+- Ejecutar `npm audit --audit-level=high`.
+- Ejecutar `node --check server/server.js` y `node --check server/auth/auth.js`.
+- Probar el flujo completo con usuario cliente, admin y profesor antes de abrir trafico real.
+- Probar una solicitud con creditos insuficientes para confirmar que el backend la rechaza.
 
 ## Checklist de pruebas
 
@@ -297,7 +320,7 @@ zerocopy-ia/
 - `server/logs/email-outbox.log` guarda correos enviados o en cola cuando no hay proveedor configurado.
 - Limites de archivos: maximo 5 archivos por solicitud, 10 MB por archivo, 15 MB total por solicitud y 2 MB para entregas del profesor.
 - Tipos permitidos: `.pdf`, `.doc`, `.docx`, `.txt`; el backend valida extension, nombre seguro y firma basica del archivo.
-- `server/data/data.json` queda como archivo heredado para migrar datos antiguos si la base SQLite esta vacia.
+- Si existe un `server/data/data.json` local heredado, se usa solo para migrar datos antiguos cuando la base SQLite esta vacia. No debe versionarse ni usarse como fuente principal en produccion.
 - `server/auth/auth.js` se mantiene separado como modulo de autenticacion usado por el cliente.
 - `client/js/notifications.js` y `client/css/notifications.css` contienen los recursos compartidos de notificaciones.
 
@@ -308,6 +331,7 @@ zerocopy-ia/
 - Registro incluye rate limiting, honeypot, tiempo minimo de envio y Cloudflare Turnstile cuando `TURNSTILE_SITE_KEY` y `TURNSTILE_SECRET_KEY` estan configuradas. Sin Turnstile, queda activo el fallback local de verificacion simple.
 - Se aplican headers de seguridad similares a Helmet.
 - No se sirven `.env`, SQLite, backups, logs ni carpetas internas del servidor.
+- El backend recalcula los creditos disponibles antes de aceptar una solicitud; la validacion visual del navegador es solo una ayuda.
 - Las paginas legales estan en `/privacidad.html`, `/terminos.html`, `/reembolsos.html` e `/integridad.html`.
 - Contacto visible: formulario de soporte, correo publico `resolviendot@gmail.com` y WhatsApp `+507 0000-0000`.
 - Datos del negocio visibles: nombre comercial `ZeroCopy IA`, dominio `zerocopyia.com`, ubicacion general Panama, correo publico `resolviendot@gmail.com`, Instagram `@resolviendotrabajos` y WhatsApp `+507 0000-0000`.

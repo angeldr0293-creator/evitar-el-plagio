@@ -327,6 +327,16 @@
   .notification-menu {
     left: 0;
     right: auto;
-    width: min(360px, 100%);
+    max-height: min(70vh, 520px);
+    overflow: hidden;
+    width: min(360px, calc(100vw - 24px));
+  }
+
+  .notification-list {
+    max-height: min(46vh, 300px);
+  }
+
+  .notification-footer {
+    grid-template-columns: 1fr;
   }
 }

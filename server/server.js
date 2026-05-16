@@ -565,6 +565,53 @@ function sanitizePaymentProof(file) {
   return sanitizeAttachment(file, PAYMENT_PROOF_EXTENSIONS, MAX_PAYMENT_PROOF_SIZE, "el comprobante de pago");
 }
 
+function removeStoredFile(storageKey) {
+  const safeStorageKey = path.basename(toCleanString(storageKey, 180));
+
+  if (!safeStorageKey) {
+    return false;
+  }
+
+  const uploadsRoot = path.resolve(UPLOADS_ROOT);
+  const filePath = path.resolve(uploadsRoot, safeStorageKey);
+
+  if (!(filePath === uploadsRoot || filePath.startsWith(`${uploadsRoot}${path.sep}`)) || !fs.existsSync(filePath)) {
+    return false;
+  }
+
+  try {
+    fs.unlinkSync(filePath);
+    return true;
+  } catch (error) {
+    logSecurityEvent("stored_file_delete_failed", { storageKey: safeStorageKey, error: error.message });
+    return false;
+  }
+}
+
+function collectClientStorageKeys({ requests = [], subscriptions = [] }) {
+  const storageKeys = new Set();
+
+  requests.forEach((request) => {
+    (request.attachments || []).forEach((file) => {
+      if (file?.storageKey) {
+        storageKeys.add(file.storageKey);
+      }
+    });
+
+    if (request.delivery?.storageKey) {
+      storageKeys.add(request.delivery.storageKey);
+    }
+  });
+
+  subscriptions.forEach((subscription) => {
+    if (subscription.paymentProof?.storageKey) {
+      storageKeys.add(subscription.paymentProof.storageKey);
+    }
+  });
+
+  return [...storageKeys];
+}
+
 function sanitizePaymentAmount(value, plan) {
   const planPrices = {
     inicial: 14.99,
@@ -2388,6 +2435,71 @@ app.post("/api/users/:userId", adminActionRateLimit, (request, response) => {
     response.json({ ok: true, user: sanitizeUser(targetUser) });
   } catch (error) {
     sendError(response, error, "No se pudo actualizar el usuario.");
+  }
+});
+
+app.post("/api/users/:userId/delete", adminActionRateLimit, (request, response) => {
+  const auth = requireAuth(request, response);
+
+  if (!auth) {
+    return;
+  }
+
+  if (auth.user.role !== "admin") {
+    sendError(response, createPublicError(403, "No tienes permiso para eliminar clientes."));
+    return;
+  }
+
+  try {
+    const confirmation = toCleanString(request.body?.confirmation, 40).toUpperCase();
+
+    if (confirmation !== "ELIMINAR") {
+      throw createPublicError(400, "Escribe ELIMINAR para confirmar.");
+    }
+
+    const state = getValidatedState();
+    const userId = requireCleanString(request.params.userId, "El cliente", 80);
+    const targetUser = state.oa_users.find((user) => user.id === userId);
+
+    if (!targetUser || targetUser.role !== "client") {
+      throw createPublicError(404, "Cliente no encontrado.");
+    }
+
+    const removedRequests = state.oa_requests.filter((request) => request.userId === userId);
+    const removedSubscriptions = state.oa_subscriptions.filter((subscription) => subscription.userId === userId);
+    const storageKeys = collectClientStorageKeys({
+      requests: removedRequests,
+      subscriptions: removedSubscriptions
+    });
+
+    state.oa_users = state.oa_users.filter((user) => user.id !== userId);
+    state.oa_requests = state.oa_requests.filter((request) => request.userId !== userId);
+    state.oa_subscriptions = state.oa_subscriptions.filter((subscription) => subscription.userId !== userId);
+
+    saveValidatedState(state);
+
+    const deletedFiles = storageKeys.reduce((count, storageKey) => (
+      removeStoredFile(storageKey) ? count + 1 : count
+    ), 0);
+
+    logSecurityEvent("client_deleted", {
+      actorId: auth.user.id,
+      userId,
+      requests: removedRequests.length,
+      subscriptions: removedSubscriptions.length,
+      files: deletedFiles
+    });
+    response.json({
+      ok: true,
+      deleted: {
+        userId,
+        requests: removedRequests.length,
+        subscriptions: removedSubscriptions.length,
+        files: deletedFiles
+      }
+    });
+  } catch (error) {
+    sendError(response, error, "No se pudo eliminar el cliente.");
   }
 });
 

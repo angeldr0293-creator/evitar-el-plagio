@@ -668,6 +668,14 @@ function updateUserProfile(userId, data) {
   return postApiAction(`/api/users/${encodeURIComponent(userId)}`, data).user;
 }
 
+function deleteClientUser(userId, confirmation) {
+  if (!isAdminUser()) {
+    throw new Error("Solo el administrador puede eliminar clientes.");
+  }
+
+  return postApiAction(`/api/users/${encodeURIComponent(userId)}/delete`, { confirmation }).deleted;
+}
+
 function changeOwnPassword(currentPassword, newPassword) {
   const user = getCurrentUser();
 

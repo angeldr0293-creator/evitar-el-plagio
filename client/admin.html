@@ -2057,6 +2057,7 @@
         <div class="profile-actions">
           <button class="ghost-btn reset-client-password" type="button" data-client-id="${escapeHTML(client.id)}" data-client-email="${escapeHTML(client.email)}">Resetear clave</button>
           ${client.teacher ? `<button class="ghost-btn clear-client-teacher" type="button" data-client-id="${escapeHTML(client.id)}">Quitar profesor fijo</button>` : ""}
+          <button class="ghost-btn delete-client" type="button" data-client-id="${escapeHTML(client.id)}" data-client-name="${escapeHTML(client.name)}" data-client-email="${escapeHTML(client.email)}">Eliminar cliente</button>
         </div>
         <form class="urgent-email-form" data-client-id="${escapeHTML(client.id)}">
           <strong>Mensaje de soporte</strong>
@@ -2284,6 +2285,30 @@
             password: newPassword
           };
           renderClients();
+        });
+      });
+
+      document.querySelectorAll(".delete-client").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          const { clientId, clientName, clientEmail } = event.currentTarget.dataset;
+          const confirmation = prompt(`Para eliminar a ${clientName} (${clientEmail}) y borrar sus solicitudes, pagos y archivos, escribe ELIMINAR.`);
+
+          if (confirmation !== "ELIMINAR") {
+            window.showScreenNotification?.("Eliminacion cancelada.");
+            return;
+          }
+
+          try {
+            const deleted = deleteClientUser(clientId, confirmation);
+            window.showScreenNotification?.(`Cliente eliminado. Solicitudes: ${deleted.requests}. Pagos: ${deleted.subscriptions}.`);
+            renderTeachers();
+            renderAdminWorkBoard();
+            renderPaymentsBoard();
+            renderCreditsExtraBoard();
+            renderClients();
+          } catch (error) {
+            window.showScreenNotification?.(error.message, "error");
+          }
         });
       });
     }

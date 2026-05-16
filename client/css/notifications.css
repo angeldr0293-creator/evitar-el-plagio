@@ -140,9 +140,14 @@
   z-index: 40;
 }
 
-.notification-bell:hover .notification-menu,
 .notification-bell.is-open .notification-menu {
   display: block;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .notification-bell:hover .notification-menu {
+    display: block;
+  }
 }
 
 .notification-menu::before {

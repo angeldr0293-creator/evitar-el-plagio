@@ -877,13 +877,28 @@
             <h3>Confirma tu correo</h3>
             <p>Te enviamos un enlace a ${escapeHTML(user.email)}. Debes confirmarlo antes de pagar o enviar solicitudes.</p>
             <button class="btn" type="button" id="resend-verification-email">Reenviar correo</button>
+            <p class="muted" id="resend-verification-status" aria-live="polite"></p>
           </div>
         `;
-        document.getElementById("resend-verification-email")?.addEventListener("click", () => {
+        document.getElementById("resend-verification-email")?.addEventListener("click", (event) => {
+          const button = event.currentTarget;
+          const status = document.getElementById("resend-verification-status");
+
           try {
+            button.disabled = true;
+            button.textContent = "Enviando...";
             resendEmailVerification();
+            button.textContent = "Correo reenviado";
+            status.textContent = "Listo. Revisa tu bandeja de entrada o spam.";
             window.queueScreenNotification?.("Te reenviamos el enlace de confirmacion.");
+            setTimeout(() => {
+              button.disabled = false;
+              button.textContent = "Reenviar correo";
+            }, 12000);
           } catch (error) {
+            button.disabled = false;
+            button.textContent = "Reenviar correo";
+            status.textContent = error.message;
             window.queueScreenNotification?.(error.message);
           }
         });

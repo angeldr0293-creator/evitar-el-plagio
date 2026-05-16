@@ -919,15 +919,29 @@
     });
 
     message.addEventListener("click", (event) => {
-      if (!event.target.closest("#resend-verification-email")) {
+      const resendButton = event.target.closest("#resend-verification-email");
+
+      if (!resendButton) {
         return;
       }
 
       try {
+        resendButton.disabled = true;
+        resendButton.textContent = "Enviando...";
         const result = resendEmailVerification();
         showMessage(result.alreadyVerified
           ? "Tu correo ya estaba confirmado."
           : "Te reenviamos el enlace de confirmacion. Revisa tu bandeja de entrada.", "success");
+        if (!result.alreadyVerified) {
+          message.insertAdjacentHTML("beforeend", ` <button class="link-button" type="button" id="resend-verification-email" disabled>Correo reenviado</button>`);
+          setTimeout(() => {
+            const button = document.getElementById("resend-verification-email");
+            if (button) {
+              button.disabled = false;
+              button.textContent = "Reenviar correo";
+            }
+          }, 12000);
+        }
       } catch (error) {
         showMessage(error.message, "error");
       }

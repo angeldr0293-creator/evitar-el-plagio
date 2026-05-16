@@ -20,6 +20,7 @@ const API_ADMIN_LOGIN_ENDPOINTS = createApiEndpoints("/api/admin/login");
 const API_ADMIN_EMAIL_CHECK_ENDPOINTS = createApiEndpoints("/api/admin/email-check");
 const API_LOGOUT_ENDPOINTS = createApiEndpoints("/api/logout");
 const API_CURRENT_USER_ENDPOINTS = createApiEndpoints("/api/me");
+const API_RESEND_VERIFICATION_ENDPOINTS = createApiEndpoints("/api/email-verification/resend");
 let sharedStateCache = null;
 let sharedStateCacheAt = 0;
 const SHARED_STATE_CACHE_MS = 500;
@@ -281,7 +282,9 @@ function getCurrentUser() {
     email: savedUser.email,
     phone: savedUser.phone,
     subscriberId: getSubscriberId(savedUser),
-    role: savedUser.role || "client"
+    role: savedUser.role || "client",
+    emailVerified: Boolean(savedUser.emailVerified),
+    emailVerifiedAt: savedUser.emailVerifiedAt || ""
   };
 
   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(normalizedUser));
@@ -300,6 +303,24 @@ function logout() {
 
 function authText(text) {
   return window.OAI18N ? window.OAI18N.t(text) : text;
+}
+
+function isCurrentUserEmailVerified(user = getCurrentUser()) {
+  return !user || (user.role || "client") !== "client" || Boolean(user.emailVerified || user.emailVerifiedAt);
+}
+
+function resendEmailVerification() {
+  const result = postJSONToFirstEndpoint(API_RESEND_VERIFICATION_ENDPOINTS, {});
+
+  if (!result || !result.ok) {
+    throw new Error(result?.error || "No se pudo reenviar el correo de verificacion.");
+  }
+
+  if (result.user) {
+    setCurrentUser(result.user);
+  }
+
+  return result;
 }
 
 function setupAuthLinks() {
@@ -664,6 +685,10 @@ function registerSubscription(plan, paymentData = "") {
     throw new Error("Debes iniciar sesión para guardar la suscripción.");
   }
 
+  if (!isCurrentUserEmailVerified(user)) {
+    throw new Error("Confirma tu correo antes de continuar. Revisa tu bandeja de entrada.");
+  }
+
   const payload = typeof paymentData === "object" && paymentData
     ? { plan, ...paymentData }
     : { plan, paymentToken: paymentData };
@@ -705,6 +730,10 @@ function registerPendingSubscription() {
     return null;
   }
 
+  if (!isCurrentUserEmailVerified()) {
+    return null;
+  }
+
   if (["paypal", "paypal-subscription", "paypal-credits"].includes(paymentData.paymentMethod)) {
     return getCurrentUserSubscriptions().find((subscription) => (
       subscription.plan === plan
@@ -721,9 +750,14 @@ function registerPendingSubscription() {
 
 function registerPayPalSubscription(plan, orderId) {
   const allowedPlans = getRecurringPlanKeys();
+  const user = getCurrentUser();
 
-  if (!allowedPlans.includes(plan) || !orderId || !getCurrentUser()) {
+  if (!allowedPlans.includes(plan) || !orderId || !user) {
     throw new Error("Debes iniciar sesion para confirmar el pago.");
+  }
+
+  if (!isCurrentUserEmailVerified(user)) {
+    throw new Error("Confirma tu correo antes de continuar. Revisa tu bandeja de entrada.");
   }
 
   const result = postApiAction(`/api/paypal/subscriptions/${encodeURIComponent(orderId)}/activate`, { plan });
@@ -732,9 +766,14 @@ function registerPayPalSubscription(plan, orderId) {
 
 function registerPayPalOrder(plan, orderId) {
   const allowedPlans = getAllowedPlanKeys();
+  const user = getCurrentUser();
 
-  if (!allowedPlans.includes(plan) || !orderId || !getCurrentUser()) {
+  if (!allowedPlans.includes(plan) || !orderId || !user) {
     throw new Error("Debes iniciar sesion para confirmar el pago.");
+  }
+
+  if (!isCurrentUserEmailVerified(user)) {
+    throw new Error("Confirma tu correo antes de continuar. Revisa tu bandeja de entrada.");
   }
 
   const result = postApiAction(`/api/paypal/orders/${encodeURIComponent(orderId)}/capture`, { plan });
@@ -752,9 +791,14 @@ function cancelPayPalSubscription(subscriptionId) {
 
 function requestBankPaymentDetails(plan, whatsapp) {
   const allowedPlans = getAllowedPlanKeys();
+  const user = getCurrentUser();
 
-  if (!allowedPlans.includes(plan) || !getCurrentUser()) {
+  if (!allowedPlans.includes(plan) || !user) {
     throw new Error("Debes iniciar sesion para solicitar datos bancarios.");
+  }
+
+  if (!isCurrentUserEmailVerified(user)) {
+    throw new Error("Confirma tu correo antes de continuar. Revisa tu bandeja de entrada.");
   }
 
   const result = postApiAction("/api/bank-payment-requests", { plan, whatsapp });
@@ -766,6 +810,10 @@ function createRequest(data) {
 
   if (!user) {
     throw new Error("Debes iniciar sesión para guardar tu solicitud.");
+  }
+
+  if (!isCurrentUserEmailVerified(user)) {
+    throw new Error("Confirma tu correo antes de enviar solicitudes. Revisa tu bandeja de entrada.");
   }
 
   return postApiAction("/api/requests", data).request;

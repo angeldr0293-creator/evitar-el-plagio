@@ -861,14 +861,34 @@
         : "Sin créditos activos";
       const accountAction = document.getElementById("account-action");
       const canSendWork = creditSummary.availableCredits >= 2;
+      const emailVerified = isCurrentUserEmailVerified(user);
 
       accountAction.textContent = canSendWork ? "Enviar trabajo" : "Comprar créditos";
-      accountAction.href = canSendWork ? "formulario.html" : "precios.html";
+      accountAction.href = emailVerified ? (canSendWork ? "formulario.html" : "precios.html") : "registro.html";
       document.querySelectorAll("[data-request-action]").forEach((link) => {
         link.textContent = canSendWork ? "Nueva solicitud" : "Comprar créditos";
-        link.href = canSendWork ? "formulario.html" : "precios.html";
+        link.href = emailVerified ? (canSendWork ? "formulario.html" : "precios.html") : "registro.html";
       });
       setupCreditBadges();
+
+      if (!emailVerified) {
+        requestsList.innerHTML = `
+          <div class="empty-state">
+            <h3>Confirma tu correo</h3>
+            <p>Te enviamos un enlace a ${escapeHTML(user.email)}. Debes confirmarlo antes de pagar o enviar solicitudes.</p>
+            <button class="btn" type="button" id="resend-verification-email">Reenviar correo</button>
+          </div>
+        `;
+        document.getElementById("resend-verification-email")?.addEventListener("click", () => {
+          try {
+            resendEmailVerification();
+            window.queueScreenNotification?.("Te reenviamos el enlace de confirmacion.");
+          } catch (error) {
+            window.queueScreenNotification?.(error.message);
+          }
+        });
+        return;
+      }
 
       if (!activeRequests.length) {
         requestsList.innerHTML = `

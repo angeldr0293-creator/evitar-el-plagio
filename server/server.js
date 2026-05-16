@@ -153,6 +153,10 @@ function getPanelLink(pathname = "panel.html") {
   return `${PUBLIC_APP_URL.replace(/\/$/, "")}/${pathname.replace(/^\//, "")}`;
 }
 
+function getEmailVerificationLink(token) {
+  return `${PUBLIC_APP_URL.replace(/\/$/, "")}/api/verify-email?token=${encodeURIComponent(token)}`;
+}
+
 function createEmailText({ greeting, lines = [], actionText = "Entrar a la plataforma", actionUrl = getPanelLink() }) {
   return [
     greeting,
@@ -217,6 +221,57 @@ async function sendTransactionalEmail(email) {
 function queueTransactionalEmail(email) {
   sendTransactionalEmail(email).catch((error) => {
     logEmailOutbox({ ...email, error: error.message }, "failed");
+  });
+}
+
+function createEmailVerificationToken() {
+  const token = crypto.randomBytes(32).toString("base64url");
+  return {
+    token,
+    tokenHash: crypto.createHash("sha256").update(token).digest("hex"),
+    expiresAt: addDays(new Date(), 1).toISOString()
+  };
+}
+
+function assignEmailVerificationToken(user) {
+  const verification = createEmailVerificationToken();
+  user.emailVerifiedAt = "";
+  user.emailVerificationTokenHash = verification.tokenHash;
+  user.emailVerificationTokenExpiresAt = verification.expiresAt;
+  return verification.token;
+}
+
+function clearEmailVerificationToken(user) {
+  user.emailVerificationTokenHash = "";
+  user.emailVerificationTokenExpiresAt = "";
+}
+
+function isClientEmailVerified(user) {
+  if (!user || (user.role || "client") !== "client") {
+    return true;
+  }
+
+  if (user.emailVerifiedAt || user.authProvider === "google") {
+    return true;
+  }
+
+  return !user.emailVerificationTokenHash && !user.emailVerificationTokenExpiresAt;
+}
+
+function queueEmailVerification(user, token) {
+  queueTransactionalEmail({
+    event: "email_verification",
+    to: user.email,
+    subject: "Confirma tu correo en ZeroCopy IA",
+    text: createEmailText({
+      greeting: `Hola ${user.name || "cliente"},`,
+      lines: [
+        "Confirma este correo para activar tu cuenta y proteger tus solicitudes.",
+        "El enlace vence en 24 horas. Si no creaste esta cuenta, puedes ignorar este mensaje."
+      ],
+      actionText: "Confirmar mi correo",
+      actionUrl: getEmailVerificationLink(token)
+    })
   });
 }
 
@@ -1082,9 +1137,16 @@ function sanitizeUser(user) {
     return null;
   }
 
-  const { password, googleId, ...safeUser } = user;
+  const {
+    password,
+    googleId,
+    emailVerificationTokenHash,
+    emailVerificationTokenExpiresAt,
+    ...safeUser
+  } = user;
   return {
     ...safeUser,
+    emailVerified: isClientEmailVerified(user),
     subscriberId: (safeUser.role || "client") === "client"
       ? safeUser.subscriberId || createSubscriberId(safeUser.id)
       : safeUser.subscriberId || ""
@@ -1146,6 +1208,21 @@ function requireAuth(request, response) {
   }
 
   return { state, user };
+}
+
+function requireVerifiedClient(auth, response) {
+  if (!auth || auth.user.role !== "client") {
+    return true;
+  }
+
+  const savedUser = auth.state.oa_users.find((user) => user.id === auth.user.id && user.role === "client");
+
+  if (!savedUser || isClientEmailVerified(savedUser)) {
+    return true;
+  }
+
+  sendError(response, createPublicError(403, "Confirma tu correo antes de continuar. Te enviamos un enlace de verificacion."));
+  return false;
 }
 
 function isGoogleAuthConfigured() {
@@ -1305,6 +1382,8 @@ function findOrCreateGoogleClient(profile) {
     user.authProvider = user.authProvider || "google";
     user.name = toCleanString(user.name, 120) || toCleanString(profile.name, 120) || email.split("@")[0];
     user.avatarUrl = toCleanString(profile.picture, 300);
+    user.emailVerifiedAt = user.emailVerifiedAt || new Date().toISOString();
+    clearEmailVerificationToken(user);
     saveState(state);
     return sanitizeUser(user);
   }
@@ -1319,6 +1398,7 @@ function findOrCreateGoogleClient(profile) {
     authProvider: "google",
     googleId,
     avatarUrl: toCleanString(profile.picture, 300),
+    emailVerifiedAt: new Date().toISOString(),
     createdAt: new Date().toISOString()
   });
 
@@ -1401,6 +1481,9 @@ function sanitizeUserForStorage(user) {
     authProvider: role === "client" ? toCleanString(user.authProvider, 40) : "",
     googleId: role === "client" ? toCleanString(user.googleId, 120) : "",
     avatarUrl: role === "client" ? toCleanString(user.avatarUrl, 300) : "",
+    emailVerifiedAt: role === "client" ? sanitizeOptionalDate(user.emailVerifiedAt, "La fecha de verificacion de correo", true) : "",
+    emailVerificationTokenHash: role === "client" ? toCleanString(user.emailVerificationTokenHash, 160) : "",
+    emailVerificationTokenExpiresAt: role === "client" ? sanitizeOptionalDate(user.emailVerificationTokenExpiresAt, "La expiracion de verificacion de correo", true) : "",
     createdAt: sanitizeOptionalDate(user.createdAt || new Date().toISOString(), "La fecha de creacion")
   };
 }
@@ -2099,6 +2182,75 @@ app.get("/api/auth/google/callback", loginRateLimit, async (request, response) =
   }
 });
 
+app.get("/api/verify-email", loginRateLimit, (request, response) => {
+  try {
+    const token = requireCleanString(request.query?.token, "El enlace de verificacion", 300);
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const state = getValidatedState();
+    const user = state.oa_users.find((item) => (
+      item.role === "client"
+      && item.emailVerificationTokenHash
+      && item.emailVerificationTokenHash === tokenHash
+    ));
+
+    if (!user) {
+      throw createPublicError(400, "El enlace de verificacion no es valido.");
+    }
+
+    const expiresAt = new Date(user.emailVerificationTokenExpiresAt || 0);
+
+    if (!Number.isFinite(expiresAt.getTime()) || expiresAt < new Date()) {
+      throw createPublicError(400, "El enlace de verificacion expiro. Inicia sesion para solicitar uno nuevo.");
+    }
+
+    user.emailVerifiedAt = new Date().toISOString();
+    clearEmailVerificationToken(user);
+    saveValidatedState(state);
+    const safeUser = sanitizeUser(user);
+    setSessionCookie(response, safeUser);
+    logSecurityEvent("email_verified", { userId: user.id, ip: getClientIp(request) });
+    response.redirect("/panel.html?email_verified=1");
+  } catch (error) {
+    logSecurityEvent("email_verification_failed", { ip: getClientIp(request), reason: error.publicMessage || error.message });
+    response.redirect(`/registro.html?verification_error=${encodeURIComponent(getPublicErrorMessage(error, "No se pudo verificar el correo."))}`);
+  }
+});
+
+app.post("/api/email-verification/resend", formRateLimit, (request, response) => {
+  const auth = requireAuth(request, response);
+
+  if (!auth) {
+    return;
+  }
+
+  if (auth.user.role !== "client") {
+    sendError(response, createPublicError(403, "Solo clientes pueden verificar correo."));
+    return;
+  }
+
+  try {
+    const state = getValidatedState();
+    const user = state.oa_users.find((item) => item.id === auth.user.id && item.role === "client");
+
+    if (!user) {
+      throw createPublicError(404, "Usuario no encontrado.");
+    }
+
+    if (isClientEmailVerified(user)) {
+      response.json({ ok: true, alreadyVerified: true, user: sanitizeUser(user) });
+      return;
+    }
+
+    const token = assignEmailVerificationToken(user);
+    saveValidatedState(state);
+    queueEmailVerification(user, token);
+    logSecurityEvent("email_verification_resent", { userId: user.id, ip: getClientIp(request) });
+    response.json({ ok: true, sent: true, user: sanitizeUser(user) });
+  } catch (error) {
+    sendError(response, error, "No se pudo reenviar la verificacion.");
+  }
+});
+
 app.post("/api/teachers", adminActionRateLimit, (request, response) => {
   const auth = requireAuth(request, response);
 
@@ -2405,6 +2557,10 @@ app.post("/api/paypal/orders", formRateLimit, async (request, response) => {
     return;
   }
 
+  if (!requireVerifiedClient(auth, response)) {
+    return;
+  }
+
   try {
     const plan = requireAllowedValue(request.body?.plan, ALLOWED_PLANS, "El plan");
     const amount = getPlanPrice(plan).toFixed(2);
@@ -2440,6 +2596,10 @@ app.post("/api/paypal/orders/:orderId/capture", formRateLimit, async (request, r
 
   if (auth.user.role !== "client") {
     sendError(response, createPublicError(403, "Solo clientes pueden confirmar pagos."));
+    return;
+  }
+
+  if (!requireVerifiedClient(auth, response)) {
     return;
   }
 
@@ -2508,6 +2668,10 @@ app.post("/api/paypal/subscriptions/:paypalSubscriptionId/activate", formRateLim
 
   if (auth.user.role !== "client") {
     sendError(response, createPublicError(403, "Solo clientes pueden confirmar suscripciones."));
+    return;
+  }
+
+  if (!requireVerifiedClient(auth, response)) {
     return;
   }
 
@@ -2618,6 +2782,10 @@ app.post("/api/bank-payment-requests", formRateLimit, (request, response) => {
     return;
   }
 
+  if (!requireVerifiedClient(auth, response)) {
+    return;
+  }
+
   try {
     const state = getValidatedState();
     const usersById = new Map(state.oa_users.map((user) => [user.id, user]));
@@ -2677,6 +2845,10 @@ app.post("/api/subscriptions", formRateLimit, (request, response) => {
 
   if (auth.user.role !== "client") {
     sendError(response, createPublicError(403, "Solo clientes pueden crear suscripciones."));
+    return;
+  }
+
+  if (!requireVerifiedClient(auth, response)) {
     return;
   }
 
@@ -2747,6 +2919,10 @@ app.post("/api/requests", formRateLimit, (request, response) => {
 
   if (auth.user.role !== "client") {
     sendError(response, createPublicError(403, "Solo clientes pueden crear solicitudes."));
+    return;
+  }
+
+  if (!requireVerifiedClient(auth, response)) {
     return;
   }
 
@@ -2996,14 +3172,16 @@ app.post("/api/register", registerRateLimit, async (request, response) => {
     role: "client",
     createdAt: new Date().toISOString()
   };
+  const verificationToken = assignEmailVerificationToken(user);
 
   state.oa_users.push(user);
   saveState(state);
 
   const safeUser = sanitizeUser(user);
   setSessionCookie(response, safeUser);
+  queueEmailVerification(user, verificationToken);
   logSecurityEvent("register_success", { userId: user.id, ip: getClientIp(request) });
-  response.json({ ok: true, user: safeUser });
+  response.json({ ok: true, user: safeUser, verificationEmailSent: true });
 });
 
 app.post("/api/login", loginRateLimit, (request, response) => {

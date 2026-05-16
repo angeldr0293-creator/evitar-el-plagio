@@ -407,6 +407,18 @@
       color: #11493f;
     }
 
+    .link-button {
+      appearance: none;
+      background: transparent;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+      padding: 0;
+      text-decoration: underline;
+    }
+
     svg {
       width: 46px;
       height: 46px;
@@ -566,6 +578,8 @@
     const params = new URLSearchParams(window.location.search);
     const nextPage = params.get("next") || "";
     const authError = params.get("auth_error") || "";
+    const verificationError = params.get("verification_error") || "";
+    const emailVerified = params.get("email_verified") || "";
     const existingUser = getCurrentUser();
     const registerFormStartedAt = Date.now();
     const captchaState = {
@@ -671,6 +685,19 @@
 
     if (authError) {
       showMessage(authError, "error");
+    }
+
+    if (verificationError) {
+      showMessage(verificationError, "error");
+    }
+
+    if (emailVerified) {
+      showMessage("Correo confirmado correctamente. Ya puedes continuar.", "success");
+    }
+
+    if (existingUser && !isCurrentUserEmailVerified(existingUser)) {
+      showMessage(`Te enviamos un enlace de confirmacion a ${existingUser.email}. Revisa tu correo antes de pagar o enviar solicitudes.`, "success");
+      message.insertAdjacentHTML("beforeend", ` <button class="link-button" type="button" id="resend-verification-email">Reenviar correo</button>`);
     }
 
     function setTurnstileToken(token = "") {
@@ -883,9 +910,24 @@
         });
 
         registerPendingSubscription();
-        window.queueScreenNotification?.("Cuenta creada correctamente. Bienvenido a tu panel.");
-        showMessage("Cuenta creada correctamente. Redirigiendo...", "success");
+        window.queueScreenNotification?.("Cuenta creada correctamente. Revisa tu correo para confirmar la cuenta.");
+        showMessage("Cuenta creada. Te enviamos un enlace de confirmacion al correo registrado.", "success");
         setTimeout(() => window.location.href = getHomeForUser(user), 700);
+      } catch (error) {
+        showMessage(error.message, "error");
+      }
+    });
+
+    message.addEventListener("click", (event) => {
+      if (!event.target.closest("#resend-verification-email")) {
+        return;
+      }
+
+      try {
+        const result = resendEmailVerification();
+        showMessage(result.alreadyVerified
+          ? "Tu correo ya estaba confirmado."
+          : "Te reenviamos el enlace de confirmacion. Revisa tu bandeja de entrada.", "success");
       } catch (error) {
         showMessage(error.message, "error");
       }

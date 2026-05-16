@@ -1134,6 +1134,18 @@
         const config = await fetchJSON("/api/paypal/config", { method: "GET", headers: {} });
 
         const paypalPlanId = isOneTimePurchase ? "" : config.planIds?.[selectedPlanKey] || "";
+        const paymentUser = getCurrentUser();
+
+        if (paymentUser && !isCurrentUserEmailVerified(paymentUser)) {
+          paypalMethod.classList.add("disabled");
+          paypalInput.disabled = true;
+          if (paypalInput.checked) {
+            document.querySelector("input[name='payment-method'][value='ach-deposito']").checked = true;
+            syncPaymentMethod();
+          }
+          setPayPalStatus("Confirma tu correo antes de pagar. Te enviamos un enlace al registrarte.", "error");
+          return;
+        }
 
         if (!config.enabled || !config.clientId || (!isOneTimePurchase && !paypalPlanId)) {
           paypalMethod.classList.add("disabled");

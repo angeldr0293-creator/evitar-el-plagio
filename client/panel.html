@@ -509,11 +509,21 @@
       .nav {
         min-height: auto;
         padding: 10px 0;
+        flex-wrap: wrap;
+        gap: 8px;
       }
 
-      .header-credits,
       .filter {
         width: 100%;
+      }
+
+      .brand {
+        width: 100%;
+      }
+
+      .brand-logo {
+        height: 42px !important;
+        width: 64px !important;
       }
 
       .brand-subtitle {
@@ -524,25 +534,61 @@
         display: none;
       }
 
-      .nav-tools,
+      .nav-tools {
+        display: grid;
+        gap: 6px;
+        grid-template-columns: 42px minmax(112px, 1fr) auto 48px;
+        margin-left: 0;
+        width: 100%;
+      }
+
       .nav-actions {
         gap: 6px;
       }
 
+      .nav-tools .notification-target,
+      .nav-tools .notification-bell,
+      .nav-tools .notification-trigger {
+        min-width: 0;
+        width: 42px;
+      }
+
+      .nav-tools [data-request-action] {
+        min-width: 0;
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
       .panel-menu-toggle {
+        gap: 0;
+        justify-content: center;
         min-height: 40px;
-        padding: 8px 12px;
+        padding: 8px;
+        width: 48px;
+      }
+
+      .panel-menu-toggle span {
+        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
+        height: 1px;
+        overflow: hidden;
+        position: absolute;
+        white-space: nowrap;
+        width: 1px;
       }
 
       .btn,
       .ghost-btn {
-        font-size: 13px;
+        font-size: 12px;
         min-height: 40px;
-        padding: 8px 9px;
+        padding: 8px;
       }
 
       .header-credits {
         justify-content: center;
+        min-height: 40px;
+        padding: 8px 10px;
+        width: auto;
       }
 
       .welcome,

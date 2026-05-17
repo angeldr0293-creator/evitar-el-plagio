@@ -1012,12 +1012,7 @@ function createRateLimiter({ windowMs, max, keyPrefix }) {
   return (request, response, next) => {
     const now = Date.now();
     const key = `${keyPrefix}:${getClientIp(request)}`;
-    const bucket = rateLimitBuckets.get(key) || { count: 0, resetAt: now + windowMs };
-
-    if (bucket.resetAt <= now) {
-      bucket.count = 0;
-      bucket.resetAt = now + windowMs;
-    }
+    const bucket = getRateLimitBucket(key, windowMs, now);
 
     bucket.count += 1;
     rateLimitBuckets.set(key, bucket);
@@ -1031,6 +1026,49 @@ function createRateLimiter({ windowMs, max, keyPrefix }) {
 
     next();
   };
+}
+
+function getRateLimitBucket(key, windowMs, now = Date.now()) {
+  const bucket = rateLimitBuckets.get(key) || { count: 0, resetAt: now + windowMs };
+
+  if (bucket.resetAt <= now) {
+    bucket.count = 0;
+    bucket.resetAt = now + windowMs;
+  }
+
+  rateLimitBuckets.set(key, bucket);
+  return bucket;
+}
+
+function getAuthFailureRateLimitKey(request, keyPrefix, identifier) {
+  const cleanIdentifier = normalizeEmail(identifier) || "unknown";
+  return `${keyPrefix}:${getClientIp(request)}:${cleanIdentifier}`;
+}
+
+function isAuthFailureRateLimited(request, response, { windowMs, max, keyPrefix, identifier }) {
+  const now = Date.now();
+  const key = getAuthFailureRateLimitKey(request, keyPrefix, identifier);
+  const bucket = getRateLimitBucket(key, windowMs, now);
+
+  if (bucket.count >= max) {
+    response.setHeader("Retry-After", Math.ceil((bucket.resetAt - now) / 1000));
+    logSecurityEvent("rate_limited", { ip: getClientIp(request), route: request.originalUrl });
+    sendError(response, createPublicError(429, "Demasiados intentos. Intenta nuevamente mas tarde."));
+    return true;
+  }
+
+  return false;
+}
+
+function recordAuthFailure(request, { windowMs, keyPrefix, identifier }) {
+  const key = getAuthFailureRateLimitKey(request, keyPrefix, identifier);
+  const bucket = getRateLimitBucket(key, windowMs);
+  bucket.count += 1;
+  rateLimitBuckets.set(key, bucket);
+}
+
+function clearAuthFailures(request, { keyPrefix, identifier }) {
+  rateLimitBuckets.delete(getAuthFailureRateLimitKey(request, keyPrefix, identifier));
 }
 
 async function verifyTurnstileToken(token, request) {
@@ -2171,7 +2209,11 @@ app.post("/api/state", (request, response) => {
   sendError(response, createPublicError(405, "Usa endpoints especificos para modificar datos."));
 });
 
-const loginRateLimit = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: "login" });
+const authFailureWindowMs = 15 * 60 * 1000;
+const authFailureMax = 10;
+const userLoginFailureLimit = { windowMs: authFailureWindowMs, max: authFailureMax, keyPrefix: "login" };
+const adminLoginFailureLimit = { windowMs: authFailureWindowMs, max: authFailureMax, keyPrefix: "admin-login" };
+const oauthRateLimit = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 30, keyPrefix: "oauth" });
 const registerRateLimit = createRateLimiter({ windowMs: 60 * 60 * 1000, max: 5, keyPrefix: "register" });
 const formRateLimit = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 8, keyPrefix: "form" });
 const adminActionRateLimit = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: "admin-action" });
@@ -2186,7 +2228,7 @@ app.get("/api/me", (request, response) => {
   response.json({ ok: true, user: auth.user });
 });
 
-app.get("/api/auth/google/start", loginRateLimit, (request, response) => {
+app.get("/api/auth/google/start", oauthRateLimit, (request, response) => {
   try {
     if (!isGoogleAuthConfigured()) {
       throw createPublicError(503, "El inicio de sesion con Google no esta configurado todavia.");
@@ -2201,7 +2243,7 @@ app.get("/api/auth/google/start", loginRateLimit, (request, response) => {
   }
 });
 
-app.get("/api/auth/google/callback", loginRateLimit, async (request, response) => {
+app.get("/api/auth/google/callback", oauthRateLimit, async (request, response) => {
   try {
     if (!isGoogleAuthConfigured()) {
       throw createPublicError(503, "El inicio de sesion con Google no esta configurado todavia.");
@@ -2234,7 +2276,7 @@ app.get("/api/auth/google/callback", loginRateLimit, async (request, response) =
   }
 });
 
-app.get("/api/verify-email", loginRateLimit, (request, response) => {
+app.get("/api/verify-email", oauthRateLimit, (request, response) => {
   try {
     const token = requireCleanString(request.query?.token, "El enlace de verificacion", 300);
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
@@ -3301,12 +3343,18 @@ app.post("/api/register", registerRateLimit, async (request, response) => {
   response.json({ ok: true, user: safeUser, verificationEmailSent: true });
 });
 
-app.post("/api/login", loginRateLimit, (request, response) => {
+app.post("/api/login", (request, response) => {
   const state = readState();
   const { email = "", password = "" } = request.body || {};
   const normalizedEmail = normalizeEmail(email);
+  const rateLimitOptions = { ...userLoginFailureLimit, identifier: normalizedEmail };
+
+  if (isAuthFailureRateLimited(request, response, rateLimitOptions)) {
+    return;
+  }
 
   if (!isValidEmail(normalizedEmail) || typeof password !== "string" || !password) {
+    recordAuthFailure(request, rateLimitOptions);
     logSecurityEvent("login_failed", { ip: getClientIp(request), email: normalizedEmail });
     sendError(response, createPublicError(401, "Correo o contrasena incorrectos."));
     return;
@@ -3316,6 +3364,7 @@ app.post("/api/login", loginRateLimit, (request, response) => {
   ));
 
   if (!user) {
+    recordAuthFailure(request, rateLimitOptions);
     logSecurityEvent("login_failed", { ip: getClientIp(request), email: normalizedEmail });
     sendError(response, createPublicError(401, "Correo o contrasena incorrectos."));
     return;
@@ -3327,14 +3376,16 @@ app.post("/api/login", loginRateLimit, (request, response) => {
   }
 
   const safeUser = sanitizeUser(user);
+  clearAuthFailures(request, rateLimitOptions);
   setSessionCookie(response, safeUser);
   logSecurityEvent("login_success", { userId: user.id, ip: getClientIp(request) });
   response.json({ ok: true, user: safeUser });
 });
 
-app.post("/api/admin/login", loginRateLimit, (request, response) => {
+app.post("/api/admin/login", (request, response) => {
   const { email = "", password = "" } = request.body || {};
   const normalizedEmail = normalizeEmail(email);
+  const rateLimitOptions = { ...adminLoginFailureLimit, identifier: normalizedEmail };
   const hasAdminCredentials = ADMIN_EMAIL && ADMIN_PASSWORD;
   const isAdmin = hasAdminCredentials
     && isValidEmail(normalizedEmail)
@@ -3342,7 +3393,12 @@ app.post("/api/admin/login", loginRateLimit, (request, response) => {
     && typeof password === "string"
     && password === ADMIN_PASSWORD;
 
+  if (isAuthFailureRateLimited(request, response, rateLimitOptions)) {
+    return;
+  }
+
   if (!isAdmin) {
+    recordAuthFailure(request, rateLimitOptions);
     logSecurityEvent("admin_login_failed", { ip: getClientIp(request), email: normalizedEmail });
     sendError(response, createPublicError(401, "Correo o contrasena incorrectos."));
     return;
@@ -3356,6 +3412,7 @@ app.post("/api/admin/login", loginRateLimit, (request, response) => {
   };
 
   setSessionCookie(response, adminUser);
+  clearAuthFailures(request, rateLimitOptions);
   logSecurityEvent("admin_login_success", { ip: getClientIp(request) });
   response.json({ ok: true, user: adminUser });
 });

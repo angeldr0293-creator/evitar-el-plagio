@@ -179,7 +179,7 @@ async function sendResendEmail(email) {
     body: JSON.stringify({
       from: EMAIL_FROM,
       to: [email.to],
-      reply_to: EMAIL_REPLY_TO || undefined,
+      reply_to: email.replyTo || EMAIL_REPLY_TO || undefined,
       subject: email.subject,
       text: email.text
     })
@@ -194,9 +194,14 @@ async function sendTransactionalEmail(email) {
   const cleanEmail = {
     event: toCleanString(email.event, 80),
     to: normalizeEmail(email.to),
+    replyTo: normalizeEmail(email.replyTo || ""),
     subject: toCleanString(email.subject, 160),
     text: toCleanString(email.text, 5000)
   };
+
+  if (cleanEmail.replyTo && !isValidEmail(cleanEmail.replyTo)) {
+    cleanEmail.replyTo = "";
+  }
 
   if (!isValidEmail(cleanEmail.to) || !cleanEmail.subject || !cleanEmail.text) {
     logEmailOutbox(cleanEmail, "invalid");
@@ -3412,7 +3417,7 @@ app.post("/api/admin/urgent-email", adminActionRateLimit, async (request, respon
   }
 });
 
-app.post("/api/support", formRateLimit, (request, response) => {
+app.post("/api/support", formRateLimit, async (request, response) => {
   try {
     validateFormSpamBarrier(request.body || {});
 
@@ -3421,6 +3426,7 @@ app.post("/api/support", formRateLimit, (request, response) => {
     const topic = requireCleanString(request.body?.topic, "El motivo", 120);
     const message = requireCleanString(request.body?.message, "El mensaje", 3000);
     const currentUser = validateAuthUser(readTokenUser(request), readState());
+    const supportRecipient = normalizeEmail(EMAIL_REPLY_TO || ADMIN_EMAIL);
 
     logSupportMessage({
       id: crypto.randomUUID(),
@@ -3431,6 +3437,26 @@ app.post("/api/support", formRateLimit, (request, response) => {
       userId: currentUser?.id || "",
       ip: getClientIp(request)
     });
+
+    if (isValidEmail(supportRecipient)) {
+      await sendTransactionalEmail({
+        event: "support_contact_message",
+        to: supportRecipient,
+        replyTo: email,
+        subject: `Nuevo mensaje de soporte: ${topic}`,
+        text: [
+          "Nuevo mensaje recibido desde el formulario de soporte.",
+          "",
+          `Nombre: ${name}`,
+          `Correo: ${email}`,
+          `Motivo: ${topic}`,
+          `Usuario autenticado: ${currentUser?.id || "No"}`,
+          "",
+          "Mensaje:",
+          message
+        ].join("\n")
+      });
+    }
 
     response.json({ ok: true });
   } catch (error) {

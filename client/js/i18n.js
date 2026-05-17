@@ -99,7 +99,7 @@
     "Completa la información principal para entender tu caso y preparar la revisión correcta.": "Complete the main information so we can understand your case and prepare the right review.",
     "Nombre completo": "Full name",
     "Correo electrónico": "Email address",
-    "Teléfono o WhatsApp": "Phone",
+    "Teléfono o contacto": "Phone or contact",
     "Teléfono": "Phone",
     "Tipo de ayuda": "Type of help",
     "Tipo de documento": "Document type",

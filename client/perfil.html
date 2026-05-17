@@ -174,7 +174,7 @@
             Registro: ${formatDate(subscription.createdAt || subscription.startsAt)}<br />
             Vence: ${formatDate(subscription.expiresAt)}<br />
             Referencia: ${escapeHTML(subscription.transactionId || subscription.paymentToken || "Sin referencia")}<br />
-            ${subscription.paymentContact ? `WhatsApp: ${escapeHTML(subscription.paymentContact)}<br />` : ""}
+            ${subscription.paymentContact ? `Contacto de pago: ${escapeHTML(subscription.paymentContact)}<br />` : ""}
             ${renderPaymentProofStatus(subscription)}
             ${canCancelSubscription(subscription) ? `<br /><button class="mini-btn danger" type="button" data-cancel-subscription="${escapeHTML(subscription.id)}">Cancelar suscripcion</button>` : ""}
           </article>

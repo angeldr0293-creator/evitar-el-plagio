@@ -1580,7 +1580,7 @@
                 <strong>${escapeHTML(packageNames[subscription.plan] || subscription.plan)}</strong>
                 <p class="muted">Inicio: ${formatDate(subscription.startsAt)} · Vence: ${formatDate(subscription.expiresAt)}</p>
                 <p class="muted">Monto: ${formatMoney(subscription.amount || 0)} ${escapeHTML(subscription.currency || "USD")} · Metodo: ${escapeHTML(subscription.paymentMethod || "-")} · Ref: ${escapeHTML(subscription.transactionId || subscription.paymentToken || "-")}</p>
-                ${subscription.paymentContact ? `<p class="muted">WhatsApp para pago: ${escapeHTML(subscription.paymentContact)}</p>` : ""}
+                ${subscription.paymentContact ? `<p class="muted">Contacto para pago: ${escapeHTML(subscription.paymentContact)}</p>` : ""}
                 ${renderPaymentProofBadge(subscription)}
                 ${renderBankConfirmButton(subscription)}
               </div>
@@ -2005,7 +2005,7 @@
             <strong>${escapeHTML(subscription.client.name)} - ${escapeHTML(packageNames[subscription.plan] || subscription.plan)}</strong>
             <p class="muted">${escapeHTML(subscription.client.email)} · Inicio: ${formatDate(subscription.startsAt)} · Vence: ${formatDate(subscription.expiresAt)}</p>
             <p class="muted">Monto: ${formatMoney(subscription.amount || 0)} ${escapeHTML(subscription.currency || "USD")} · Metodo: ${escapeHTML(subscription.paymentMethod || "-")} · Ref: ${escapeHTML(subscription.transactionId || subscription.paymentToken || "-")}</p>
-            ${subscription.paymentContact ? `<p class="muted">WhatsApp para pago: ${escapeHTML(subscription.paymentContact)}</p>` : ""}
+            ${subscription.paymentContact ? `<p class="muted">Contacto para pago: ${escapeHTML(subscription.paymentContact)}</p>` : ""}
             ${renderPaymentProofBadge(subscription)}
             ${renderBankConfirmButton(subscription)}
           </div>

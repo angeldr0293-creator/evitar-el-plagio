@@ -792,7 +792,7 @@
 
         <div class="section-heading">
           <h2>Datos para realizar el pago</h2>
-          <p>Elige un m&eacute;todo. PayPal confirma el pago autom&aacute;ticamente; si prefieres banco, solicita los datos por WhatsApp.</p>
+          <p>Elige un m&eacute;todo. PayPal confirma el pago autom&aacute;ticamente; si prefieres banco, solicita los datos por soporte.</p>
         </div>
 
         <form id="payment-form">
@@ -837,7 +837,7 @@
                 <span class="payment-logo bank">ACH</span>
                 <span>
                   <strong>ACH o dep&oacute;sito bancario <span class="method-badge">Soporte</span></strong>
-                  <span>Solicita los datos bancarios y deja tu WhatsApp para seguimiento.</span>
+                  <span>Solicita los datos bancarios y deja un contacto para seguimiento.</span>
                 </span>
               </span>
             </label>
@@ -850,9 +850,9 @@
 
           <div class="bank-support-note" id="bank-support-note" hidden>
             <strong>&iquest;Prefieres pagar por banco?</strong>
-            <span>Deja tu WhatsApp y soporte te enviar&aacute; los datos bancarios. Cuando el administrador confirme el pago, activar&aacute; tus cr&eacute;ditos del plan solicitado.</span>
+            <span>Deja un contacto y soporte te enviar&aacute; los datos bancarios. Cuando el administrador confirme el pago, activar&aacute; tus cr&eacute;ditos del plan solicitado.</span>
             <div class="inline-actions">
-              <input id="bank-whatsapp" type="tel" placeholder="WhatsApp con c&oacute;digo de pa&iacute;s" autocomplete="tel" />
+              <input id="bank-whatsapp" type="text" placeholder="Correo o telefono de contacto" autocomplete="email" />
               <button class="mini-submit" id="bank-request-button" type="button">Solicitar datos</button>
             </div>
             <p id="bank-request-status" class="status" role="status"></p>
@@ -883,7 +883,12 @@
   <footer>
     <div class="container">
       ZeroCopy IA - Pago de planes para textos m&aacute;s humanos, claros y responsables<br />
-      Panam&aacute; &middot; Instagram: @resolviendotrabajos &middot; Soporte: resolviendot@gmail.com &middot; WhatsApp: +507 0000-0000
+      Panam&aacute; &middot; Instagram: <a href="https://www.instagram.com/resolviendotrabajos" rel="noopener" target="_blank">@resolviendotrabajos</a> &middot; Soporte: <a href="mailto:soporte@zerocopyia.com">soporte@zerocopyia.com</a><br />
+      <a href="privacidad.html">Privacidad</a> &middot;
+      <a href="terminos.html">T&eacute;rminos</a> &middot;
+      <a href="reembolsos.html">Reembolsos</a> &middot;
+      <a href="integridad.html">Integridad acad&eacute;mica</a> &middot;
+      <a href="soporte.html">Soporte</a>
     </div>
   </footer>
 
@@ -1154,7 +1159,7 @@
             document.querySelector("input[name='payment-method'][value='ach-deposito']").checked = true;
             syncPaymentMethod();
           }
-          setPayPalStatus("PayPal esta pendiente de configurar. Puedes solicitar los datos bancarios por WhatsApp mientras lo activamos.", "error");
+          setPayPalStatus("PayPal esta pendiente de configurar. Puedes solicitar los datos bancarios por soporte mientras lo activamos.", "error");
           return;
         }
 
@@ -1254,7 +1259,7 @@
 
       if (!whatsapp) {
         bankRequestStatus.className = "status error";
-        bankRequestStatus.textContent = "Escribe tu WhatsApp para enviarte los datos bancarios.";
+        bankRequestStatus.textContent = "Escribe tu correo o telefono de contacto para enviarte los datos bancarios.";
         return;
       }
 
@@ -1266,7 +1271,7 @@
         sessionStorage.removeItem("oa_payment_token");
         sessionStorage.removeItem("oa_payment_data");
         bankRequestStatus.className = "status";
-        bankRequestStatus.textContent = "Solicitud enviada. Soporte te contactara por WhatsApp. Cuando admin confirme el pago, tus creditos quedaran activos.";
+        bankRequestStatus.textContent = "Solicitud enviada. Soporte te contactara por correo o telefono. Cuando admin confirme el pago, tus creditos quedaran activos.";
       } catch (error) {
         bankRequestStatus.className = "status error";
         bankRequestStatus.textContent = error.message || "No se pudo solicitar el pago bancario.";

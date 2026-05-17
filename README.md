@@ -22,8 +22,8 @@ ALLOWED_ORIGINS=https://zerocopyia.com,https://www.zerocopyia.com,http://localho
 CANONICAL_HOST=zerocopyia.com
 SESSION_SECRET=cambia-este-secreto-largo-y-privado
 EMAIL_PROVIDER=resend
-EMAIL_FROM="ZeroCopy IA <resolviendot@gmail.com>"
-EMAIL_REPLY_TO=resolviendot@gmail.com
+EMAIL_FROM="ZeroCopy IA <soporte@zerocopyia.com>"
+EMAIL_REPLY_TO=soporte@zerocopyia.com
 RESEND_API_KEY=re_xxxxxxxxx
 TURNSTILE_SITE_KEY=0x4AA...
 TURNSTILE_SECRET_KEY=0x4AA...
@@ -126,8 +126,8 @@ ALLOWED_ORIGINS=https://zerocopyia.com,https://www.zerocopyia.com
 CANONICAL_HOST=zerocopyia.com
 SESSION_SECRET=cambia-este-secreto-largo-y-privado
 EMAIL_PROVIDER=resend
-EMAIL_FROM="ZeroCopy IA <resolviendot@gmail.com>"
-EMAIL_REPLY_TO=resolviendot@gmail.com
+EMAIL_FROM="ZeroCopy IA <soporte@zerocopyia.com>"
+EMAIL_REPLY_TO=soporte@zerocopyia.com
 RESEND_API_KEY=re_xxxxxxxxx
 TURNSTILE_SITE_KEY=0x4AA...
 TURNSTILE_SECRET_KEY=0x4AA...
@@ -180,8 +180,8 @@ ADMIN_EMAIL=admin@zerocopyia.com
 ADMIN_PASSWORD=crea-una-clave-larga
 SESSION_SECRET=crea-un-secreto-largo-y-unico
 EMAIL_PROVIDER=resend
-EMAIL_FROM="ZeroCopy IA <resolviendot@gmail.com>"
-EMAIL_REPLY_TO=resolviendot@gmail.com
+EMAIL_FROM="ZeroCopy IA <soporte@zerocopyia.com>"
+EMAIL_REPLY_TO=soporte@zerocopyia.com
 RESEND_API_KEY=re_xxxxxxxxx
 TURNSTILE_SITE_KEY=0x4AA...
 TURNSTILE_SECRET_KEY=0x4AA...
@@ -333,12 +333,12 @@ zerocopy-ia/
 - No se sirven `.env`, SQLite, backups, logs ni carpetas internas del servidor.
 - El backend recalcula los creditos disponibles antes de aceptar una solicitud; la validacion visual del navegador es solo una ayuda.
 - Las paginas legales estan en `/privacidad.html`, `/terminos.html`, `/reembolsos.html` e `/integridad.html`.
-- Contacto visible: formulario de soporte, correo publico `resolviendot@gmail.com` y WhatsApp `+507 0000-0000`.
-- Datos del negocio visibles: nombre comercial `ZeroCopy IA`, dominio `zerocopyia.com`, ubicacion general Panama, correo publico `resolviendot@gmail.com`, Instagram `@resolviendotrabajos` y WhatsApp `+507 0000-0000`.
+- Contacto visible: formulario de soporte y correo publico `soporte@zerocopyia.com`.
+- Datos del negocio visibles: nombre comercial `ZeroCopy IA`, dominio `zerocopyia.com`, ubicacion general Panama, correo publico `soporte@zerocopyia.com` e Instagram `@resolviendotrabajos`.
 - Pagos: la pantalla muestra PayPal y Banco General como metodos automaticos por conectar. El respaldo manual Yappy/transferencia crea pagos `Pendiente` con monto, referencia y comprobante; solo pasan a `Pagado` con confirmacion real del proveedor o revision del admin.
 - Panel admin controlado: usuarios, profesores, solicitudes, pagos/suscripciones y estados se gestionan desde acciones del panel y endpoints especificos, sin editar datos manualmente.
 - Eliminacion de clientes: el admin puede eliminar un cliente de prueba desde el perfil del cliente escribiendo `ELIMINAR`; esto borra la cuenta, sus solicitudes, pagos/suscripciones y archivos asociados.
 - Operacion interna: las cuentas, solicitudes, pagos, archivos, estados, entregas y soporte se gestionan exclusivamente dentro de la plataforma para evitar seguimiento manual por chats externos.
-- Notificaciones: la app muestra confirmaciones por pantalla y campana interna. El correo real se envia al confirmar registro, cuando el cliente envia un trabajo, cuando soporte/admin envia un mensaje manual al cliente y cuando el profesor sube la entrega final. WhatsApp queda publicado como contacto de soporte, pero no envia mensajes automaticos.
+- Notificaciones: la app muestra confirmaciones por pantalla y campana interna. El correo real se envia al confirmar registro, cuando el cliente envia un trabajo, cuando soporte/admin envia un mensaje manual al cliente, cuando el cliente envia el formulario de soporte y cuando el profesor sube la entrega final.
 - Verificacion de correo: las cuentas nuevas creadas con correo y contrasena reciben un enlace de confirmacion que vence en 24 horas. Hasta confirmar el correo no pueden pagar ni enviar solicitudes. Las cuentas con Google se consideran verificadas si Google devuelve el correo como verificado.
 - Estados visibles: cliente ve pendiente de pago, recibido, asignado, en proceso, listo o entregado; profesor ve asignado, descargado/visto, trabajando y entrega subida.

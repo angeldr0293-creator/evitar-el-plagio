@@ -21,6 +21,8 @@ const API_ADMIN_EMAIL_CHECK_ENDPOINTS = createApiEndpoints("/api/admin/email-che
 const API_LOGOUT_ENDPOINTS = createApiEndpoints("/api/logout");
 const API_CURRENT_USER_ENDPOINTS = createApiEndpoints("/api/me");
 const API_RESEND_VERIFICATION_ENDPOINTS = createApiEndpoints("/api/email-verification/resend");
+const API_PASSWORD_RESET_REQUEST_ENDPOINTS = createApiEndpoints("/api/password-reset/request");
+const API_PASSWORD_RESET_CONFIRM_ENDPOINTS = createApiEndpoints("/api/password-reset/confirm");
 let sharedStateCache = null;
 let sharedStateCacheAt = 0;
 const SHARED_STATE_CACHE_MS = 500;
@@ -172,6 +174,26 @@ function loginClientUser(email, password) {
 
   setCurrentUser(result.user);
   return result.user;
+}
+
+function requestPasswordReset(email) {
+  const result = postJSONToFirstEndpoint(API_PASSWORD_RESET_REQUEST_ENDPOINTS, { email });
+
+  if (!result || !result.ok) {
+    throw new Error(result?.error || "No se pudo solicitar la recuperacion de clave.");
+  }
+
+  return result;
+}
+
+function confirmPasswordReset(token, password) {
+  const result = postJSONToFirstEndpoint(API_PASSWORD_RESET_CONFIRM_ENDPOINTS, { token, password });
+
+  if (!result || !result.ok) {
+    throw new Error(result?.error || "No se pudo cambiar la clave.");
+  }
+
+  return result;
 }
 
 function isReservedAdminEmail(email) {

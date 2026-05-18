@@ -157,6 +157,10 @@ function getEmailVerificationLink(token) {
   return `${PUBLIC_APP_URL.replace(/\/$/, "")}/api/verify-email?token=${encodeURIComponent(token)}`;
 }
 
+function getPasswordResetLink(token) {
+  return `${PUBLIC_APP_URL.replace(/\/$/, "")}/recuperar-clave.html?token=${encodeURIComponent(token)}`;
+}
+
 function createEmailText({ greeting, lines = [], actionText = "Entrar a la plataforma", actionUrl = getPanelLink() }) {
   return [
     greeting,
@@ -238,6 +242,15 @@ function createEmailVerificationToken() {
   };
 }
 
+function createPasswordResetToken() {
+  const token = crypto.randomBytes(32).toString("base64url");
+  return {
+    token,
+    tokenHash: crypto.createHash("sha256").update(token).digest("hex"),
+    expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+  };
+}
+
 function assignEmailVerificationToken(user) {
   const verification = createEmailVerificationToken();
   user.emailVerifiedAt = "";
@@ -246,9 +259,21 @@ function assignEmailVerificationToken(user) {
   return verification.token;
 }
 
+function assignPasswordResetToken(user) {
+  const reset = createPasswordResetToken();
+  user.passwordResetTokenHash = reset.tokenHash;
+  user.passwordResetTokenExpiresAt = reset.expiresAt;
+  return reset.token;
+}
+
 function clearEmailVerificationToken(user) {
   user.emailVerificationTokenHash = "";
   user.emailVerificationTokenExpiresAt = "";
+}
+
+function clearPasswordResetToken(user) {
+  user.passwordResetTokenHash = "";
+  user.passwordResetTokenExpiresAt = "";
 }
 
 function isClientEmailVerified(user) {
@@ -276,6 +301,23 @@ function queueEmailVerification(user, token) {
       ],
       actionText: "Confirmar mi correo",
       actionUrl: getEmailVerificationLink(token)
+    })
+  });
+}
+
+function queuePasswordResetEmail(user, token) {
+  queueTransactionalEmail({
+    event: "password_reset",
+    to: user.email,
+    subject: "Restablece tu clave en ZeroCopy IA",
+    text: createEmailText({
+      greeting: `Hola ${user.name || "usuario"},`,
+      lines: [
+        "Recibimos una solicitud para restablecer tu clave.",
+        "El enlace vence en 1 hora. Si no solicitaste este cambio, puedes ignorar este mensaje."
+      ],
+      actionText: "Cambiar mi clave",
+      actionUrl: getPasswordResetLink(token)
     })
   });
 }
@@ -1232,6 +1274,8 @@ function sanitizeUser(user) {
     googleId,
     emailVerificationTokenHash,
     emailVerificationTokenExpiresAt,
+    passwordResetTokenHash,
+    passwordResetTokenExpiresAt,
     ...safeUser
   } = user;
   return {
@@ -1574,6 +1618,8 @@ function sanitizeUserForStorage(user) {
     emailVerifiedAt: role === "client" ? sanitizeOptionalDate(user.emailVerifiedAt, "La fecha de verificacion de correo", true) : "",
     emailVerificationTokenHash: role === "client" ? toCleanString(user.emailVerificationTokenHash, 160) : "",
     emailVerificationTokenExpiresAt: role === "client" ? sanitizeOptionalDate(user.emailVerificationTokenExpiresAt, "La expiracion de verificacion de correo", true) : "",
+    passwordResetTokenHash: toCleanString(user.passwordResetTokenHash, 160),
+    passwordResetTokenExpiresAt: sanitizeOptionalDate(user.passwordResetTokenExpiresAt, "La expiracion de recuperacion de clave"),
     createdAt: sanitizeOptionalDate(user.createdAt || new Date().toISOString(), "La fecha de creacion")
   };
 }
@@ -2345,6 +2391,66 @@ app.post("/api/email-verification/resend", formRateLimit, (request, response) =>
   }
 });
 
+app.post("/api/password-reset/request", formRateLimit, (request, response) => {
+  try {
+    const email = requireValidEmail(request.body?.email);
+    const state = getValidatedState();
+    const user = state.oa_users.find((item) => normalizeEmail(item.email) === email);
+
+    if (user && ["client", "teacher"].includes(user.role || "client")) {
+      const token = assignPasswordResetToken(user);
+      saveValidatedState(state);
+      queuePasswordResetEmail(user, token);
+      logSecurityEvent("password_reset_requested", { userId: user.id, ip: getClientIp(request) });
+    } else {
+      logSecurityEvent("password_reset_requested_unknown", { email, ip: getClientIp(request) });
+    }
+
+    response.json({
+      ok: true,
+      message: "Si el correo existe, enviaremos un enlace para cambiar la clave."
+    });
+  } catch (error) {
+    sendError(response, error, "No se pudo solicitar la recuperacion de clave.");
+  }
+});
+
+app.post("/api/password-reset/confirm", formRateLimit, (request, response) => {
+  try {
+    const token = requireCleanString(request.body?.token, "El enlace de recuperacion", 300);
+    const password = requirePassword(request.body?.password);
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const state = getValidatedState();
+    const user = state.oa_users.find((item) => item.passwordResetTokenHash === tokenHash);
+
+    if (!user) {
+      throw createPublicError(400, "El enlace de recuperacion no es valido.");
+    }
+
+    const expiresAt = new Date(user.passwordResetTokenExpiresAt || 0);
+
+    if (!Number.isFinite(expiresAt.getTime()) || expiresAt < new Date()) {
+      clearPasswordResetToken(user);
+      saveValidatedState(state);
+      throw createPublicError(400, "El enlace de recuperacion expiro. Solicita uno nuevo.");
+    }
+
+    user.password = hashPassword(password);
+    clearPasswordResetToken(user);
+
+    if ((user.role || "client") === "client") {
+      user.emailVerifiedAt = user.emailVerifiedAt || new Date().toISOString();
+      clearEmailVerificationToken(user);
+    }
+
+    saveValidatedState(state);
+    logSecurityEvent("password_reset_confirmed", { userId: user.id, ip: getClientIp(request) });
+    response.json({ ok: true });
+  } catch (error) {
+    sendError(response, error, "No se pudo cambiar la clave.");
+  }
+});
+
 app.post("/api/teachers", adminActionRateLimit, (request, response) => {
   const auth = requireAuth(request, response);
 
@@ -2410,6 +2516,7 @@ app.post("/api/users/:userId/password", adminActionRateLimit, (request, response
     }
 
     targetUser.password = hashPassword(password);
+    clearPasswordResetToken(targetUser);
     saveValidatedState(state);
     logSecurityEvent("password_reset", { actorId: auth.user.id, userId: targetUser.id });
     response.json({ ok: true, user: sanitizeUser(targetUser) });
@@ -2436,6 +2543,7 @@ app.post("/api/me/password", formRateLimit, (request, response) => {
     }
 
     targetUser.password = hashPassword(nextPassword);
+    clearPasswordResetToken(targetUser);
     saveValidatedState(state);
     logSecurityEvent("self_password_changed", { actorId: auth.user.id });
     response.json({ ok: true, user: sanitizeUser(targetUser) });

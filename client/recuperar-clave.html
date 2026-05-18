@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recuperar clave | ZeroCopy IA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #071832;
+      --muted: #5c6a7d;
+      --line: #d8e0e5;
+      --soft: #f4f8f7;
+      --accent: #2b7a68;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(180deg, #f7faf9 0%, #eef4f2 100%);
+      color: var(--ink);
+      font-family: Inter, Arial, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    .container {
+      margin: 0 auto;
+      max-width: 1100px;
+      padding: 22px;
+    }
+
+    .topbar {
+      align-items: center;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 34px;
+      gap: 16px;
+    }
+
+    .brand {
+      align-items: center;
+      color: inherit;
+      display: inline-flex;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .brand-logo {
+      align-items: center;
+      display: inline-flex;
+      flex: 0 0 auto;
+      height: 48px;
+      justify-content: center;
+      width: 72px;
+    }
+
+    .brand-logo img {
+      display: block;
+      height: 100%;
+      object-fit: contain;
+      width: 100%;
+    }
+
+    .brand-title {
+      display: block;
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .brand-title small {
+      color: var(--accent);
+      font-family: Inter, Arial, sans-serif;
+      font-size: 10px;
+      font-weight: 900;
+      margin-left: 4px;
+      vertical-align: middle;
+    }
+
+    .brand-subtitle {
+      color: var(--muted);
+      display: block;
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .back-link {
+      color: var(--ink);
+      font-weight: 800;
+      text-decoration: underline;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 18px 45px rgba(7, 24, 50, 0.08);
+      margin: 0 auto;
+      max-width: 520px;
+      padding: 30px;
+    }
+
+    h1 {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: clamp(34px, 7vw, 52px);
+      line-height: 0.98;
+      margin: 0 0 12px;
+    }
+
+    p {
+      color: var(--muted);
+      line-height: 1.65;
+      margin: 0 0 22px;
+    }
+
+    form {
+      display: grid;
+      gap: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    label {
+      color: #26364d;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    input {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: var(--ink);
+      font: inherit;
+      min-height: 48px;
+      outline: none;
+      padding: 13px 14px;
+      width: 100%;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(43, 122, 104, 0.12);
+    }
+
+    .btn {
+      background: var(--ink);
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 12px 24px rgba(7, 24, 50, 0.18);
+      color: white;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 900;
+      min-height: 54px;
+      padding: 14px 22px;
+    }
+
+    .message {
+      border-radius: 12px;
+      display: none;
+      font-size: 14px;
+      margin-bottom: 16px;
+      padding: 12px 14px;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.error {
+      background: #fff1f2;
+      color: #9f1239;
+    }
+
+    .message.success {
+      background: #edf6f3;
+      color: #11493f;
+    }
+
+    .helper-link {
+      color: var(--ink);
+      display: inline-flex;
+      font-weight: 800;
+      margin-top: 16px;
+      text-decoration: underline;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    @media (max-width: 640px) {
+      .container {
+        padding: 18px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .card {
+        padding: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="topbar">
+      <a href="index.html" class="brand">
+        <span class="brand-logo" aria-hidden="true"><img src="assets/zerocopy-logo-header.png" alt="" /></span>
+        <span>
+          <span class="brand-title">ZeroCopy IA <small>by RT</small></span>
+          <span class="brand-subtitle">Tu espacio privado de revision.</span>
+        </span>
+      </a>
+      <a class="back-link" href="registro.html">Volver al inicio de sesion</a>
+    </header>
+
+    <main class="card">
+      <h1 id="page-title">Recuperar clave</h1>
+      <p id="page-copy">Escribe tu correo y te enviaremos un enlace seguro para cambiar tu clave.</p>
+      <div id="message" class="message"></div>
+
+      <form id="request-form">
+        <div class="field">
+          <label for="reset-email">Correo electronico</label>
+          <input id="reset-email" type="email" autocomplete="email" placeholder="tu@email.com" required />
+        </div>
+        <button class="btn" type="submit">Enviar enlace</button>
+      </form>
+
+      <form id="confirm-form" hidden>
+        <div class="field">
+          <label for="new-password">Nueva clave</label>
+          <input id="new-password" type="password" autocomplete="new-password" minlength="6" placeholder="Minimo 6 caracteres" required />
+        </div>
+        <div class="field">
+          <label for="confirm-password">Confirmar nueva clave</label>
+          <input id="confirm-password" type="password" autocomplete="new-password" minlength="6" placeholder="Repite tu nueva clave" required />
+        </div>
+        <button class="btn" type="submit">Cambiar clave</button>
+      </form>
+
+      <a class="helper-link" href="registro.html">Ya recorde mi clave</a>
+    </main>
+  </div>
+
+  <script src="auth/auth.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token") || "";
+    const message = document.getElementById("message");
+    const requestForm = document.getElementById("request-form");
+    const confirmForm = document.getElementById("confirm-form");
+    const title = document.getElementById("page-title");
+    const copy = document.getElementById("page-copy");
+
+    function showMessage(text, type) {
+      message.textContent = text;
+      message.className = `message show ${type}`;
+    }
+
+    if (token) {
+      requestForm.hidden = true;
+      confirmForm.hidden = false;
+      title.textContent = "Crea una nueva clave";
+      copy.textContent = "Elige una clave nueva para volver a entrar a tu panel.";
+    }
+
+    requestForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      try {
+        requestPasswordReset(document.getElementById("reset-email").value.trim());
+        showMessage("Si el correo existe, enviaremos un enlace para cambiar la clave.", "success");
+        requestForm.reset();
+      } catch (error) {
+        showMessage(error.message, "error");
+      }
+    });
+
+    confirmForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      const password = document.getElementById("new-password").value;
+      const confirmation = document.getElementById("confirm-password").value;
+
+      if (password !== confirmation) {
+        showMessage("Las claves no coinciden.", "error");
+        return;
+      }
+
+      try {
+        confirmPasswordReset(token, password);
+        showMessage("Clave actualizada correctamente. Ya puedes iniciar sesion.", "success");
+        confirmForm.reset();
+        setTimeout(() => {
+          window.location.href = "registro.html";
+        }, 1200);
+      } catch (error) {
+        showMessage(error.message, "error");
+      }
+    });
+  </script>
+</body>
+</html>

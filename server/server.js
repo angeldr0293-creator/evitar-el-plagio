@@ -242,12 +242,12 @@ function createEmailVerificationToken() {
   };
 }
 
-function createPasswordResetToken() {
+function createPasswordResetToken(maxAgeMs = 60 * 60 * 1000) {
   const token = crypto.randomBytes(32).toString("base64url");
   return {
     token,
     tokenHash: crypto.createHash("sha256").update(token).digest("hex"),
-    expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+    expiresAt: new Date(Date.now() + maxAgeMs).toISOString()
   };
 }
 
@@ -259,8 +259,8 @@ function assignEmailVerificationToken(user) {
   return verification.token;
 }
 
-function assignPasswordResetToken(user) {
-  const reset = createPasswordResetToken();
+function assignPasswordResetToken(user, maxAgeMs) {
+  const reset = createPasswordResetToken(maxAgeMs);
   user.passwordResetTokenHash = reset.tokenHash;
   user.passwordResetTokenExpiresAt = reset.expiresAt;
   return reset.token;
@@ -318,6 +318,50 @@ function queuePasswordResetEmail(user, token) {
       ],
       actionText: "Cambiar mi clave",
       actionUrl: getPasswordResetLink(token)
+    })
+  });
+}
+
+function queueTeacherWelcomeEmail(user, token) {
+  queueTransactionalEmail({
+    event: "teacher_welcome",
+    to: user.email,
+    subject: "Acceso de profesor a ZeroCopy IA",
+    text: createEmailText({
+      greeting: `Hola ${user.name || "profesor"},`,
+      lines: [
+        "Fuiste agregado como profesor en ZeroCopy IA.",
+        "Usa este enlace para crear o actualizar tu clave de acceso. El enlace vence en 24 horas.",
+        `Cuando entres, revisa tu perfil y confirma tu WhatsApp de contacto.`,
+        `Panel de profesor: ${getPanelLink("profesor.html")}`
+      ],
+      actionText: "Crear o cambiar mi clave",
+      actionUrl: getPasswordResetLink(token)
+    })
+  });
+}
+
+function queueTeacherAssignmentEmail(user, assignedRequest, client) {
+  if (!user?.email) {
+    return;
+  }
+
+  const clientReference = client?.subscriberId || createSubscriberId(client?.id || assignedRequest.userId || "");
+
+  queueTransactionalEmail({
+    event: "teacher_assignment",
+    to: user.email,
+    subject: "Nueva tarea asignada en ZeroCopy IA",
+    text: createEmailText({
+      greeting: `Hola ${user.name || "profesor"},`,
+      lines: [
+        `Tienes una nueva tarea asignada: ${assignedRequest.documentType || "Documento academico"}.`,
+        `Cliente: ${clientReference}.`,
+        assignedRequest.deadline ? `Fecha limite: ${assignedRequest.deadline}.` : "Revisa las instrucciones, archivos y fecha de entrega en tu panel.",
+        "Por seguridad, descarga los archivos y sube la entrega solo desde la plataforma."
+      ],
+      actionText: "Ir al panel del profesor",
+      actionUrl: getPanelLink("profesor.html")
     })
   });
 }
@@ -2483,10 +2527,12 @@ app.post("/api/teachers", adminActionRateLimit, (request, response) => {
       specialty: request.body?.specialty,
       createdAt: new Date().toISOString()
     });
+    const setupToken = assignPasswordResetToken(teacher, 24 * 60 * 60 * 1000);
 
     state.oa_users.push(teacher);
     saveValidatedState(state);
     logSecurityEvent("teacher_created", { actorId: auth.user.id, teacherId: teacher.id });
+    queueTeacherWelcomeEmail(teacher, setupToken);
     response.json({ ok: true, user: sanitizeUser(teacher) });
   } catch (error) {
     sendError(response, error, "No se pudo crear el profesor.");
@@ -2552,6 +2598,38 @@ app.post("/api/me/password", formRateLimit, (request, response) => {
   }
 });
 
+app.post("/api/me/profile", formRateLimit, (request, response) => {
+  const auth = requireAuth(request, response);
+
+  if (!auth) {
+    return;
+  }
+
+  if (auth.user.role !== "teacher") {
+    sendError(response, createPublicError(403, "Solo profesores pueden actualizar este perfil."));
+    return;
+  }
+
+  try {
+    const state = getValidatedState();
+    const targetUser = state.oa_users.find((user) => user.id === auth.user.id && user.role === "teacher");
+
+    if (!targetUser) {
+      throw createPublicError(404, "Usuario no encontrado.");
+    }
+
+    targetUser.name = requireCleanString(request.body?.name || targetUser.name, "El nombre", 120);
+    targetUser.phone = toCleanString(request.body?.phone, 40);
+    targetUser.specialty = toCleanString(request.body?.specialty, 120);
+
+    saveValidatedState(state);
+    logSecurityEvent("teacher_profile_updated", { actorId: auth.user.id });
+    response.json({ ok: true, user: sanitizeUser(targetUser) });
+  } catch (error) {
+    sendError(response, error, "No se pudo actualizar el perfil.");
+  }
+});
+
 app.post("/api/users/:userId", adminActionRateLimit, (request, response) => {
   const auth = requireAuth(request, response);
 
@@ -2584,6 +2662,9 @@ app.post("/api/users/:userId", adminActionRateLimit, (request, response) => {
     targetUser.name = requireCleanString(request.body?.name, "El nombre", 120);
     targetUser.email = email;
     targetUser.phone = toCleanString(request.body?.phone, 40);
+    if (targetUser.role === "teacher") {
+      targetUser.specialty = toCleanString(request.body?.specialty, 120);
+    }
 
     saveValidatedState(state);
     logSecurityEvent("user_updated", { actorId: auth.user.id, userId: targetUser.id });
@@ -3254,6 +3335,9 @@ app.post("/api/requests", formRateLimit, (request, response) => {
         ]
       })
     });
+    if (assignedTeacher && initialStatus !== "Pendiente de pago") {
+      queueTeacherAssignmentEmail(assignedTeacher, nextRequest, savedUser);
+    }
     response.json({ ok: true, request: nextRequest });
   } catch (error) {
     sendError(response, error, "No se pudo crear la solicitud.");
@@ -3324,6 +3408,9 @@ app.post("/api/requests/:requestId/teacher", adminActionRateLimit, (request, res
       throw createPublicError(404, "Profesor no encontrado.");
     }
 
+    const previousTeacherId = targetRequest.teacherId;
+    const client = state.oa_users.find((user) => user.id === targetRequest.userId && user.role === "client");
+
     targetRequest.teacherId = teacher ? teacher.id : "";
     targetRequest.teacherName = teacher ? teacher.name : "";
     targetRequest.assignedAt = teacher ? new Date().toISOString() : "";
@@ -3336,7 +3423,6 @@ app.post("/api/requests/:requestId/teacher", adminActionRateLimit, (request, res
     });
 
     if (teacher) {
-      const client = state.oa_users.find((user) => user.id === targetRequest.userId && user.role === "client");
       if (client) {
         client.teacherId = teacher.id;
         client.teacherName = teacher.name;
@@ -3345,6 +3431,9 @@ app.post("/api/requests/:requestId/teacher", adminActionRateLimit, (request, res
 
     saveValidatedState(state);
     logSecurityEvent("request_teacher_changed", { actorId: auth.user.id, requestId, teacherId: targetRequest.teacherId });
+    if (teacher && teacher.id !== previousTeacherId) {
+      queueTeacherAssignmentEmail(teacher, targetRequest, client);
+    }
     response.json({ ok: true, request: targetRequest });
   } catch (error) {
     sendError(response, error, "No se pudo asignar el profesor.");

@@ -1062,7 +1062,8 @@
         <form id="teacher-form" class="admin-form">
           <input id="teacher-name" type="text" placeholder="Nombre del profesor" required />
           <input id="teacher-email" type="email" placeholder="Correo" required />
-          <input id="teacher-phone" type="tel" placeholder="Teléfono" />
+          <input id="teacher-phone" type="tel" placeholder="WhatsApp / teléfono" />
+          <input id="teacher-specialty" type="text" placeholder="Especialidad (opcional)" />
           <input id="teacher-password" type="text" placeholder="Contraseña temporal" minlength="6" required />
           <button id="generate-password" class="ghost-btn" type="button">Generar clave</button>
           <button class="btn" type="submit">Crear profesor</button>
@@ -1497,6 +1498,7 @@
                 <span class="credential-secret">Protegida</span>
               </p>
               <p class="muted">${escapeHTML(teacher.email)}${teacher.phone ? ` · ${escapeHTML(teacher.phone)}` : ""}</p>
+              ${teacher.specialty ? `<p class="muted">Especialidad: ${escapeHTML(teacher.specialty)}</p>` : ""}
             </div>
             <div class="teacher-actions">
               <span class="pill">${assignedRequests.length} trabajo(s)</span>
@@ -2357,6 +2359,7 @@
             name: document.getElementById("teacher-name").value.trim(),
             email: document.getElementById("teacher-email").value.trim(),
             phone: document.getElementById("teacher-phone").value.trim(),
+            specialty: document.getElementById("teacher-specialty").value.trim(),
             password
           });
 
@@ -2365,7 +2368,8 @@
             <strong>Credenciales para entregar al profesor:</strong><br />
             Correo: ${escapeHTML(teacher.email)}<br />
             Contraseña: ${escapeHTML(password)}<br />
-            Panel: profesor.html
+            Panel: profesor.html<br />
+            También se envió un correo para que el profesor pueda crear o cambiar su propia clave.
           `;
           teacherCredentials.classList.add("show");
           teacherForm.reset();

@@ -34,8 +34,10 @@
     .bar-row { display: grid; gap: 6px; margin-top: 8px; }
     .bar-track { background: #e8eef1; border-radius: 999px; height: 10px; overflow: hidden; }
     .bar-fill { background: #2b7a68; display: block; height: 100%; }
-    .password-form { display: grid; gap: 12px; }
-    .password-form input { border: 1px solid #d8e0e5; border-radius: 12px; color: #071832; font: inherit; padding: 12px; width: 100%; }
+    .profile-form, .password-form { display: grid; gap: 12px; }
+    .profile-form { margin-top: 16px; }
+    .profile-form label { color: #475569; display: grid; font-size: 13px; font-weight: 800; gap: 6px; }
+    .profile-form input, .password-form input { border: 1px solid #d8e0e5; border-radius: 12px; color: #071832; font: inherit; padding: 12px; width: 100%; }
     .message { color: #11493f; font-size: 13px; font-weight: 800; }
     @media (max-width: 760px) {
       .grid, .detail-grid { grid-template-columns: 1fr; }
@@ -81,6 +83,19 @@
             <div class="detail-card"><strong>Entregados este mes</strong><span id="profile-month-works">0</span></div>
             <div class="detail-card"><strong>Total del mes</strong><span id="profile-month-pay">$0.00</span></div>
           </div>
+          <form id="profile-form" class="profile-form">
+            <label>Nombre
+              <input id="profile-name-input" type="text" maxlength="120" required />
+            </label>
+            <label>WhatsApp / teléfono
+              <input id="profile-phone-input" type="tel" maxlength="40" placeholder="+507 ..." />
+            </label>
+            <label>Especialidad
+              <input id="profile-specialty-input" type="text" maxlength="120" placeholder="Humanización, citas, similitud..." />
+            </label>
+            <button class="btn" type="submit">Guardar perfil</button>
+            <span id="profile-message" class="message"></span>
+          </form>
         </section>
 
         <section class="panel">
@@ -115,7 +130,7 @@
   <script src="js/i18n.js"></script>
   <script src="js/notifications.js"></script>
   <script>
-    const user = getCurrentUser();
+    let user = getCurrentUser();
 
     if (!user) {
       window.location.href = "registro.html?next=perfil-profesor.html";
@@ -168,6 +183,9 @@
       document.getElementById("profile-email").textContent = user.email || "-";
       document.getElementById("profile-phone").textContent = user.phone || "Sin teléfono";
       document.getElementById("profile-specialty").textContent = user.specialty || "Sin especialidad";
+      document.getElementById("profile-name-input").value = user.name || "";
+      document.getElementById("profile-phone-input").value = user.phone || "";
+      document.getElementById("profile-specialty-input").value = user.specialty || "";
       document.getElementById("profile-clients").textContent = rows.length;
       document.getElementById("profile-works").textContent = requests.length;
       document.getElementById("profile-month-works").textContent = monthSummary.works;
@@ -218,6 +236,22 @@
         message.textContent = "Contraseña actualizada.";
       } catch (error) {
         message.textContent = error.message || "No se pudo cambiar la contraseña.";
+      }
+    });
+
+    document.getElementById("profile-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const message = document.getElementById("profile-message");
+      try {
+        user = updateOwnProfile({
+          name: document.getElementById("profile-name-input").value.trim(),
+          phone: document.getElementById("profile-phone-input").value.trim(),
+          specialty: document.getElementById("profile-specialty-input").value.trim()
+        });
+        message.textContent = "Perfil actualizado.";
+        renderProfile();
+      } catch (error) {
+        message.textContent = error.message || "No se pudo actualizar el perfil.";
       }
     });
 

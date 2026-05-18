@@ -23,6 +23,7 @@ const API_CURRENT_USER_ENDPOINTS = createApiEndpoints("/api/me");
 const API_RESEND_VERIFICATION_ENDPOINTS = createApiEndpoints("/api/email-verification/resend");
 const API_PASSWORD_RESET_REQUEST_ENDPOINTS = createApiEndpoints("/api/password-reset/request");
 const API_PASSWORD_RESET_CONFIRM_ENDPOINTS = createApiEndpoints("/api/password-reset/confirm");
+const API_PROFILE_UPDATE_ENDPOINTS = createApiEndpoints("/api/me/profile");
 let sharedStateCache = null;
 let sharedStateCacheAt = 0;
 const SHARED_STATE_CACHE_MS = 500;
@@ -305,6 +306,7 @@ function getCurrentUser() {
     phone: savedUser.phone,
     subscriberId: getSubscriberId(savedUser),
     role: savedUser.role || "client",
+    specialty: savedUser.specialty || "",
     emailVerified: Boolean(savedUser.emailVerified),
     emailVerifiedAt: savedUser.emailVerifiedAt || ""
   };
@@ -706,6 +708,24 @@ function changeOwnPassword(currentPassword, newPassword) {
   }
 
   return postApiAction("/api/me/password", { currentPassword, newPassword }).user;
+}
+
+function updateOwnProfile(data) {
+  const user = getCurrentUser();
+
+  if (!user) {
+    throw new Error("Debes iniciar sesion.");
+  }
+
+  const result = postJSONToFirstEndpoint(API_PROFILE_UPDATE_ENDPOINTS, data);
+  clearSharedStateCache();
+
+  if (!result || !result.ok || !result.user) {
+    throw new Error(result?.error || "No se pudo actualizar el perfil.");
+  }
+
+  setCurrentUser(result.user);
+  return result.user;
 }
 
 function registerSubscription(plan, paymentData = "") {

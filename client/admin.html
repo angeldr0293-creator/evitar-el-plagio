@@ -1505,6 +1505,7 @@
               <span class="pill">${assignedRequests.length} trabajo(s)</span>
               <span class="pill ${activeCount ? "active" : ""}">${activeCount} por realizar</span>
               <button class="ghost-btn reset-teacher-password" type="button" data-teacher-id="${escapeHTML(teacher.id)}" data-teacher-email="${escapeHTML(teacher.email)}">Resetear clave</button>
+              <button class="ghost-btn delete-teacher" type="button" data-teacher-id="${escapeHTML(teacher.id)}" data-teacher-name="${escapeHTML(teacher.name)}" data-teacher-email="${escapeHTML(teacher.email)}" data-teacher-requests="${assignedRequests.length}">Eliminar profesor</button>
             </div>
             </summary>
             ${renderTeacherAssignments(assignedRequests)}
@@ -1526,6 +1527,32 @@
           `;
           teacherCredentials.classList.add("show");
           renderTeachers();
+        });
+      });
+
+      document.querySelectorAll(".delete-teacher").forEach((button) => {
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+
+          const { teacherId, teacherName, teacherEmail, teacherRequests } = event.currentTarget.dataset;
+          const confirmation = prompt(`Para eliminar al profesor ${teacherName} (${teacherEmail}) y liberar ${teacherRequests} trabajo(s) asignado(s), escribe ELIMINAR.`);
+
+          if (confirmation !== "ELIMINAR") {
+            window.showScreenNotification?.("Eliminacion cancelada.");
+            return;
+          }
+
+          try {
+            const deleted = deleteTeacherUser(teacherId, confirmation);
+            window.showScreenNotification?.(`Profesor eliminado. Trabajos liberados: ${deleted.requests}. Clientes actualizados: ${deleted.clients}.`);
+            renderTeachers();
+            renderAdminWorkBoard();
+            renderClients();
+            renderCreditsExtraBoard();
+          } catch (error) {
+            window.showScreenNotification?.(error.message, "error");
+          }
         });
       });
 

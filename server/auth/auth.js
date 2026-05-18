@@ -700,6 +700,14 @@ function deleteClientUser(userId, confirmation) {
   return postApiAction(`/api/users/${encodeURIComponent(userId)}/delete`, { confirmation }).deleted;
 }
 
+function deleteTeacherUser(userId, confirmation) {
+  if (!isAdminUser()) {
+    throw new Error("Solo el administrador puede eliminar profesores.");
+  }
+
+  return postApiAction(`/api/users/${encodeURIComponent(userId)}/delete`, { confirmation }).deleted;
+}
+
 function changeOwnPassword(currentPassword, newPassword) {
   const user = getCurrentUser();
 

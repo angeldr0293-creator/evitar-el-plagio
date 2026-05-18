@@ -2682,7 +2682,7 @@ app.post("/api/users/:userId/delete", adminActionRateLimit, (request, response) 
   }
 
   if (auth.user.role !== "admin") {
-    sendError(response, createPublicError(403, "No tienes permiso para eliminar clientes."));
+    sendError(response, createPublicError(403, "No tienes permiso para eliminar usuarios."));
     return;
   }
 
@@ -2694,11 +2694,52 @@ app.post("/api/users/:userId/delete", adminActionRateLimit, (request, response) 
     }
 
     const state = getValidatedState();
-    const userId = requireCleanString(request.params.userId, "El cliente", 80);
+    const userId = requireCleanString(request.params.userId, "El usuario", 80);
     const targetUser = state.oa_users.find((user) => user.id === userId);
 
-    if (!targetUser || targetUser.role !== "client") {
-      throw createPublicError(404, "Cliente no encontrado.");
+    if (!targetUser || !["client", "teacher"].includes(targetUser.role)) {
+      throw createPublicError(404, "Usuario no encontrado.");
+    }
+
+    if (targetUser.role === "teacher") {
+      const assignedRequests = state.oa_requests.filter((item) => item.teacherId === userId);
+      const fixedClients = state.oa_users.filter((user) => user.role === "client" && user.teacherId === userId);
+      const completedStatuses = new Set(["Lista", "Entrega subida", "Entregada"]);
+
+      fixedClients.forEach((client) => {
+        client.teacherId = "";
+        client.teacherName = "";
+      });
+
+      assignedRequests.forEach((item) => {
+        const nextStatus = completedStatuses.has(item.status) ? item.status : "Recibida";
+        item.teacherId = "";
+        item.teacherName = "";
+        item.assignedAt = "";
+        item.status = nextStatus;
+        item.updatedAt = new Date().toISOString();
+        appendStatusHistory(item, nextStatus, auth.user, { note: "Profesor eliminado y tarea liberada" });
+      });
+
+      state.oa_users = state.oa_users.filter((user) => user.id !== userId);
+      saveValidatedState(state);
+
+      logSecurityEvent("teacher_deleted", {
+        actorId: auth.user.id,
+        userId,
+        requests: assignedRequests.length,
+        clients: fixedClients.length
+      });
+      response.json({
+        ok: true,
+        deleted: {
+          userId,
+          role: "teacher",
+          requests: assignedRequests.length,
+          clients: fixedClients.length
+        }
+      });
+      return;
     }
 
     const removedRequests = state.oa_requests.filter((request) => request.userId === userId);

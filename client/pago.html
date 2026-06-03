@@ -1160,7 +1160,7 @@
 
     function loadYappySDK(cdnUrl) {
       return new Promise((resolve, reject) => {
-        if (window.btnyappy) {
+        if (customElements.get("btn-yappy")) {
           resolve();
           return;
         }
@@ -1203,7 +1203,7 @@
             throw new Error("Yappy no devolvio los datos completos del pago.");
           }
 
-          window.btnyappy.eventPayment(paymentParams);
+          yappyButton.eventPayment(paymentParams);
         } catch (error) {
           setYappyStatus(error.message || "No se pudo completar el pago con Yappy. Intenta nuevamente.", "error");
         }
@@ -1240,8 +1240,10 @@
         }
 
         await loadYappySDK(config.cdnUrl);
+        await customElements.whenDefined("btn-yappy");
 
-        if (!window.btnyappy) {
+        const yappyButton = document.querySelector("btn-yappy");
+        if (!yappyButton || typeof yappyButton.eventPayment !== "function") {
           throw new Error("El boton oficial de Yappy no esta disponible.");
         }
 

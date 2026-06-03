@@ -1166,6 +1166,7 @@
         }
 
         const script = document.createElement("script");
+        script.type = "module";
         script.src = cdnUrl;
         script.onload = resolve;
         script.onerror = () => reject(new Error("No se pudo cargar el boton de Yappy."));

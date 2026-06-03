@@ -821,13 +821,14 @@
               </span>
             </label>
 
-            <label class="method disabled">
+            <label class="method disabled" id="yappy-method">
               <input type="radio" name="payment-method" value="yappy" disabled />
               <span class="method-content">
                 <span class="payment-logo yappy">Yappy</span>
                 <span>
                   <strong>Yappy <span class="method-badge">Panam&aacute;</span></strong>
-                  <span>Disponible solo para Panam&aacute;. Lo activaremos m&aacute;s adelante.</span>
+                  <span id="yappy-method-description">Yappy a&uacute;n no est&aacute; configurado.</span>
+                  <small id="yappy-method-status" class="method-status"></small>
                 </span>
               </span>
             </label>
@@ -847,6 +848,11 @@
           <div id="paypal-checkout" class="paypal-checkout" hidden>
             <div id="paypal-button-container"></div>
             <p id="paypal-status" class="paypal-status"></p>
+          </div>
+
+          <div id="yappy-checkout" class="paypal-checkout" hidden>
+            <btn-yappy theme="blue" rounded="true"></btn-yappy>
+            <p id="yappy-status" class="paypal-status"></p>
           </div>
 
           <div class="bank-support-note" id="bank-support-note" hidden>
@@ -1063,10 +1069,18 @@
     const paypalMethodStatus = document.getElementById("paypal-method-status");
     const paypalMethod = document.getElementById("paypal-method");
     const paypalInput = document.querySelector("input[name='payment-method'][value='paypal']");
+    const yappyCheckout = document.getElementById("yappy-checkout");
+    const yappyStatus = document.getElementById("yappy-status");
+    const yappyMethod = document.getElementById("yappy-method");
+    const yappyInput = document.querySelector("input[name='payment-method'][value='yappy']");
+    const yappyMethodDescription = document.getElementById("yappy-method-description");
+    const yappyMethodStatus = document.getElementById("yappy-method-status");
+    const yappyButton = document.querySelector("btn-yappy");
     const bankWhatsapp = document.getElementById("bank-whatsapp");
     const bankRequestButton = document.getElementById("bank-request-button");
     const bankRequestStatus = document.getElementById("bank-request-status");
     let paypalButtonsRendered = false;
+    let yappyEventsBound = false;
     const savedBankWhatsapp = sessionStorage.getItem("oa_bank_payment_whatsapp") || "";
     const currentPaymentUser = getCurrentUser();
 
@@ -1081,12 +1095,21 @@
       paypalMethodStatus.className = `method-status ${type}`.trim();
     }
 
+    function setYappyStatus(message, type = "") {
+      yappyStatus.textContent = message;
+      yappyStatus.className = `paypal-status ${type}`.trim();
+      yappyMethodStatus.textContent = message;
+      yappyMethodStatus.className = `method-status ${type}`.trim();
+    }
+
     function syncPaymentMethod() {
       const selectedMethod = document.querySelector("input[name='payment-method']:checked").value;
       const isPayPal = selectedMethod === "paypal";
+      const isYappy = selectedMethod === "yappy";
       const isBankRequest = selectedMethod === "ach-deposito";
 
       paypalCheckout.hidden = !isPayPal;
+      yappyCheckout.hidden = !isYappy;
       bankSupportNote.hidden = !isBankRequest;
       submitButton.hidden = true;
       submitButton.disabled = true;
@@ -1133,6 +1156,105 @@
         script.onerror = () => reject(new Error("No se pudo cargar el boton de PayPal."));
         document.head.appendChild(script);
       });
+    }
+
+    function loadYappySDK(cdnUrl) {
+      return new Promise((resolve, reject) => {
+        if (window.btnyappy) {
+          resolve();
+          return;
+        }
+
+        const script = document.createElement("script");
+        script.src = cdnUrl;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("No se pudo cargar el boton de Yappy."));
+        document.head.appendChild(script);
+      });
+    }
+
+    function bindYappyEvents() {
+      if (!yappyButton || yappyEventsBound) {
+        return;
+      }
+
+      yappyEventsBound = true;
+
+      yappyButton.addEventListener("eventClick", async () => {
+        try {
+          if (!getCurrentUser()) {
+            window.location.href = `registro.html?next=${encodeURIComponent(`pago.html?plan=${selectedPlanKey}`)}`;
+            return;
+          }
+
+          setYappyStatus("Creando orden segura con Yappy...");
+          const order = await fetchJSON("/api/yappy/orders", {
+            method: "POST",
+            body: JSON.stringify({ plan: selectedPlanKey })
+          });
+          const paymentParams = {
+            transactionId: order.body?.transactionId,
+            token: order.body?.token,
+            documentName: order.body?.documentName
+          };
+
+          if (!paymentParams.transactionId || !paymentParams.token || !paymentParams.documentName) {
+            throw new Error("Yappy no devolvio los datos completos del pago.");
+          }
+
+          window.btnyappy.eventPayment(paymentParams);
+        } catch (error) {
+          setYappyStatus(error.message || "No se pudo completar el pago con Yappy. Intenta nuevamente.", "error");
+        }
+      });
+
+      yappyButton.addEventListener("eventSuccess", () => {
+        setYappyStatus("Pago recibido. Estamos validando tu suscripcion.", "success");
+      });
+
+      yappyButton.addEventListener("eventError", () => {
+        setYappyStatus("No se pudo completar el pago con Yappy. Intenta nuevamente.", "error");
+      });
+    }
+
+    async function setupYappyButton() {
+      try {
+        const config = await fetchJSON("/api/yappy/config", { method: "GET", headers: {} });
+        const paymentUser = getCurrentUser();
+
+        if (paymentUser && !isCurrentUserEmailVerified(paymentUser)) {
+          yappyMethod.classList.add("disabled");
+          yappyInput.disabled = true;
+          yappyMethodDescription.textContent = "Confirma tu correo antes de pagar con Yappy.";
+          setYappyStatus("Confirma tu correo antes de pagar. Te enviamos un enlace al registrarte.", "error");
+          return;
+        }
+
+        if (!config.enabled || !config.cdnUrl) {
+          yappyMethod.classList.add("disabled");
+          yappyInput.disabled = true;
+          yappyMethodDescription.textContent = "Yappy aun no esta configurado.";
+          setYappyStatus("Yappy aun no esta configurado.", "error");
+          return;
+        }
+
+        await loadYappySDK(config.cdnUrl);
+
+        if (!window.btnyappy) {
+          throw new Error("El boton oficial de Yappy no esta disponible.");
+        }
+
+        yappyMethod.classList.remove("disabled");
+        yappyInput.disabled = false;
+        yappyMethodDescription.textContent = "Disponible para pagos locales en Panama";
+        setYappyStatus("Yappy listo para pagos locales en Panama.", "success");
+        bindYappyEvents();
+      } catch (error) {
+        yappyMethod.classList.add("disabled");
+        yappyInput.disabled = true;
+        yappyMethodDescription.textContent = "Yappy aun no esta configurado.";
+        setYappyStatus(error.message || "Yappy aun no esta configurado.", "error");
+      }
     }
 
     async function setupPayPalButton() {
@@ -1244,6 +1366,7 @@
     }
 
     setupPayPalButton();
+    setupYappyButton();
 
     bankRequestButton.addEventListener("click", () => {
       const whatsapp = bankWhatsapp.value.trim();

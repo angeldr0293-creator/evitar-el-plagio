@@ -72,6 +72,11 @@ const PAYPAL_WEBHOOK_ID = process.env.PAYPAL_WEBHOOK_ID || "";
 const PAYPAL_API_BASE = PAYPAL_ENVIRONMENT === "live"
   ? "https://api-m.paypal.com"
   : "https://api-m.sandbox.paypal.com";
+const YAPPY_MERCHANT_ID = process.env.YAPPY_MERCHANT_ID || "";
+const YAPPY_SECRET_KEY = process.env.YAPPY_SECRET_KEY || "";
+const YAPPY_DOMAIN = process.env.YAPPY_DOMAIN || CANONICAL_HOST || "zerocopyia.com";
+const YAPPY_API_BASE_URL = (process.env.YAPPY_API_BASE_URL || "").replace(/\/$/, "");
+const YAPPY_CDN_URL = process.env.YAPPY_CDN_URL || "";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${PUBLIC_APP_URL.replace(/\/$/, "")}/api/auth/google/callback`;
@@ -744,6 +749,139 @@ function getPlanFromPayPalPlanId(planId) {
 
 function arePayPalSubscriptionsConfigured() {
   return Boolean(isPayPalConfigured() && SUBSCRIPTION_PLANS.every((plan) => getPayPalSubscriptionPlanId(plan)));
+}
+
+function isYappyConfigured() {
+  return Boolean(YAPPY_MERCHANT_ID && YAPPY_SECRET_KEY && YAPPY_DOMAIN && YAPPY_API_BASE_URL);
+}
+
+function getYappyIpnUrl() {
+  return `${PUBLIC_APP_URL.replace(/\/$/, "")}/api/yappy/ipn`;
+}
+
+function createYappyOrderId() {
+  return `ZC${Date.now().toString(36)}${crypto.randomBytes(2).toString("hex")}`
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 15);
+}
+
+function isValidYappyOrderId(value) {
+  return typeof value === "string" && /^[A-Za-z0-9]{1,15}$/.test(value);
+}
+
+function getYappySecretSigningKey() {
+  const decodedSecret = Buffer.from(YAPPY_SECRET_KEY, "base64").toString("utf8");
+  const signingKey = decodedSecret.split(".")[0];
+
+  if (!signingKey) {
+    throw createPublicError(503, "La clave secreta de Yappy no es valida.");
+  }
+
+  return signingKey;
+}
+
+function createYappyIpnHash(orderId, status, domain) {
+  return crypto
+    .createHmac("sha256", getYappySecretSigningKey())
+    .update(`${orderId}${status}${domain}`)
+    .digest("hex");
+}
+
+function verifyYappyIpnHash({ orderId, status, domain, hash }) {
+  if (!orderId || !status || !domain || !hash) {
+    return false;
+  }
+
+  const expectedHash = createYappyIpnHash(orderId, status, domain);
+  const receivedHash = String(hash).toLowerCase();
+
+  return expectedHash.length === receivedHash.length
+    && crypto.timingSafeEqual(Buffer.from(expectedHash), Buffer.from(receivedHash));
+}
+
+async function requestYappy(pathname, { token = "", body = {} } = {}) {
+  if (!isYappyConfigured()) {
+    throw createPublicError(503, "Yappy no esta configurado todavia.");
+  }
+
+  const response = await fetch(`${YAPPY_API_BASE_URL}/${pathname.replace(/^\//, "")}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: token } : {})
+    },
+    body: JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    logSecurityEvent("yappy_api_error", {
+      status: response.status,
+      pathname,
+      details: payload?.status?.description || payload?.message || "yappy_error"
+    });
+    throw createPublicError(502, "Yappy no pudo completar la operacion.");
+  }
+
+  return payload;
+}
+
+async function validateYappyMerchant() {
+  const payload = await requestYappy("/payments/validate/merchant", {
+    body: {
+      merchantId: YAPPY_MERCHANT_ID,
+      urlDomain: YAPPY_DOMAIN
+    }
+  });
+  const token = payload?.body?.token;
+
+  if (!token) {
+    logSecurityEvent("yappy_merchant_validation_failed", {
+      statusCode: payload?.status?.code || "",
+      description: payload?.status?.description || ""
+    });
+    throw createPublicError(502, "Yappy no devolvio el token del comercio.");
+  }
+
+  return payload;
+}
+
+async function createYappyPaymentOrder({ orderId, plan, aliasYappy = "" }) {
+  const validation = await validateYappyMerchant();
+  const amount = getPlanPrice(plan).toFixed(2);
+  const requestBody = {
+    merchantId: YAPPY_MERCHANT_ID,
+    orderId,
+    domain: YAPPY_DOMAIN,
+    paymentDate: Date.now(),
+    ipnUrl: getYappyIpnUrl(),
+    discount: "0.00",
+    taxes: "0.00",
+    subtotal: amount,
+    total: amount
+  };
+  const cleanAliasYappy = toCleanString(aliasYappy, 20).replace(/\D/g, "");
+
+  if (cleanAliasYappy) {
+    requestBody.aliasYappy = cleanAliasYappy;
+  }
+
+  const payload = await requestYappy("/payments/payment-wc", {
+    token: validation.body.token,
+    body: requestBody
+  });
+
+  if (!payload?.body?.transactionId || !payload?.body?.token || !payload?.body?.documentName) {
+    logSecurityEvent("yappy_order_response_incomplete", {
+      orderId,
+      statusCode: payload?.status?.code || "",
+      description: payload?.status?.description || ""
+    });
+    throw createPublicError(502, "Yappy no devolvio los datos completos de la orden.");
+  }
+
+  return payload;
 }
 
 async function getPayPalAccessToken() {
@@ -2192,7 +2330,7 @@ app.use((request, response, next) => {
   response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
   response.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; img-src 'self' data: https://www.paypalobjects.com https://*.paypal.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.paypal.com https://www.paypalobjects.com; connect-src 'self' https://challenges.cloudflare.com https://*.paypal.com https://*.paypalobjects.com; frame-src https://challenges.cloudflare.com https://www.paypal.com https://*.paypal.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://*.paypal.com"
+    "default-src 'self'; img-src 'self' data: https://www.paypalobjects.com https://*.paypal.com https://*.yappy.cloud; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.paypal.com https://www.paypalobjects.com https://bt-cdn.yappy.cloud; connect-src 'self' https://challenges.cloudflare.com https://*.paypal.com https://*.paypalobjects.com https://*.yappy.cloud https://*.bgeneral.cloud; frame-src https://challenges.cloudflare.com https://www.paypal.com https://*.paypal.com https://*.yappy.cloud https://*.bgeneral.cloud; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://*.paypal.com https://*.yappy.cloud https://*.bgeneral.cloud"
   );
 
   if (FORCE_HTTPS) {
@@ -2932,6 +3070,171 @@ app.get("/api/paypal/config", (request, response) => {
     environment: PAYPAL_ENVIRONMENT === "live" ? "live" : "sandbox",
     planIds: PAYPAL_SUBSCRIPTION_PLAN_IDS
   });
+});
+
+app.get("/api/yappy/config", (request, response) => {
+  response.json({
+    ok: true,
+    enabled: isYappyConfigured(),
+    cdnUrl: YAPPY_CDN_URL,
+    currency: PAYPAL_CURRENCY
+  });
+});
+
+app.post("/api/yappy/validate-merchant", formRateLimit, async (request, response) => {
+  const auth = requireAuth(request, response);
+
+  if (!auth) {
+    return;
+  }
+
+  if (auth.user.role !== "client") {
+    sendError(response, createPublicError(403, "Solo clientes pueden validar pagos Yappy."));
+    return;
+  }
+
+  if (!requireVerifiedClient(auth, response)) {
+    return;
+  }
+
+  try {
+    const validation = await validateYappyMerchant();
+    logSecurityEvent("yappy_merchant_validated", { userId: auth.user.id });
+    response.json({
+      ok: true,
+      status: validation.status || null,
+      epochTime: validation.body?.epochTime || ""
+    });
+  } catch (error) {
+    sendError(response, error, "No se pudo validar el comercio con Yappy.");
+  }
+});
+
+app.post("/api/yappy/orders", formRateLimit, async (request, response) => {
+  const auth = requireAuth(request, response);
+
+  if (!auth) {
+    return;
+  }
+
+  if (auth.user.role !== "client") {
+    sendError(response, createPublicError(403, "Solo clientes pueden pagar con Yappy."));
+    return;
+  }
+
+  if (!requireVerifiedClient(auth, response)) {
+    return;
+  }
+
+  try {
+    const state = getValidatedState();
+    const usersById = new Map(state.oa_users.map((user) => [user.id, user]));
+    const plan = requireAllowedValue(request.body?.plan, ALLOWED_PLANS, "El plan");
+    const orderId = createYappyOrderId();
+    const order = await createYappyPaymentOrder({
+      orderId,
+      plan,
+      aliasYappy: request.body?.aliasYappy || ""
+    });
+    const createdAt = new Date();
+    const subscription = sanitizeSubscription({
+      id: crypto.randomUUID(),
+      userId: auth.user.id,
+      plan,
+      status: "Pendiente",
+      paymentMethod: "yappy",
+      amount: getPlanPrice(plan),
+      currency: PAYPAL_CURRENCY,
+      transactionId: order.body.transactionId,
+      paymentToken: orderId,
+      paymentProof: null,
+      paymentNote: "Orden Yappy pendiente de confirmacion IPN.",
+      createdAt: createdAt.toISOString(),
+      startsAt: createdAt.toISOString(),
+      expiresAt: isCreditPackPlan(plan) ? "" : addDays(createdAt, 30).toISOString()
+    }, usersById);
+
+    subscription.transactionId = order.body.transactionId;
+    subscription.paymentNote = "Orden Yappy pendiente de confirmacion IPN.";
+    state.oa_subscriptions.unshift(subscription);
+
+    saveValidatedState(state);
+    logSecurityEvent("yappy_order_created", { userId: auth.user.id, orderId, transactionId: order.body.transactionId, plan });
+    response.json({
+      ok: true,
+      orderId,
+      body: {
+        transactionId: order.body.transactionId,
+        token: order.body.token,
+        documentName: order.body.documentName
+      }
+    });
+  } catch (error) {
+    sendError(response, error, "No se pudo crear la orden de Yappy.");
+  }
+});
+
+app.get("/api/yappy/ipn", (request, response) => {
+  try {
+    const orderId = requireCleanString(request.query?.orderId, "La orden de Yappy", 15);
+    const status = requireAllowedValue(request.query?.status, ["E", "R", "C", "X"], "El estado de Yappy");
+    const hash = requireCleanString(request.query?.hash, "El hash de Yappy", 128).toLowerCase();
+    const domain = requireCleanString(request.query?.domain, "El dominio de Yappy", 120);
+    const confirmationNumber = toCleanString(request.query?.confirmationNumber, 120);
+
+    if (!verifyYappyIpnHash({ orderId, status, domain, hash })) {
+      logSecurityEvent("yappy_ipn_invalid_hash", { orderId, status, domain });
+      response.status(401).json({ success: false });
+      return;
+    }
+
+    const state = getValidatedState();
+    const subscription = state.oa_subscriptions.find((item) => (
+      item.paymentMethod === "yappy"
+      && (item.paymentToken === orderId || item.transactionId === orderId)
+    ));
+
+    if (!subscription) {
+      logSecurityEvent("yappy_ipn_unknown_order", { orderId, status, domain, confirmationNumber });
+      response.json({ success: true });
+      return;
+    }
+
+    const statusMap = {
+      E: "Pagado",
+      R: "Rechazado",
+      C: "Cancelada",
+      X: "Expirado"
+    };
+    const previousStatus = subscription.status;
+
+    subscription.status = statusMap[status];
+    subscription.paymentNote = status === "E"
+      ? "Pago Yappy confirmado por IPN."
+      : `Orden Yappy ${subscription.status.toLowerCase()} por IPN.`;
+
+    if (confirmationNumber) {
+      subscription.transactionId = confirmationNumber;
+    }
+
+    if (status === "E") {
+      subscription.reviewedAt = subscription.reviewedAt || new Date().toISOString();
+      subscription.reviewedBy = "yappy";
+      state.oa_requests.forEach((item) => {
+        if (item.subscriptionId === subscription.id && item.status === "Pendiente de pago") {
+          item.status = "Recibida";
+          item.updatedAt = new Date().toISOString();
+          appendStatusHistory(item, "Recibida", null, { note: "Pago Yappy confirmado" });
+        }
+      });
+    }
+
+    saveValidatedState(state);
+    logSecurityEvent("yappy_ipn_received", { orderId, status, previousStatus, subscriptionId: subscription.id });
+    response.json({ success: true });
+  } catch (error) {
+    sendError(response, error, "No se pudo procesar el IPN de Yappy.");
+  }
 });
 
 app.post("/api/paypal/orders", formRateLimit, async (request, response) => {

@@ -770,6 +770,20 @@ function isValidYappyOrderId(value) {
   return typeof value === "string" && /^[A-Za-z0-9]{1,15}$/.test(value);
 }
 
+function normalizeYappyAlias(value) {
+  return toCleanString(typeof value === "number" ? String(value) : value, 20).replace(/\D/g, "");
+}
+
+function requireYappyAlias(value) {
+  const cleanAliasYappy = normalizeYappyAlias(value);
+
+  if (!/^\d{8}$/.test(cleanAliasYappy)) {
+    throw createPublicError(400, "N\u00famero Yappy inv\u00e1lido.");
+  }
+
+  return cleanAliasYappy;
+}
+
 function getYappySecretSigningKey() {
   const decodedSecret = Buffer.from(YAPPY_SECRET_KEY, "base64").toString("utf8");
   const signingKey = decodedSecret.split(".")[0];
@@ -816,12 +830,15 @@ async function requestYappy(pathname, { token = "", body = {} } = {}) {
   const payload = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    const yappyStatusCode = toCleanString(payload?.status?.code || response.status, 80);
+    const yappyStatusDescription = toCleanString(payload?.status?.description || payload?.message || "yappy_error", 240);
     logSecurityEvent("yappy_api_error", {
       status: response.status,
       pathname,
-      details: payload?.status?.description || payload?.message || "yappy_error"
+      code: yappyStatusCode,
+      details: yappyStatusDescription
     });
-    throw createPublicError(502, "Yappy no pudo completar la operacion.");
+    throw createPublicError(502, `Yappy no pudo completar la operacion. ${yappyStatusCode}: ${yappyStatusDescription}`);
   }
 
   return payload;
@@ -848,6 +865,7 @@ async function validateYappyMerchant() {
 }
 
 async function createYappyPaymentOrder({ orderId, plan, aliasYappy = "" }) {
+  const cleanAliasYappy = requireYappyAlias(aliasYappy);
   const validation = await validateYappyMerchant();
   const amount = getPlanPrice(plan).toFixed(2);
   const requestBody = {
@@ -855,17 +873,13 @@ async function createYappyPaymentOrder({ orderId, plan, aliasYappy = "" }) {
     orderId,
     domain: YAPPY_DOMAIN,
     paymentDate: Date.now(),
+    aliasYappy: cleanAliasYappy,
     ipnUrl: getYappyIpnUrl(),
     discount: "0.00",
     taxes: "0.00",
     subtotal: amount,
     total: amount
   };
-  const cleanAliasYappy = toCleanString(aliasYappy, 20).replace(/\D/g, "");
-
-  if (cleanAliasYappy) {
-    requestBody.aliasYappy = cleanAliasYappy;
-  }
 
   const payload = await requestYappy("/payments/payment-wc", {
     token: validation.body.token,
@@ -3130,11 +3144,12 @@ app.post("/api/yappy/orders", formRateLimit, async (request, response) => {
     const state = getValidatedState();
     const usersById = new Map(state.oa_users.map((user) => [user.id, user]));
     const plan = requireAllowedValue(request.body?.plan, ALLOWED_PLANS, "El plan");
+    const aliasYappy = requireYappyAlias(request.body?.aliasYappy);
     const orderId = createYappyOrderId();
     const order = await createYappyPaymentOrder({
       orderId,
       plan,
-      aliasYappy: request.body?.aliasYappy || ""
+      aliasYappy
     });
     const createdAt = new Date();
     const subscription = sanitizeSubscription({

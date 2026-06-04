@@ -391,6 +391,29 @@
       font-weight: 800;
     }
 
+    .yappy-phone-field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .yappy-phone-field span {
+      color: #071832;
+      font-weight: 800;
+    }
+
+    .yappy-phone-field input {
+      border: 1px solid #d4dce3;
+      border-radius: 12px;
+      font: inherit;
+      min-height: 48px;
+      padding: 0 14px;
+    }
+
+    .yappy-phone-field small {
+      color: #64748b;
+      font-size: 13px;
+    }
+
     .method-status {
       color: #475569;
       display: block;
@@ -851,6 +874,11 @@
           </div>
 
           <div id="yappy-checkout" class="paypal-checkout" hidden>
+            <label class="yappy-phone-field" for="yappy-alias">
+              <span>N&uacute;mero de celular asociado a Yappy</span>
+              <input id="yappy-alias" type="tel" inputmode="numeric" autocomplete="tel" maxlength="20" placeholder="Ej: 61234567" />
+              <small>Ingresa tu n&uacute;mero Yappy sin +507 ni espacios.</small>
+            </label>
             <btn-yappy theme="blue" rounded="true"></btn-yappy>
             <p id="yappy-status" class="paypal-status"></p>
           </div>
@@ -1075,6 +1103,7 @@
     const yappyInput = document.querySelector("input[name='payment-method'][value='yappy']");
     const yappyMethodDescription = document.getElementById("yappy-method-description");
     const yappyMethodStatus = document.getElementById("yappy-method-status");
+    const yappyAliasInput = document.getElementById("yappy-alias");
     const yappyButton = document.querySelector("btn-yappy");
     const bankWhatsapp = document.getElementById("bank-whatsapp");
     const bankRequestButton = document.getElementById("bank-request-button");
@@ -1102,6 +1131,10 @@
       yappyMethodStatus.className = `method-status ${type}`.trim();
     }
 
+    function getYappyAlias() {
+      return yappyAliasInput.value.replace(/\D/g, "").slice(0, 8);
+    }
+
     function syncPaymentMethod() {
       const selectedMethod = document.querySelector("input[name='payment-method']:checked").value;
       const isPayPal = selectedMethod === "paypal";
@@ -1116,6 +1149,9 @@
     }
 
     paymentMethodInputs.forEach((input) => input.addEventListener("change", syncPaymentMethod));
+    yappyAliasInput.addEventListener("input", () => {
+      yappyAliasInput.value = getYappyAlias();
+    });
     syncPaymentMethod();
 
     function apiUrl(pathname) {
@@ -1188,10 +1224,17 @@
             return;
           }
 
+          const aliasYappy = getYappyAlias();
+          if (!/^\d{8}$/.test(aliasYappy)) {
+            setYappyStatus("Ingresa un numero Yappy valido de 8 digitos.", "error");
+            yappyAliasInput.focus();
+            return;
+          }
+
           setYappyStatus("Creando orden segura con Yappy...");
           const order = await fetchJSON("/api/yappy/orders", {
             method: "POST",
-            body: JSON.stringify({ plan: selectedPlanKey })
+            body: JSON.stringify({ plan: selectedPlanKey, aliasYappy })
           });
           const paymentParams = {
             transactionId: order.body?.transactionId,

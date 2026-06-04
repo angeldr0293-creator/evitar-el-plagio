@@ -414,6 +414,24 @@
       font-size: 13px;
     }
 
+    .yappy-followup-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: -6px;
+    }
+
+    .yappy-followup-actions[hidden] {
+      display: none;
+    }
+
+    .yappy-followup-actions .btn {
+      margin-top: 0;
+      min-height: 42px;
+      padding: 0 16px;
+      width: auto;
+    }
+
     .method-status {
       color: #475569;
       display: block;
@@ -881,6 +899,7 @@
             </label>
             <btn-yappy theme="blue" rounded="true"></btn-yappy>
             <p id="yappy-status" class="paypal-status"></p>
+            <div id="yappy-followup-actions" class="yappy-followup-actions" hidden></div>
           </div>
 
           <div class="bank-support-note" id="bank-support-note" hidden>
@@ -1105,11 +1124,17 @@
     const yappyMethodStatus = document.getElementById("yappy-method-status");
     const yappyAliasInput = document.getElementById("yappy-alias");
     const yappyButton = document.querySelector("btn-yappy");
+    const yappyFollowupActions = document.getElementById("yappy-followup-actions");
     const bankWhatsapp = document.getElementById("bank-whatsapp");
     const bankRequestButton = document.getElementById("bank-request-button");
     const bankRequestStatus = document.getElementById("bank-request-status");
     let paypalButtonsRendered = false;
     let yappyEventsBound = false;
+    let yappyPaymentSucceeded = false;
+    let yappyCreditBaseline = null;
+    let yappyCreditPollTimer = null;
+    const YAPPY_CREDIT_POLL_MS = 2000;
+    const YAPPY_CREDIT_POLL_TIMEOUT_MS = 30000;
     const savedBankWhatsapp = sessionStorage.getItem("oa_bank_payment_whatsapp") || "";
     const currentPaymentUser = getCurrentUser();
 
@@ -1133,6 +1158,84 @@
 
     function getYappyAlias() {
       return yappyAliasInput.value.replace(/\D/g, "").slice(0, 8);
+    }
+
+    function setYappyFollowupActions(mode = "") {
+      yappyFollowupActions.hidden = !mode;
+      yappyFollowupActions.innerHTML = "";
+
+      if (!mode) {
+        return;
+      }
+
+      if (mode === "confirmed") {
+        yappyFollowupActions.innerHTML = `<a class="btn btn-primary" href="panel.html">Ir a mi panel</a>`;
+        return;
+      }
+
+      yappyFollowupActions.innerHTML = `
+        <button class="btn btn-secondary" id="yappy-refresh-state" type="button">Actualizar estado</button>
+        <a class="btn btn-primary" href="panel.html">Ir a mi panel</a>
+      `;
+      document.getElementById("yappy-refresh-state")?.addEventListener("click", () => {
+        window.location.reload();
+      });
+    }
+
+    function stopYappyCreditPolling() {
+      if (yappyCreditPollTimer) {
+        clearInterval(yappyCreditPollTimer);
+        yappyCreditPollTimer = null;
+      }
+    }
+
+    function getFreshCreditSummary() {
+      if (typeof clearSharedStateCache === "function") {
+        clearSharedStateCache();
+      }
+
+      const summary = typeof getClientCreditSummary === "function" ? getClientCreditSummary() : null;
+
+      if (typeof setupCreditBadges === "function") {
+        setupCreditBadges();
+      }
+
+      return summary;
+    }
+
+    function startYappyCreditPolling(initialCredits) {
+      stopYappyCreditPolling();
+
+      const baseline = Number.isFinite(Number(initialCredits)) ? Number(initialCredits) : null;
+      const startedAt = Date.now();
+
+      const checkCredits = () => {
+        const summary = getFreshCreditSummary();
+        const availableCredits = Number(summary?.availableCredits);
+        const creditsConfirmed = Number.isFinite(availableCredits) && (
+          baseline === null ? availableCredits > 0 : availableCredits > baseline
+        );
+
+        if (creditsConfirmed) {
+          stopYappyCreditPolling();
+          setYappyStatus(`Cr\u00e9ditos acreditados correctamente. Tienes ${availableCredits} cr\u00e9ditos disponibles.`, "success");
+          setYappyFollowupActions("confirmed");
+          return true;
+        }
+
+        if (Date.now() - startedAt >= YAPPY_CREDIT_POLL_TIMEOUT_MS) {
+          stopYappyCreditPolling();
+          setYappyStatus("Pago recibido. La confirmaci\u00f3n puede tardar unos segundos. Puedes refrescar la p\u00e1gina o ir a tu panel.", "success");
+          setYappyFollowupActions("pending");
+          return true;
+        }
+
+        return false;
+      };
+
+      if (!checkCredits()) {
+        yappyCreditPollTimer = setInterval(checkCredits, YAPPY_CREDIT_POLL_MS);
+      }
     }
 
     function syncPaymentMethod() {
@@ -1219,6 +1322,10 @@
 
       yappyButton.addEventListener("eventClick", async () => {
         try {
+          yappyPaymentSucceeded = false;
+          stopYappyCreditPolling();
+          setYappyFollowupActions("");
+
           if (!getCurrentUser()) {
             window.location.href = `registro.html?next=${encodeURIComponent(`pago.html?plan=${selectedPlanKey}`)}`;
             return;
@@ -1231,6 +1338,7 @@
             return;
           }
 
+          yappyCreditBaseline = Number(getFreshCreditSummary()?.availableCredits || 0);
           setYappyStatus("Creando orden segura con Yappy...");
           const order = await fetchJSON("/api/yappy/orders", {
             method: "POST",
@@ -1253,10 +1361,18 @@
       });
 
       yappyButton.addEventListener("eventSuccess", () => {
-        setYappyStatus("Pago recibido. Estamos validando tu suscripcion.", "success");
+        yappyPaymentSucceeded = true;
+        setYappyStatus("Pago recibido por Yappy. Estamos confirmando tus cr\u00e9ditos.", "success");
+        startYappyCreditPolling(yappyCreditBaseline);
       });
 
       yappyButton.addEventListener("eventError", () => {
+        if (yappyPaymentSucceeded) {
+          return;
+        }
+
+        stopYappyCreditPolling();
+        setYappyFollowupActions("");
         setYappyStatus("No se pudo completar el pago con Yappy. Intenta nuevamente.", "error");
       });
     }

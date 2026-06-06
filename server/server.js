@@ -102,12 +102,14 @@ const database = require("./data/database");
 const defaultState = {
   oa_users: [],
   oa_requests: [],
-  oa_subscriptions: []
+  oa_subscriptions: [],
+  bancoGeneralOrders: []
 };
 
 const ALLOWED_USER_ROLES = ["client", "teacher"];
 const ALLOWED_REQUEST_STATUSES = ["Pendiente de pago", "Recibida", "Asignada", "Visto", "Trabajando", "En proceso", "Lista", "Entrega subida", "Entregada"];
 const ALLOWED_SUBSCRIPTION_STATUSES = ["Pendiente", "Pagado", "Activa", "Cancelada", "Rechazado", "Reembolsado", "Expirado", "Suspendida", "Pago fallido"];
+const ALLOWED_BANCO_GENERAL_ORDER_STATUSES = ["pending", "authorized", "paid", "failed"];
 const LEGACY_SUBSCRIPTION_STATUS_MAP = {
   Expirada: "Expirado"
 };
@@ -1068,8 +1070,22 @@ function getCybersourceErrorMessage(responseText, parsedPayload) {
   return toCleanString(responseText, 240) || "cybersource_error";
 }
 
-function createBancoGeneralSessionRequestBody({ plan }) {
+function createBancoGeneralOrderId() {
+  return `BG${Date.now().toString(36).toUpperCase()}${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+}
+
+function normalizePaymentAmountString(value) {
+  const numberValue = Number(value);
+  return Number.isFinite(numberValue) ? numberValue.toFixed(2) : "";
+}
+
+function createBancoGeneralSessionRequestBody({ plan, orderId }) {
   const amount = getPlanPrice(plan).toFixed(2);
+  const referenceCode = requireCleanString(
+    orderId || `ZC-${crypto.randomBytes(6).toString("hex").toUpperCase()}`,
+    "La referencia Banco General",
+    80
+  );
 
   return {
     targetOrigins: [BG_CYBERSOURCE_TARGET_ORIGIN],
@@ -1078,7 +1094,7 @@ function createBancoGeneralSessionRequestBody({ plan }) {
     locale: BG_CYBERSOURCE_LOCALE,
     data: {
       clientReferenceInformation: {
-        code: `ZC-${crypto.randomBytes(6).toString("hex").toUpperCase()}`
+        code: referenceCode
       },
       orderInformation: {
         amountDetails: {
@@ -1102,6 +1118,8 @@ function summarizeBancoGeneralSessionResponse(responseText, parsedPayload) {
     sessionJWT: token,
     clientLibrary: typeof clientLibrary === "string" ? toCleanString(clientLibrary, 1000) : "",
     clientLibraryIntegrity: typeof clientLibraryIntegrity === "string" ? toCleanString(clientLibraryIntegrity, 300) : "",
+    sessionJti: toCleanString(decodedPayload?.jti, 120),
+    sessionId: toCleanString(decodedPayload?.id, 120),
     sessionJwtReceived: Boolean(token && token.split(".").length >= 3),
     clientLibraryReceived: typeof clientLibrary === "string" && clientLibrary.length > 0,
     clientLibraryIntegrityReceived: typeof clientLibraryIntegrity === "string" && clientLibraryIntegrity.length > 0,
@@ -1111,14 +1129,14 @@ function summarizeBancoGeneralSessionResponse(responseText, parsedPayload) {
   };
 }
 
-async function createBancoGeneralSandboxSession({ plan }) {
+async function createBancoGeneralSandboxSession({ plan, orderId }) {
   if (!isBancoGeneralSandboxTestEnabled()) {
     throw createPublicError(404, "Ruta no encontrada.");
   }
 
   const apiBaseUrl = getBancoGeneralSandboxBaseUrl();
   const endpointUrl = new URL("/uc/v1/sessions", apiBaseUrl);
-  const body = createBancoGeneralSessionRequestBody({ plan });
+  const body = createBancoGeneralSessionRequestBody({ plan, orderId });
   const bodyText = JSON.stringify(body);
   const response = await fetch(endpointUrl, {
     method: "POST",
@@ -1545,6 +1563,83 @@ function summarizeBancoGeneralSandboxResult(requestBody) {
       /card|pan|cvv|cvc|security|number|email|phone|mobile|token|jwt|signature|authorization|credential|secret/i
     ))
   };
+}
+
+function getBancoGeneralSandboxResultPayload(requestBody) {
+  const result = isPlainObject(requestBody) && Object.prototype.hasOwnProperty.call(requestBody, "result")
+    ? requestBody.result
+    : requestBody;
+  const resultObject = result && typeof result === "object" ? result : null;
+  const jwtCandidate = findJwtCandidate(result);
+  const { payload } = decodeJwtHeaderAndPayloadSilently(jwtCandidate);
+
+  return {
+    result,
+    resultObject,
+    payload,
+    searchableResult: resultObject || payload || {}
+  };
+}
+
+function getBancoGeneralReferenceCode(searchableResult) {
+  const clientReferenceInformation = findNestedValueByKey(searchableResult, "clientReferenceInformation");
+
+  return isPlainObject(clientReferenceInformation)
+    ? toCleanString(clientReferenceInformation.code, 80)
+    : "";
+}
+
+function getBancoGeneralAmountDetails(searchableResult) {
+  const orderInformation = findNestedValueByKey(searchableResult, "orderInformation");
+  const amountDetails = isPlainObject(orderInformation?.amountDetails)
+    ? orderInformation.amountDetails
+    : findNestedValueByKey(searchableResult, "amountDetails");
+
+  return isPlainObject(amountDetails) ? amountDetails : {};
+}
+
+function getBancoGeneralProcessorInformation(searchableResult) {
+  const processorInformation = findNestedValueByKey(searchableResult, "processorInformation");
+  return isPlainObject(processorInformation) ? processorInformation : {};
+}
+
+function extractBancoGeneralSandboxPaymentDetails(requestBody) {
+  const { searchableResult } = getBancoGeneralSandboxResultPayload(requestBody);
+  const amountDetails = getBancoGeneralAmountDetails(searchableResult);
+  const processorInformation = getBancoGeneralProcessorInformation(searchableResult);
+  const status = toCleanString(findNestedValueByKey(searchableResult, "status"), 40).toUpperCase();
+  const responseCode = toCleanString(processorInformation.responseCode || findNestedValueByKey(searchableResult, "responseCode"), 40);
+  const transactionId = toCleanString(
+    findNestedValueByKey(searchableResult, "transactionId") || findNestedValueByKey(searchableResult, "id"),
+    120
+  );
+  const nextOrderStatus = ["COMPLETED", "CAPTURED", "SETTLED", "PAID"].includes(status)
+    ? "paid"
+    : "authorized";
+
+  return {
+    referenceCode: getBancoGeneralReferenceCode(searchableResult),
+    status,
+    responseCode,
+    amount: normalizePaymentAmountString(amountDetails.totalAmount || amountDetails.authorizedAmount),
+    currency: toCleanString(amountDetails.currency || findNestedValueByKey(searchableResult, "currency"), 8).toUpperCase(),
+    transactionId,
+    networkTransactionId: toCleanString(
+      processorInformation.networkTransactionId || findNestedValueByKey(searchableResult, "networkTransactionId"),
+      120
+    ),
+    reconciliationId: toCleanString(findNestedValueByKey(searchableResult, "reconciliationId"), 120),
+    approvalCode: toCleanString(processorInformation.approvalCode || findNestedValueByKey(searchableResult, "approvalCode"), 80),
+    nextOrderStatus
+  };
+}
+
+function isSuccessfulBancoGeneralSandboxPayment(paymentDetails) {
+  return Boolean(
+    paymentDetails.transactionId
+    && paymentDetails.responseCode === "00"
+    && ["AUTHORIZED", "COMPLETED", "CAPTURED", "SETTLED", "PAID"].includes(paymentDetails.status)
+  );
 }
 
 async function getPayPalAccessToken() {
@@ -2509,6 +2604,42 @@ function sanitizeSubscription(subscription, usersById) {
   };
 }
 
+function sanitizeBancoGeneralOrder(order, usersById) {
+  if (!isPlainObject(order)) {
+    throw createValidationError("La orden Banco General no es valida.");
+  }
+
+  const userId = requireCleanString(order.userId, "El usuario de la orden Banco General", 80);
+  const owner = userId === "admin" ? { id: "admin", role: "admin" } : usersById.get(userId);
+
+  if (!owner) {
+    throw createValidationError("La orden Banco General debe pertenecer a un usuario valido.");
+  }
+
+  const plan = requireAllowedValue(order.plan, ALLOWED_PLANS, "El plan Banco General");
+  const nowIso = new Date().toISOString();
+
+  return {
+    id: requireCleanString(order.id, "El id de la orden Banco General", 80),
+    provider: "banco-general",
+    userId,
+    plan,
+    amount: sanitizePaymentAmount(order.amount, plan),
+    currency: toCleanString(order.currency || BG_CYBERSOURCE_CURRENCY || "USD", 8) || "USD",
+    status: requireAllowedValue(order.status || "pending", ALLOWED_BANCO_GENERAL_ORDER_STATUSES, "El estado Banco General"),
+    cybersourceSessionId: toCleanString(order.cybersourceSessionId, 120),
+    cybersourceCaptureContextJti: toCleanString(order.cybersourceCaptureContextJti, 120),
+    cybersourceTransactionId: toCleanString(order.cybersourceTransactionId, 120),
+    cybersourceNetworkTransactionId: toCleanString(order.cybersourceNetworkTransactionId, 120),
+    cybersourceReconciliationId: toCleanString(order.cybersourceReconciliationId, 120),
+    cybersourceProcessorResponseCode: toCleanString(order.cybersourceProcessorResponseCode, 40),
+    cybersourceApprovalCode: toCleanString(order.cybersourceApprovalCode, 80),
+    createdAt: sanitizeOptionalDate(order.createdAt || nowIso, "La fecha de creacion Banco General"),
+    authorizedAt: sanitizeOptionalDate(order.authorizedAt, "La fecha de autorizacion Banco General", true),
+    paidAt: sanitizeOptionalDate(order.paidAt, "La fecha de pago Banco General", true)
+  };
+}
+
 function sanitizeRequest(request, usersById, subscriptionsById) {
   if (!isPlainObject(request)) {
     throw createValidationError("La solicitud no es valida.");
@@ -2644,10 +2775,24 @@ function validateStateForStorage(state) {
     requestIds.add(request.id);
   });
 
+  const bancoGeneralOrders = Array.isArray(state.bancoGeneralOrders)
+    ? state.bancoGeneralOrders.map((order) => sanitizeBancoGeneralOrder(order, usersById))
+    : [];
+  const bancoGeneralOrderIds = new Set();
+
+  bancoGeneralOrders.forEach((order) => {
+    if (bancoGeneralOrderIds.has(order.id)) {
+      throw createValidationError("Hay ordenes Banco General duplicadas.");
+    }
+
+    bancoGeneralOrderIds.add(order.id);
+  });
+
   return {
     oa_users: users,
     oa_requests: requests,
-    oa_subscriptions: subscriptions
+    oa_subscriptions: subscriptions,
+    bancoGeneralOrders
   };
 }
 
@@ -3757,11 +3902,38 @@ app.post("/api/banco-general/sandbox/session", adminActionRateLimit, async (requ
   }
 
   try {
+    const state = getValidatedState();
+    const usersById = new Map(state.oa_users.map((user) => [user.id, user]));
     const plan = requireAllowedValue(request.body?.plan || "creditos10", ALLOWED_PLANS, "El plan");
-    const result = await createBancoGeneralSandboxSession({ plan });
+    const orderId = createBancoGeneralOrderId();
+    const result = await createBancoGeneralSandboxSession({ plan, orderId });
+    const createdAt = new Date().toISOString();
+    const order = sanitizeBancoGeneralOrder({
+      id: orderId,
+      provider: "banco-general",
+      userId: auth.user.id,
+      plan,
+      amount: getPlanPrice(plan),
+      currency: BG_CYBERSOURCE_CURRENCY,
+      status: "pending",
+      cybersourceSessionId: result.requestId || result.sessionId || "",
+      cybersourceCaptureContextJti: result.sessionJti || "",
+      createdAt
+    }, usersById);
+
+    state.bancoGeneralOrders.unshift(order);
+    saveValidatedState(state);
+    logSecurityEvent("banco_general_test_order_created", {
+      actorId: auth.user.id,
+      orderId,
+      plan,
+      amount: order.amount,
+      currency: order.currency
+    });
 
     response.json({
       ok: true,
+      orderId,
       cybersourceStatus: result.status,
       requestId: result.requestId,
       sessionJWT: result.sessionJWT,
@@ -3800,12 +3972,111 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
       throw createPublicError(400, "No se recibio resultado de Unified Checkout.");
     }
 
+    const orderId = requireCleanString(request.body?.orderId, "La orden Banco General", 80);
+    const state = getValidatedState();
+    const order = state.bancoGeneralOrders.find((item) => item.id === orderId);
+
+    if (!order) {
+      throw createPublicError(404, "Orden Banco General no encontrada.");
+    }
+
+    if (order.userId !== auth.user.id) {
+      throw createPublicError(403, "No tienes permiso para confirmar esta orden Banco General.");
+    }
+
+    if (["authorized", "paid"].includes(order.status)) {
+      response.json({
+        ok: true,
+        orderId,
+        orderStatus: order.status,
+        cybersourceStatus: order.status === "paid" ? "PAID" : "AUTHORIZED",
+        responseCode: order.cybersourceProcessorResponseCode || "",
+        transactionIdPresent: Boolean(order.cybersourceTransactionId),
+        idempotent: true,
+        alreadyProcessed: true,
+        message: "Orden Banco General ya validada en sandbox"
+      });
+      return;
+    }
+
+    if (order.status !== "pending") {
+      throw createPublicError(409, "La orden Banco General ya no esta pendiente.");
+    }
+
     const summary = summarizeBancoGeneralSandboxResult(request.body);
+    const paymentDetails = extractBancoGeneralSandboxPaymentDetails(request.body);
+    const expectedAmount = normalizePaymentAmountString(order.amount);
+    const receivedAmount = normalizePaymentAmountString(paymentDetails.amount);
+    const expectedCurrency = toCleanString(order.currency || BG_CYBERSOURCE_CURRENCY, 8).toUpperCase();
+    const existingProcessedOrder = paymentDetails.transactionId
+      ? state.bancoGeneralOrders.find((item) => (
+        item.id !== order.id
+        && item.cybersourceTransactionId === paymentDetails.transactionId
+        && ["authorized", "paid"].includes(item.status)
+      ))
+      : null;
+
+    if (existingProcessedOrder) {
+      logSecurityEvent("banco_general_test_duplicate_transaction", {
+        actorId: auth.user.id,
+        orderId,
+        existingOrderId: existingProcessedOrder.id,
+        transactionIdPresent: true
+      });
+      response.json({
+        ok: true,
+        orderId,
+        orderStatus: order.status,
+        cybersourceStatus: paymentDetails.status,
+        responseCode: paymentDetails.responseCode,
+        transactionIdPresent: true,
+        idempotent: true,
+        alreadyProcessed: true,
+        message: "Transaccion Banco General ya procesada en sandbox"
+      });
+      return;
+    }
+
+    if (paymentDetails.referenceCode !== order.id) {
+      throw createPublicError(409, "La referencia de Banco General no coincide con la orden.");
+    }
+
+    if (receivedAmount !== expectedAmount) {
+      throw createPublicError(409, "El monto de Banco General no coincide con la orden.");
+    }
+
+    if (paymentDetails.currency !== expectedCurrency) {
+      throw createPublicError(409, "La moneda de Banco General no coincide con la orden.");
+    }
+
+    if (!isSuccessfulBancoGeneralSandboxPayment(paymentDetails)) {
+      throw createPublicError(409, "Banco General no devolvio una autorizacion valida en sandbox.");
+    }
+
+    order.status = paymentDetails.nextOrderStatus;
+    order.cybersourceTransactionId = paymentDetails.transactionId;
+    order.cybersourceNetworkTransactionId = paymentDetails.networkTransactionId;
+    order.cybersourceReconciliationId = paymentDetails.reconciliationId;
+    order.cybersourceProcessorResponseCode = paymentDetails.responseCode;
+    order.cybersourceApprovalCode = paymentDetails.approvalCode;
+
+    if (order.status === "paid") {
+      order.paidAt = new Date().toISOString();
+    } else {
+      order.authorizedAt = new Date().toISOString();
+    }
+
+    saveValidatedState(state);
 
     logSecurityEvent("banco_general_test_result_received", {
       actorId: auth.user.id,
+      orderId,
+      orderStatus: order.status,
       resultType: summary.resultType,
       looksLikeJwt: summary.looksLikeJwt,
+      cybersourceStatus: paymentDetails.status,
+      responseCode: paymentDetails.responseCode,
+      transactionIdPresent: Boolean(paymentDetails.transactionId),
       requestTopLevelKeys: summary.requestTopLevelKeys,
       topLevelKeys: summary.topLevelKeys,
       decodedJwtPayloadKeys: summary.decodedJwtPayloadKeys,
@@ -3821,6 +4092,12 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
 
     response.json({
       ok: true,
+      orderId,
+      orderStatus: order.status,
+      cybersourceStatus: paymentDetails.status,
+      responseCode: paymentDetails.responseCode,
+      transactionIdPresent: Boolean(paymentDetails.transactionId),
+      idempotent: false,
       received: true,
       resultType: summary.resultType,
       resultIsString: summary.resultIsString,
@@ -3854,7 +4131,7 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
       resultClassification: summary.resultClassification,
       possiblePaymentFields: summary.possiblePaymentFields,
       possibleTransactionFields: summary.possibleTransactionFields,
-      message: "Resultado analizado en modo sandbox"
+      message: "Orden Banco General validada en sandbox"
     });
   } catch (error) {
     sendError(response, error, "No se pudo recibir el resultado sandbox de Banco General.");

@@ -13,7 +13,8 @@ const LEGACY_JSON_FILES = [
 const defaultState = {
   oa_users: [],
   oa_requests: [],
-  oa_subscriptions: []
+  oa_subscriptions: [],
+  bancoGeneralOrders: []
 };
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -39,9 +40,16 @@ db.exec(`
     data TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS banco_general_orders (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    data TEXT NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS idx_requests_user_id ON requests(user_id);
   CREATE INDEX IF NOT EXISTS idx_requests_teacher_id ON requests(teacher_id);
   CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+  CREATE INDEX IF NOT EXISTS idx_banco_general_orders_user_id ON banco_general_orders(user_id);
 `);
 
 function parseRowData(row) {
@@ -55,7 +63,8 @@ function getTableCount(tableName) {
 function isDatabaseEmpty() {
   return getTableCount("users") === 0
     && getTableCount("requests") === 0
-    && getTableCount("subscriptions") === 0;
+    && getTableCount("subscriptions") === 0
+    && getTableCount("banco_general_orders") === 0;
 }
 
 function readLegacyState() {
@@ -112,6 +121,14 @@ function saveState(state) {
       );
     });
 
+    replaceTableRows("banco_general_orders", nextState.bancoGeneralOrders || [], (order) => {
+      db.prepare("INSERT OR REPLACE INTO banco_general_orders (id, user_id, data) VALUES (?, ?, ?)").run(
+        order.id,
+        order.userId || "",
+        JSON.stringify(order)
+      );
+    });
+
     db.exec("COMMIT");
   } catch (error) {
     db.exec("ROLLBACK");
@@ -123,7 +140,8 @@ function readState() {
   return {
     oa_users: db.prepare("SELECT data FROM users ORDER BY rowid").all().map(parseRowData),
     oa_requests: db.prepare("SELECT data FROM requests ORDER BY rowid DESC").all().map(parseRowData),
-    oa_subscriptions: db.prepare("SELECT data FROM subscriptions ORDER BY rowid DESC").all().map(parseRowData)
+    oa_subscriptions: db.prepare("SELECT data FROM subscriptions ORDER BY rowid DESC").all().map(parseRowData),
+    bancoGeneralOrders: db.prepare("SELECT data FROM banco_general_orders ORDER BY rowid DESC").all().map(parseRowData)
   };
 }
 

@@ -173,6 +173,7 @@
     const planSelect = document.getElementById("plan");
     const statusNode = document.getElementById("status");
     const paymentButtons = document.getElementById("payment-buttons");
+    let currentOrderId = "";
 
     function setStatus(message, type = "") {
       statusNode.textContent = message;
@@ -242,12 +243,16 @@
     }
 
     async function confirmSandboxResult(result) {
-      await postJson("/api/banco-general/sandbox/confirm", { result });
-      setStatus("Resultado recibido desde Unified Checkout.", "success");
+      const confirmation = await postJson("/api/banco-general/sandbox/confirm", {
+        result,
+        orderId: currentOrderId
+      });
+      setStatus(confirmation.message || "Orden Banco General validada en sandbox.", "success");
     }
 
     async function openUnifiedCheckout() {
       startButton.disabled = true;
+      currentOrderId = "";
       paymentButtons.replaceChildren();
       setStatus("Creando sesion sandbox...");
 
@@ -260,6 +265,11 @@
           throw new Error("La sesion sandbox no devolvio los datos necesarios.");
         }
 
+        if (!session.orderId) {
+          throw new Error("La sesion sandbox no devolvio la orden interna.");
+        }
+
+        currentOrderId = session.orderId;
         setStatus("Cargando libreria oficial de Cybersource...");
         await loadScript(session.clientLibrary, session.clientLibraryIntegrity);
 

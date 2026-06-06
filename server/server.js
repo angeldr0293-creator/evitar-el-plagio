@@ -1158,21 +1158,182 @@ async function createBancoGeneralSandboxSession({ plan }) {
   };
 }
 
-function summarizeBancoGeneralSandboxResult(value) {
+function getSafeObjectKeys(value, maxKeys = 40) {
   if (!value || typeof value !== "object") {
-    return {
-      type: typeof value,
-      received: Boolean(value)
-    };
+    return [];
   }
 
-  const keys = Object.keys(value).slice(0, 20).map((key) => toCleanString(key, 80)).filter(Boolean);
-  const tokenLikeKeys = keys.filter((key) => /token|jwt|signature|authorization|credential|secret/i.test(key));
+  return Object.keys(value)
+    .slice(0, maxKeys)
+    .map((key) => toCleanString(key, 80))
+    .filter(Boolean);
+}
+
+function isJwtLike(value) {
+  if (typeof value !== "string" || value.length > 20000) {
+    return false;
+  }
+
+  const parts = value.split(".");
+  return parts.length === 3 && parts.every((part) => /^[A-Za-z0-9_-]+$/.test(part));
+}
+
+function decodeJwtPartSilently(part) {
+  try {
+    const normalized = part.replace(/-/g, "+").replace(/_/g, "/");
+    const padding = "=".repeat((4 - (normalized.length % 4)) % 4);
+    return JSON.parse(Buffer.from(`${normalized}${padding}`, "base64").toString("utf8"));
+  } catch (error) {
+    return null;
+  }
+}
+
+function decodeJwtHeaderAndPayloadSilently(value) {
+  if (!isJwtLike(value)) {
+    return { header: null, payload: null };
+  }
+
+  const [headerPart, payloadPart] = value.split(".");
+  return {
+    header: decodeJwtPartSilently(headerPart),
+    payload: decodeJwtPartSilently(payloadPart)
+  };
+}
+
+function getJwtClaimValue(payload, key) {
+  if (!payload || typeof payload !== "object" || !Object.prototype.hasOwnProperty.call(payload, key)) {
+    return null;
+  }
+
+  const value = payload[key];
+
+  if (typeof value === "string") {
+    return toCleanString(value, 220);
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.slice(0, 10).map((item) => (
+      typeof item === "string" ? toCleanString(item, 160) : typeof item
+    ));
+  }
+
+  return `[${typeof value}]`;
+}
+
+function containsNestedKey(value, targetKey, maxDepth = 5) {
+  if (!value || typeof value !== "object" || maxDepth < 0) {
+    return false;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(value, targetKey)) {
+    return true;
+  }
+
+  const children = Array.isArray(value) ? value : Object.values(value);
+  return children.some((child) => containsNestedKey(child, targetKey, maxDepth - 1));
+}
+
+function collectMatchingFieldNames(value, pattern, maxDepth = 5, found = new Set()) {
+  if (!value || typeof value !== "object" || maxDepth < 0 || found.size >= 40) {
+    return found;
+  }
+
+  Object.keys(value).forEach((key) => {
+    const cleanKey = toCleanString(key, 80);
+
+    if (cleanKey && pattern.test(cleanKey)) {
+      found.add(cleanKey);
+    }
+
+    collectMatchingFieldNames(value[key], pattern, maxDepth - 1, found);
+  });
+
+  return found;
+}
+
+function findJwtCandidate(value, maxDepth = 4) {
+  if (isJwtLike(value)) {
+    return value;
+  }
+
+  if (!value || typeof value !== "object" || maxDepth < 0) {
+    return "";
+  }
+
+  const children = Array.isArray(value) ? value : Object.values(value);
+
+  for (const child of children) {
+    const candidate = findJwtCandidate(child, maxDepth - 1);
+
+    if (candidate) {
+      return candidate;
+    }
+  }
+
+  return "";
+}
+
+function summarizeBancoGeneralSandboxResult(requestBody) {
+  const result = isPlainObject(requestBody) && Object.prototype.hasOwnProperty.call(requestBody, "result")
+    ? requestBody.result
+    : requestBody;
+  const resultType = Array.isArray(result) ? "array" : typeof result;
+  const resultObject = result && typeof result === "object" ? result : null;
+  const jwtCandidate = findJwtCandidate(result);
+  const { header, payload } = decodeJwtHeaderAndPayloadSilently(jwtCandidate);
+  const possiblePaymentFields = Array.from(collectMatchingFieldNames(
+    resultObject || payload || {},
+    /payment|orderInformation|completeResponse|tokenInformation|processorInformation|transientToken|captureContext|paymentStatus/i
+  ));
+  const possibleTransactionFields = Array.from(collectMatchingFieldNames(
+    resultObject || payload || {},
+    /transaction|status|processor|authorization|capture|decision|reconciliation|id$/i
+  ));
 
   return {
-    type: Array.isArray(value) ? "array" : "object",
-    keys,
-    tokenLikeKeys
+    received: Boolean(requestBody),
+    requestTopLevelKeys: getSafeObjectKeys(requestBody),
+    resultType,
+    resultIsString: typeof result === "string",
+    resultIsObject: Boolean(resultObject),
+    looksLikeJwt: Boolean(jwtCandidate),
+    topLevelKeys: getSafeObjectKeys(resultObject),
+    containsNestedResult: containsNestedKey(resultObject, "result"),
+    containsData: containsNestedKey(resultObject, "data"),
+    containsId: containsNestedKey(resultObject, "id"),
+    containsStatus: containsNestedKey(resultObject, "status"),
+    containsTransactionId: containsNestedKey(resultObject, "transactionId"),
+    containsPaymentInformation: containsNestedKey(resultObject, "paymentInformation"),
+    containsOrderInformation: containsNestedKey(resultObject, "orderInformation"),
+    containsCompleteResponse: containsNestedKey(resultObject, "completeResponse"),
+    containsTokenInformation: containsNestedKey(resultObject, "tokenInformation"),
+    containsProcessorInformation: containsNestedKey(resultObject, "processorInformation"),
+    containsTransientToken: containsNestedKey(resultObject, "transientToken"),
+    containsCaptureContext: containsNestedKey(resultObject, "captureContext"),
+    containsPaymentStatus: containsNestedKey(resultObject, "paymentStatus"),
+    decodedJwtHeaderKeys: getSafeObjectKeys(header),
+    decodedJwtPayloadKeys: getSafeObjectKeys(payload),
+    jwtHeader: {
+      alg: getJwtClaimValue(header, "alg"),
+      typ: getJwtClaimValue(header, "typ")
+    },
+    jwtPayload: {
+      iss: getJwtClaimValue(payload, "iss"),
+      aud: getJwtClaimValue(payload, "aud"),
+      exp: getJwtClaimValue(payload, "exp"),
+      iat: getJwtClaimValue(payload, "iat"),
+      jti: getJwtClaimValue(payload, "jti")
+    },
+    possiblePaymentFields,
+    possibleTransactionFields,
+    possibleSensitiveFields: Array.from(collectMatchingFieldNames(
+      resultObject || payload || {},
+      /card|pan|cvv|cvc|security|number|email|phone|mobile|token|jwt|signature|authorization|credential|secret/i
+    ))
   };
 }
 
@@ -3433,15 +3594,45 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
 
     logSecurityEvent("banco_general_test_result_received", {
       actorId: auth.user.id,
-      resultType: summary.type,
-      resultKeys: summary.keys || [],
-      tokenLikeKeys: summary.tokenLikeKeys || []
+      resultType: summary.resultType,
+      looksLikeJwt: summary.looksLikeJwt,
+      requestTopLevelKeys: summary.requestTopLevelKeys,
+      topLevelKeys: summary.topLevelKeys,
+      decodedJwtPayloadKeys: summary.decodedJwtPayloadKeys,
+      possiblePaymentFields: summary.possiblePaymentFields,
+      possibleTransactionFields: summary.possibleTransactionFields,
+      possibleSensitiveFields: summary.possibleSensitiveFields
     });
 
     response.json({
       ok: true,
       received: true,
-      message: "Resultado recibido en modo sandbox"
+      resultType: summary.resultType,
+      resultIsString: summary.resultIsString,
+      resultIsObject: summary.resultIsObject,
+      looksLikeJwt: summary.looksLikeJwt,
+      requestTopLevelKeys: summary.requestTopLevelKeys,
+      topLevelKeys: summary.topLevelKeys,
+      containsNestedResult: summary.containsNestedResult,
+      containsData: summary.containsData,
+      containsId: summary.containsId,
+      containsStatus: summary.containsStatus,
+      containsTransactionId: summary.containsTransactionId,
+      containsPaymentInformation: summary.containsPaymentInformation,
+      containsOrderInformation: summary.containsOrderInformation,
+      containsCompleteResponse: summary.containsCompleteResponse,
+      containsTokenInformation: summary.containsTokenInformation,
+      containsProcessorInformation: summary.containsProcessorInformation,
+      containsTransientToken: summary.containsTransientToken,
+      containsCaptureContext: summary.containsCaptureContext,
+      containsPaymentStatus: summary.containsPaymentStatus,
+      decodedJwtHeaderKeys: summary.decodedJwtHeaderKeys,
+      decodedJwtPayloadKeys: summary.decodedJwtPayloadKeys,
+      jwtHeader: summary.jwtHeader,
+      jwtPayload: summary.jwtPayload,
+      possiblePaymentFields: summary.possiblePaymentFields,
+      possibleTransactionFields: summary.possibleTransactionFields,
+      message: "Resultado analizado en modo sandbox"
     });
   } catch (error) {
     sendError(response, error, "No se pudo recibir el resultado sandbox de Banco General.");

@@ -77,6 +77,18 @@ const YAPPY_SECRET_KEY = process.env.YAPPY_SECRET_KEY || "";
 const YAPPY_DOMAIN = process.env.YAPPY_DOMAIN || CANONICAL_HOST || "zerocopyia.com";
 const YAPPY_API_BASE_URL = (process.env.YAPPY_API_BASE_URL || "").replace(/\/$/, "");
 const YAPPY_CDN_URL = process.env.YAPPY_CDN_URL || "";
+const BG_CYBERSOURCE_ENABLED = process.env.BG_CYBERSOURCE_ENABLED === "true";
+const BG_CYBERSOURCE_TEST_MODE = process.env.BG_CYBERSOURCE_TEST_MODE === "true";
+const BG_CYBERSOURCE_ENVIRONMENT = (process.env.BG_CYBERSOURCE_ENVIRONMENT || "sandbox").toLowerCase();
+const BG_CYBERSOURCE_MERCHANT_ID = process.env.BG_CYBERSOURCE_MERCHANT_ID || "";
+const BG_CYBERSOURCE_API_BASE_URL = (process.env.BG_CYBERSOURCE_API_BASE_URL || "https://apitest.cybersource.com").replace(/\/$/, "");
+const BG_CYBERSOURCE_AUTH_TYPE = (process.env.BG_CYBERSOURCE_AUTH_TYPE || "http_signature").toLowerCase();
+const BG_CYBERSOURCE_KEY_ID = process.env.BG_CYBERSOURCE_KEY_ID || "";
+const BG_CYBERSOURCE_SHARED_SECRET = process.env.BG_CYBERSOURCE_SHARED_SECRET || "";
+const BG_CYBERSOURCE_TARGET_ORIGIN = process.env.BG_CYBERSOURCE_TARGET_ORIGIN || PUBLIC_APP_URL;
+const BG_CYBERSOURCE_CURRENCY = process.env.BG_CYBERSOURCE_CURRENCY || PAYPAL_CURRENCY;
+const BG_CYBERSOURCE_COUNTRY = process.env.BG_CYBERSOURCE_COUNTRY || "PA";
+const BG_CYBERSOURCE_LOCALE = process.env.BG_CYBERSOURCE_LOCALE || "es_PA";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || `${PUBLIC_APP_URL.replace(/\/$/, "")}/api/auth/google/callback`;
@@ -896,6 +908,272 @@ async function createYappyPaymentOrder({ orderId, plan, aliasYappy = "" }) {
   }
 
   return payload;
+}
+
+function isBancoGeneralSandboxTestEnabled() {
+  return Boolean(
+    BG_CYBERSOURCE_ENABLED
+    && BG_CYBERSOURCE_TEST_MODE
+    && BG_CYBERSOURCE_ENVIRONMENT === "sandbox"
+    && BG_CYBERSOURCE_AUTH_TYPE === "http_signature"
+    && BG_CYBERSOURCE_MERCHANT_ID
+    && BG_CYBERSOURCE_KEY_ID
+    && BG_CYBERSOURCE_SHARED_SECRET
+  );
+}
+
+function getBancoGeneralSandboxBaseUrl() {
+  const apiBaseUrl = new URL(BG_CYBERSOURCE_API_BASE_URL);
+
+  if (BG_CYBERSOURCE_ENVIRONMENT !== "sandbox" || apiBaseUrl.hostname !== "apitest.cybersource.com") {
+    throw createPublicError(503, "Banco General solo esta habilitado para sandbox en esta fase.");
+  }
+
+  return apiBaseUrl;
+}
+
+function decodeCybersourceSharedSecret() {
+  const cleanSecret = BG_CYBERSOURCE_SHARED_SECRET.trim();
+
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(cleanSecret)) {
+    throw createPublicError(503, "La clave HTTP Signature de Cybersource no tiene formato valido.");
+  }
+
+  const secret = Buffer.from(cleanSecret, "base64");
+
+  if (!secret.length) {
+    throw createPublicError(503, "La clave HTTP Signature de Cybersource no es valida.");
+  }
+
+  return secret;
+}
+
+function createCybersourceDigest(bodyText) {
+  return `SHA-256=${crypto.createHash("sha256").update(bodyText).digest("base64")}`;
+}
+
+function createCybersourceSignatureHeaders(method, url, bodyText) {
+  const host = url.host;
+  const date = new Date().toUTCString();
+  const digest = createCybersourceDigest(bodyText);
+  const requestTarget = `${method.toLowerCase()} ${url.pathname}${url.search}`;
+  const signedHeaders = "host date request-target digest v-c-merchant-id";
+  const signatureString = [
+    `host: ${host}`,
+    `date: ${date}`,
+    `request-target: ${requestTarget}`,
+    `digest: ${digest}`,
+    `v-c-merchant-id: ${BG_CYBERSOURCE_MERCHANT_ID}`
+  ].join("\n");
+  const signature = crypto
+    .createHmac("sha256", decodeCybersourceSharedSecret())
+    .update(signatureString)
+    .digest("base64");
+
+  return {
+    "Content-Type": "application/json",
+    "v-c-merchant-id": BG_CYBERSOURCE_MERCHANT_ID,
+    date,
+    "v-c-date": date,
+    digest,
+    signature: `keyid="${BG_CYBERSOURCE_KEY_ID}", algorithm="HmacSHA256", headers="${signedHeaders}", signature="${signature}"`
+  };
+}
+
+function parseJsonSilently(value) {
+  try {
+    return JSON.parse(value);
+  } catch (error) {
+    return null;
+  }
+}
+
+function decodeJwtPayloadSilently(token) {
+  if (typeof token !== "string" || token.split(".").length < 3) {
+    return null;
+  }
+
+  try {
+    const payload = token.split(".")[1];
+    const normalizedPayload = payload.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(Buffer.from(normalizedPayload, "base64").toString("utf8"));
+  } catch (error) {
+    return null;
+  }
+}
+
+function findNestedValueByKey(value, key) {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(value, key)) {
+    return value[key];
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const match = findNestedValueByKey(item, key);
+
+      if (match !== undefined) {
+        return match;
+      }
+    }
+
+    return undefined;
+  }
+
+  for (const item of Object.values(value)) {
+    const match = findNestedValueByKey(item, key);
+
+    if (match !== undefined) {
+      return match;
+    }
+  }
+
+  return undefined;
+}
+
+function getCybersourceResponseToken(responseText, parsedPayload) {
+  if (typeof parsedPayload === "string") {
+    return parsedPayload;
+  }
+
+  if (isPlainObject(parsedPayload)) {
+    const token = parsedPayload.captureContext
+      || parsedPayload.token
+      || parsedPayload.sessionToken
+      || parsedPayload.accessToken
+      || "";
+
+    return typeof token === "string" ? token.trim() : "";
+  }
+
+  return typeof responseText === "string" ? responseText.trim() : "";
+}
+
+function getCybersourceErrorMessage(responseText, parsedPayload) {
+  if (isPlainObject(parsedPayload)) {
+    const detail = Array.isArray(parsedPayload.details) ? parsedPayload.details[0] : null;
+    return toCleanString(
+      parsedPayload.message
+      || parsedPayload.reason
+      || detail?.message
+      || detail?.reason
+      || "cybersource_error",
+      240
+    );
+  }
+
+  return toCleanString(responseText, 240) || "cybersource_error";
+}
+
+function createBancoGeneralSessionRequestBody({ plan }) {
+  const amount = getPlanPrice(plan).toFixed(2);
+
+  return {
+    targetOrigins: [BG_CYBERSOURCE_TARGET_ORIGIN],
+    allowedPaymentTypes: ["PANENTRY"],
+    country: BG_CYBERSOURCE_COUNTRY,
+    locale: BG_CYBERSOURCE_LOCALE,
+    data: {
+      clientReferenceInformation: {
+        code: `ZC-${crypto.randomBytes(6).toString("hex").toUpperCase()}`
+      },
+      orderInformation: {
+        amountDetails: {
+          totalAmount: amount,
+          currency: BG_CYBERSOURCE_CURRENCY
+        }
+      }
+    }
+  };
+}
+
+function summarizeBancoGeneralSessionResponse(responseText, parsedPayload) {
+  const token = getCybersourceResponseToken(responseText, parsedPayload);
+  const decodedPayload = decodeJwtPayloadSilently(token);
+  const searchablePayload = decodedPayload || parsedPayload;
+  const clientLibrary = findNestedValueByKey(searchablePayload, "clientLibrary");
+  const clientLibraryIntegrity = findNestedValueByKey(searchablePayload, "clientLibraryIntegrity");
+  const allowedPaymentTypes = findNestedValueByKey(searchablePayload, "allowedPaymentTypes");
+
+  return {
+    sessionJWT: token,
+    clientLibrary: typeof clientLibrary === "string" ? toCleanString(clientLibrary, 1000) : "",
+    clientLibraryIntegrity: typeof clientLibraryIntegrity === "string" ? toCleanString(clientLibraryIntegrity, 300) : "",
+    sessionJwtReceived: Boolean(token && token.split(".").length >= 3),
+    clientLibraryReceived: typeof clientLibrary === "string" && clientLibrary.length > 0,
+    clientLibraryIntegrityReceived: typeof clientLibraryIntegrity === "string" && clientLibraryIntegrity.length > 0,
+    allowedPaymentTypes: Array.isArray(allowedPaymentTypes)
+      ? allowedPaymentTypes.map((item) => toCleanString(item, 40)).filter(Boolean)
+      : []
+  };
+}
+
+async function createBancoGeneralSandboxSession({ plan }) {
+  if (!isBancoGeneralSandboxTestEnabled()) {
+    throw createPublicError(404, "Ruta no encontrada.");
+  }
+
+  const apiBaseUrl = getBancoGeneralSandboxBaseUrl();
+  const endpointUrl = new URL("/uc/v1/sessions", apiBaseUrl);
+  const body = createBancoGeneralSessionRequestBody({ plan });
+  const bodyText = JSON.stringify(body);
+  const response = await fetch(endpointUrl, {
+    method: "POST",
+    headers: createCybersourceSignatureHeaders("POST", endpointUrl, bodyText),
+    body: bodyText
+  });
+  const responseText = await response.text();
+  const parsedPayload = parseJsonSilently(responseText);
+  const requestId = toCleanString(
+    response.headers.get("x-request-id")
+    || response.headers.get("v-c-correlation-id")
+    || response.headers.get("correlation-id")
+    || "",
+    120
+  );
+
+  logSecurityEvent("banco_general_test_session_response", {
+    status: response.status,
+    requestId,
+    ok: response.ok
+  });
+
+  if (!response.ok) {
+    const cybersourceMessage = getCybersourceErrorMessage(responseText, parsedPayload);
+    logSecurityEvent("banco_general_test_session_error", {
+      status: response.status,
+      requestId,
+      details: cybersourceMessage
+    });
+    throw createPublicError(502, `Cybersource respondio ${response.status}: ${cybersourceMessage}`);
+  }
+
+  return {
+    status: response.status,
+    requestId,
+    ...summarizeBancoGeneralSessionResponse(responseText, parsedPayload)
+  };
+}
+
+function summarizeBancoGeneralSandboxResult(value) {
+  if (!value || typeof value !== "object") {
+    return {
+      type: typeof value,
+      received: Boolean(value)
+    };
+  }
+
+  const keys = Object.keys(value).slice(0, 20).map((key) => toCleanString(key, 80)).filter(Boolean);
+  const tokenLikeKeys = keys.filter((key) => /token|jwt|signature|authorization|credential|secret/i.test(key));
+
+  return {
+    type: Array.isArray(value) ? "array" : "object",
+    keys,
+    tokenLikeKeys
+  };
 }
 
 async function getPayPalAccessToken() {
@@ -2344,7 +2622,7 @@ app.use((request, response, next) => {
   response.setHeader("Cross-Origin-Resource-Policy", "same-origin");
   response.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; img-src 'self' data: https://www.paypalobjects.com https://*.paypal.com https://*.yappy.cloud; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.paypal.com https://www.paypalobjects.com https://bt-cdn.yappy.cloud; connect-src 'self' https://challenges.cloudflare.com https://*.paypal.com https://*.paypalobjects.com https://*.yappy.cloud https://*.bgeneral.cloud https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://www.googleapis.com; frame-src https://challenges.cloudflare.com https://www.paypal.com https://*.paypal.com https://*.yappy.cloud https://*.bgeneral.cloud; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://*.paypal.com https://*.yappy.cloud https://*.bgeneral.cloud"
+    "default-src 'self'; img-src 'self' data: https://www.paypalobjects.com https://*.paypal.com https://*.yappy.cloud https://*.cybersource.com https://*.visaacceptance.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.cybersource.com https://*.visaacceptance.com; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.cybersource.com https://*.visaacceptance.com; font-src 'self' data: https://fonts.gstatic.com https://*.cybersource.com https://*.visaacceptance.com; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://www.paypal.com https://www.paypalobjects.com https://bt-cdn.yappy.cloud https://*.cybersource.com https://*.visaacceptance.com; connect-src 'self' https://challenges.cloudflare.com https://*.paypal.com https://*.paypalobjects.com https://*.yappy.cloud https://*.bgeneral.cloud https://*.cybersource.com https://*.visaacceptance.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://www.googleapis.com; frame-src https://challenges.cloudflare.com https://www.paypal.com https://*.paypal.com https://*.yappy.cloud https://*.bgeneral.cloud https://*.cybersource.com https://*.visaacceptance.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://*.paypal.com https://*.yappy.cloud https://*.bgeneral.cloud https://*.cybersource.com https://*.visaacceptance.com"
   );
 
   if (FORCE_HTTPS) {
@@ -3093,6 +3371,81 @@ app.get("/api/yappy/config", (request, response) => {
     cdnUrl: YAPPY_CDN_URL,
     currency: PAYPAL_CURRENCY
   });
+});
+
+app.post("/api/banco-general/sandbox/session", adminActionRateLimit, async (request, response) => {
+  const auth = requireAuth(request, response);
+
+  if (!auth) {
+    return;
+  }
+
+  if (auth.user.role !== "admin") {
+    sendError(response, createPublicError(403, "Solo el administrador puede probar Banco General."));
+    return;
+  }
+
+  try {
+    const plan = requireAllowedValue(request.body?.plan || "creditos10", ALLOWED_PLANS, "El plan");
+    const result = await createBancoGeneralSandboxSession({ plan });
+
+    response.json({
+      ok: true,
+      cybersourceStatus: result.status,
+      requestId: result.requestId,
+      sessionJWT: result.sessionJWT,
+      clientLibrary: result.clientLibrary,
+      clientLibraryIntegrity: result.clientLibraryIntegrity,
+      environment: "sandbox",
+      sessionJwtReceived: result.sessionJwtReceived,
+      clientLibraryReceived: result.clientLibraryReceived,
+      clientLibraryIntegrityReceived: result.clientLibraryIntegrityReceived,
+      allowedPaymentTypes: result.allowedPaymentTypes
+    });
+  } catch (error) {
+    sendError(response, error, "No se pudo crear la sesion sandbox de Banco General.");
+  }
+});
+
+app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, response) => {
+  const auth = requireAuth(request, response);
+
+  if (!auth) {
+    return;
+  }
+
+  if (auth.user.role !== "admin") {
+    sendError(response, createPublicError(403, "Solo el administrador puede probar Banco General."));
+    return;
+  }
+
+  if (!isBancoGeneralSandboxTestEnabled()) {
+    sendError(response, createPublicError(404, "Ruta no encontrada."));
+    return;
+  }
+
+  try {
+    if (!request.body || (typeof request.body === "object" && !Object.keys(request.body).length)) {
+      throw createPublicError(400, "No se recibio resultado de Unified Checkout.");
+    }
+
+    const summary = summarizeBancoGeneralSandboxResult(request.body);
+
+    logSecurityEvent("banco_general_test_result_received", {
+      actorId: auth.user.id,
+      resultType: summary.type,
+      resultKeys: summary.keys || [],
+      tokenLikeKeys: summary.tokenLikeKeys || []
+    });
+
+    response.json({
+      ok: true,
+      received: true,
+      message: "Resultado recibido en modo sandbox"
+    });
+  } catch (error) {
+    sendError(response, error, "No se pudo recibir el resultado sandbox de Banco General.");
+  }
 });
 
 app.post("/api/yappy/validate-merchant", formRateLimit, async (request, response) => {

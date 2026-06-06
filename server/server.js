@@ -1224,6 +1224,114 @@ function getJwtClaimValue(payload, key) {
   return `[${typeof value}]`;
 }
 
+function isSensitiveDiagnosticKey(key) {
+  return /card|pan|cvv|cvc|security|number|email|phone|mobile|token|jwt|signature|authorization|credential|secret|key|bin|account/i
+    .test(String(key || ""));
+}
+
+function sanitizeDiagnosticString(value) {
+  return toCleanString(value, 500)
+    .replace(/[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "[jwt]")
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email]")
+    .replace(/\b\d{13,19}\b/g, "[card-number]")
+    .replace(/\+?\d[\d\s().-]{7,}\d/g, "[number]");
+}
+
+function getSafeDiagnosticValue(key, value) {
+  if (isSensitiveDiagnosticKey(key)) {
+    return "[redacted]";
+  }
+
+  if (typeof value === "string") {
+    const cleanValue = sanitizeDiagnosticString(value);
+
+    if (isJwtLike(cleanValue) || cleanValue.length > 240) {
+      return `${cleanValue.slice(0, 80)}...`;
+    }
+
+    return cleanValue;
+  }
+
+  if (typeof value === "number" || typeof value === "boolean" || value === null) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return `[array:${value.length}]`;
+  }
+
+  if (value && typeof value === "object") {
+    return {
+      type: "object",
+      keys: getSafeObjectKeys(value, 20)
+    };
+  }
+
+  return typeof value;
+}
+
+function getSafeDiagnosticFields(value, fieldNames = []) {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  return fieldNames.reduce((fields, fieldName) => {
+    if (Object.prototype.hasOwnProperty.call(value, fieldName)) {
+      fields[fieldName] = getSafeDiagnosticValue(fieldName, value[fieldName]);
+    }
+
+    return fields;
+  }, {});
+}
+
+function summarizeDiagnosticObject(value, maxItems = 8) {
+  if (Array.isArray(value)) {
+    return {
+      type: "array",
+      length: value.length,
+      items: value.slice(0, maxItems).map((item) => summarizeDiagnosticObject(item, 0))
+    };
+  }
+
+  if (!value || typeof value !== "object") {
+    return {
+      type: typeof value,
+      value: getSafeDiagnosticValue("value", value)
+    };
+  }
+
+  return {
+    type: "object",
+    keys: getSafeObjectKeys(value, 30),
+    fields: getSafeDiagnosticFields(value, [
+      "id", "type", "name", "field", "reason", "error", "code", "status", "message", "description"
+    ])
+  };
+}
+
+function collectSafeDiagnosticMatches(value, pattern, pathParts = [], maxDepth = 5, found = []) {
+  if (!value || typeof value !== "object" || maxDepth < 0 || found.length >= 50) {
+    return found;
+  }
+
+  Object.entries(value).forEach(([key, childValue]) => {
+    const cleanKey = toCleanString(key, 80);
+    const pathName = [...pathParts, cleanKey].filter(Boolean).join(".");
+
+    if (cleanKey && pattern.test(cleanKey)) {
+      found.push({
+        path: pathName,
+        key: cleanKey,
+        value: getSafeDiagnosticValue(cleanKey, childValue)
+      });
+    }
+
+    collectSafeDiagnosticMatches(childValue, pattern, [...pathParts, cleanKey], maxDepth - 1, found);
+  });
+
+  return found;
+}
+
 function containsNestedKey(value, targetKey, maxDepth = 5) {
   if (!value || typeof value !== "object" || maxDepth < 0) {
     return false;
@@ -1277,6 +1385,64 @@ function findJwtCandidate(value, maxDepth = 4) {
   return "";
 }
 
+function valueListContainsText(values, expectedText) {
+  const needle = String(expectedText || "").toLowerCase();
+
+  if (!needle) {
+    return false;
+  }
+
+  return values.some((value) => {
+    if (typeof value === "string") {
+      return value.toLowerCase().includes(needle);
+    }
+
+    if (value && typeof value === "object") {
+      return JSON.stringify(value).toLowerCase().includes(needle);
+    }
+
+    return false;
+  });
+}
+
+function classifyBancoGeneralSandboxResult({
+  payload,
+  resultObject,
+  possiblePaymentFields,
+  possibleTransactionFields,
+  authenticationSetupFailureDetected
+}) {
+  if (authenticationSetupFailureDetected) {
+    return "unified_checkout_authentication_setup_error";
+  }
+
+  if (possiblePaymentFields.some((fieldName) => /transientToken|tokenInformation/i.test(fieldName))) {
+    return "possible_transient_token";
+  }
+
+  if (possiblePaymentFields.some((fieldName) => /completeResponse|paymentStatus|processorInformation|paymentInformation/i.test(fieldName))) {
+    return "possible_completed_payment_result";
+  }
+
+  if (possibleTransactionFields.some((fieldName) => /transaction|authorization|capture|decision|processor/i.test(fieldName))) {
+    return "possible_transaction_result";
+  }
+
+  if (payload && typeof payload === "object" && (
+    Object.prototype.hasOwnProperty.call(payload, "message")
+    || Object.prototype.hasOwnProperty.call(payload, "details")
+    || Object.prototype.hasOwnProperty.call(payload, "metadata")
+  )) {
+    return "unified_checkout_error_jwt";
+  }
+
+  if (resultObject) {
+    return "object_result";
+  }
+
+  return "unknown";
+}
+
 function summarizeBancoGeneralSandboxResult(requestBody) {
   const result = isPlainObject(requestBody) && Object.prototype.hasOwnProperty.call(requestBody, "result")
     ? requestBody.result
@@ -1285,14 +1451,51 @@ function summarizeBancoGeneralSandboxResult(requestBody) {
   const resultObject = result && typeof result === "object" ? result : null;
   const jwtCandidate = findJwtCandidate(result);
   const { header, payload } = decodeJwtHeaderAndPayloadSilently(jwtCandidate);
+  const searchableResult = resultObject || payload || {};
   const possiblePaymentFields = Array.from(collectMatchingFieldNames(
-    resultObject || payload || {},
+    searchableResult,
     /payment|orderInformation|completeResponse|tokenInformation|processorInformation|transientToken|captureContext|paymentStatus/i
   ));
   const possibleTransactionFields = Array.from(collectMatchingFieldNames(
-    resultObject || payload || {},
+    searchableResult,
     /transaction|status|processor|authorization|capture|decision|reconciliation|id$/i
   ));
+  const diagnosticErrorFields = collectSafeDiagnosticMatches(
+    searchableResult,
+    /reason|error|code|status|message|description/i
+  ).slice(0, 30);
+  const payloadMessage = payload && typeof payload === "object"
+    && Object.prototype.hasOwnProperty.call(payload, "message")
+    ? getSafeDiagnosticValue("message", payload.message)
+    : null;
+  const payloadId = payload && typeof payload === "object"
+    && Object.prototype.hasOwnProperty.call(payload, "id")
+    ? getSafeDiagnosticValue("id", payload.id)
+    : null;
+  const payloadDetailsSummary = payload && typeof payload === "object"
+    && Object.prototype.hasOwnProperty.call(payload, "details")
+    ? summarizeDiagnosticObject(payload.details)
+    : null;
+  const payloadMetadataSummary = payload && typeof payload === "object"
+    && Object.prototype.hasOwnProperty.call(payload, "metadata")
+    ? summarizeDiagnosticObject(payload.metadata)
+    : null;
+  const authenticationSetupFailureDetected = valueListContainsText(
+    [
+      payloadMessage,
+      payloadDetailsSummary,
+      payloadMetadataSummary,
+      diagnosticErrorFields
+    ],
+    "Authentication Setup Failure"
+  );
+  const resultClassification = classifyBancoGeneralSandboxResult({
+    payload,
+    resultObject,
+    possiblePaymentFields,
+    possibleTransactionFields,
+    authenticationSetupFailureDetected
+  });
 
   return {
     received: Boolean(requestBody),
@@ -1302,19 +1505,19 @@ function summarizeBancoGeneralSandboxResult(requestBody) {
     resultIsObject: Boolean(resultObject),
     looksLikeJwt: Boolean(jwtCandidate),
     topLevelKeys: getSafeObjectKeys(resultObject),
-    containsNestedResult: containsNestedKey(resultObject, "result"),
-    containsData: containsNestedKey(resultObject, "data"),
-    containsId: containsNestedKey(resultObject, "id"),
-    containsStatus: containsNestedKey(resultObject, "status"),
-    containsTransactionId: containsNestedKey(resultObject, "transactionId"),
-    containsPaymentInformation: containsNestedKey(resultObject, "paymentInformation"),
-    containsOrderInformation: containsNestedKey(resultObject, "orderInformation"),
-    containsCompleteResponse: containsNestedKey(resultObject, "completeResponse"),
-    containsTokenInformation: containsNestedKey(resultObject, "tokenInformation"),
-    containsProcessorInformation: containsNestedKey(resultObject, "processorInformation"),
-    containsTransientToken: containsNestedKey(resultObject, "transientToken"),
-    containsCaptureContext: containsNestedKey(resultObject, "captureContext"),
-    containsPaymentStatus: containsNestedKey(resultObject, "paymentStatus"),
+    containsNestedResult: containsNestedKey(searchableResult, "result"),
+    containsData: containsNestedKey(searchableResult, "data"),
+    containsId: containsNestedKey(searchableResult, "id"),
+    containsStatus: containsNestedKey(searchableResult, "status"),
+    containsTransactionId: containsNestedKey(searchableResult, "transactionId"),
+    containsPaymentInformation: containsNestedKey(searchableResult, "paymentInformation"),
+    containsOrderInformation: containsNestedKey(searchableResult, "orderInformation"),
+    containsCompleteResponse: containsNestedKey(searchableResult, "completeResponse"),
+    containsTokenInformation: containsNestedKey(searchableResult, "tokenInformation"),
+    containsProcessorInformation: containsNestedKey(searchableResult, "processorInformation"),
+    containsTransientToken: containsNestedKey(searchableResult, "transientToken"),
+    containsCaptureContext: containsNestedKey(searchableResult, "captureContext"),
+    containsPaymentStatus: containsNestedKey(searchableResult, "paymentStatus"),
     decodedJwtHeaderKeys: getSafeObjectKeys(header),
     decodedJwtPayloadKeys: getSafeObjectKeys(payload),
     jwtHeader: {
@@ -1328,10 +1531,17 @@ function summarizeBancoGeneralSandboxResult(requestBody) {
       iat: getJwtClaimValue(payload, "iat"),
       jti: getJwtClaimValue(payload, "jti")
     },
+    payloadMessage,
+    payloadId,
+    payloadDetailsSummary,
+    payloadMetadataSummary,
+    diagnosticErrorFields,
+    authenticationSetupFailureDetected,
+    resultClassification,
     possiblePaymentFields,
     possibleTransactionFields,
     possibleSensitiveFields: Array.from(collectMatchingFieldNames(
-      resultObject || payload || {},
+      searchableResult,
       /card|pan|cvv|cvc|security|number|email|phone|mobile|token|jwt|signature|authorization|credential|secret/i
     ))
   };
@@ -3599,6 +3809,11 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
       requestTopLevelKeys: summary.requestTopLevelKeys,
       topLevelKeys: summary.topLevelKeys,
       decodedJwtPayloadKeys: summary.decodedJwtPayloadKeys,
+      resultClassification: summary.resultClassification,
+      payloadMessage: summary.payloadMessage,
+      authenticationSetupFailureDetected: summary.authenticationSetupFailureDetected,
+      payloadDetailsKeys: summary.payloadDetailsSummary?.keys || [],
+      payloadMetadataKeys: summary.payloadMetadataSummary?.keys || [],
       possiblePaymentFields: summary.possiblePaymentFields,
       possibleTransactionFields: summary.possibleTransactionFields,
       possibleSensitiveFields: summary.possibleSensitiveFields
@@ -3630,6 +3845,13 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
       decodedJwtPayloadKeys: summary.decodedJwtPayloadKeys,
       jwtHeader: summary.jwtHeader,
       jwtPayload: summary.jwtPayload,
+      payloadMessage: summary.payloadMessage,
+      payloadId: summary.payloadId,
+      payloadDetailsSummary: summary.payloadDetailsSummary,
+      payloadMetadataSummary: summary.payloadMetadataSummary,
+      diagnosticErrorFields: summary.diagnosticErrorFields,
+      authenticationSetupFailureDetected: summary.authenticationSetupFailureDetected,
+      resultClassification: summary.resultClassification,
       possiblePaymentFields: summary.possiblePaymentFields,
       possibleTransactionFields: summary.possibleTransactionFields,
       message: "Resultado analizado en modo sandbox"

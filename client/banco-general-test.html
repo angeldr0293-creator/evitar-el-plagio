@@ -108,6 +108,24 @@
       opacity: 0.65;
     }
 
+    .secondary-button {
+      display: none;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .session-summary {
+      display: none;
+      margin: 12px 0 4px;
+      padding: 12px 14px;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      background: #eff6ff;
+      color: var(--ink);
+      font-weight: 700;
+    }
+
     #status {
       min-height: 28px;
       margin-top: 12px;
@@ -166,8 +184,10 @@
         </label>
 
         <button id="start-button" type="button">Crear sesion y abrir Unified Checkout</button>
+        <button id="reset-button" class="secondary-button" type="button">Cambiar plan / reiniciar sesion</button>
       </div>
 
+      <div id="session-summary" class="session-summary" aria-live="polite"></div>
       <div id="status" role="status" aria-live="polite"></div>
       <div id="payment-buttons" aria-label="Contenedor Unified Checkout"></div>
 
@@ -177,15 +197,48 @@
 
   <script>
     const startButton = document.getElementById("start-button");
+    const resetButton = document.getElementById("reset-button");
     const planSelect = document.getElementById("plan");
     const clientSelect = document.getElementById("client-id");
+    const sessionSummary = document.getElementById("session-summary");
     const statusNode = document.getElementById("status");
     const paymentButtons = document.getElementById("payment-buttons");
     let currentOrderId = "";
 
+    const planAmounts = {
+      creditos10: "USD 3.99",
+      creditos20: "USD 6.99",
+      creditos50: "USD 14.99",
+      inicial: "USD 14.99",
+      academico: "USD 21.99",
+      premium: "USD 36.99"
+    };
+
     function setStatus(message, type = "") {
       statusNode.textContent = message;
       statusNode.className = type;
+    }
+
+    function getSelectedOptionText(select) {
+      return select.selectedOptions && select.selectedOptions[0]
+        ? select.selectedOptions[0].textContent.trim()
+        : "";
+    }
+
+    function setSessionLocked(locked, summaryText = "") {
+      planSelect.disabled = locked;
+      clientSelect.disabled = locked;
+      startButton.disabled = locked;
+      resetButton.style.display = locked ? "inline-flex" : "none";
+      sessionSummary.textContent = summaryText;
+      sessionSummary.style.display = summaryText ? "block" : "none";
+    }
+
+    function resetSandboxSession() {
+      currentOrderId = "";
+      paymentButtons.replaceChildren();
+      setSessionLocked(false);
+      setStatus("");
     }
 
     function sanitizeError(error) {
@@ -337,6 +390,14 @@
         }
 
         currentOrderId = session.orderId;
+        const selectedPlanLabel = getSelectedOptionText(planSelect) || planSelect.value;
+        const selectedPlanName = selectedPlanLabel.replace(/\s+-\s+USD\s+\d+(?:\.\d{2})?$/, "");
+        const selectedClientLabel = getSelectedOptionText(clientSelect) || clientSelect.value;
+        const selectedAmount = planAmounts[planSelect.value] || "monto configurado";
+        setSessionLocked(
+          true,
+          `Sesion creada para: ${selectedPlanName} - ${selectedAmount}. Cliente: ${selectedClientLabel}. Si deseas cambiar el plan, reinicia la sesion.`
+        );
         setStatus("Cargando libreria oficial de Cybersource...");
         await loadScript(session.clientLibrary, session.clientLibraryIntegrity);
 
@@ -356,7 +417,7 @@
         console.error("Banco General sandbox:", safeMessage);
         setStatus(safeMessage, "error");
       } finally {
-        startButton.disabled = false;
+        startButton.disabled = Boolean(currentOrderId);
       }
     }
 
@@ -372,6 +433,7 @@
     });
 
     startButton.addEventListener("click", openUnifiedCheckout);
+    resetButton.addEventListener("click", resetSandboxSession);
   </script>
 </body>
 </html>

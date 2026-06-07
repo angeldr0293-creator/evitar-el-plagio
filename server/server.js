@@ -1762,11 +1762,19 @@ function getPlanCreditConfig() {
 }
 
 function isCreditGrantSubscription(subscription, activeRecurringSubscriptionIds = new Set()) {
-  if (!subscription || !["Pagado", "Activa", "Cancelada"].includes(subscription.status)) {
+  if (!subscription) {
     return false;
   }
 
-  if (subscription.paymentMethod === "paypal-subscription" && subscription.paypalSubscriptionId) {
+  const isPayPalRecurring = subscription.paymentMethod === "paypal-subscription" && subscription.paypalSubscriptionId;
+  const isConfirmedPayment = ["Pagado", "Activa"].includes(subscription.status);
+  const isCancelledActiveCycle = subscription.status === "Cancelada" && isPayPalRecurring;
+
+  if (!isConfirmedPayment && !isCancelledActiveCycle) {
+    return false;
+  }
+
+  if (isPayPalRecurring) {
     return activeRecurringSubscriptionIds.has(subscription.paypalSubscriptionId);
   }
 

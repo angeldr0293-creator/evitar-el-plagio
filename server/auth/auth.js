@@ -415,11 +415,19 @@ function isPaidSubscription(subscription) {
 }
 
 function isCreditGrantSubscription(subscription, activeRecurringSubscriptionIds = new Set()) {
-  if (!subscription || !["Pagado", "Activa", "Cancelada"].includes(subscription.status)) {
+  if (!subscription) {
     return false;
   }
 
-  if (subscription.paymentMethod === "paypal-subscription" && subscription.paypalSubscriptionId) {
+  const isPayPalRecurring = subscription.paymentMethod === "paypal-subscription" && subscription.paypalSubscriptionId;
+  const isConfirmedPayment = ["Pagado", "Activa"].includes(subscription.status);
+  const isCancelledActiveCycle = subscription.status === "Cancelada" && isPayPalRecurring;
+
+  if (!isConfirmedPayment && !isCancelledActiveCycle) {
+    return false;
+  }
+
+  if (isPayPalRecurring) {
     return activeRecurringSubscriptionIds.has(subscription.paypalSubscriptionId);
   }
 
@@ -925,7 +933,15 @@ function getAdminClients() {
     const clientRequests = requests.filter((request) => request.userId === client.id);
     const clientPayments = subscriptions.filter((subscription) => subscription.userId === client.id);
     const savedSubscriptions = clientPayments.filter((subscription) => isRecurringPlan(subscription.plan));
-    const creditPurchases = clientPayments.filter((subscription) => isCreditPackPlan(subscription.plan));
+    const activeRecurringSubscriptionIds = new Set(
+      clientPayments
+        .filter((subscription) => subscription.paymentMethod === "paypal-subscription" && isPaidSubscription(subscription) && subscription.paypalSubscriptionId)
+        .map((subscription) => subscription.paypalSubscriptionId)
+    );
+    const creditPurchases = clientPayments.filter((subscription) => (
+      isCreditPackPlan(subscription.plan)
+      && isCreditGrantSubscription(subscription, activeRecurringSubscriptionIds)
+    ));
     const inferredSubscriptions = savedSubscriptions.length ? [] : clientRequests.map((request) => ({
       id: `inferred-${request.id}`,
       userId: client.id,

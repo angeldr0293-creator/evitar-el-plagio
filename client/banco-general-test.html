@@ -158,6 +158,13 @@
           </select>
         </label>
 
+        <label>
+          Cliente a acreditar
+          <select id="client-id">
+            <option value="">Cargando clientes...</option>
+          </select>
+        </label>
+
         <button id="start-button" type="button">Crear sesion y abrir Unified Checkout</button>
       </div>
 
@@ -171,6 +178,7 @@
   <script>
     const startButton = document.getElementById("start-button");
     const planSelect = document.getElementById("plan");
+    const clientSelect = document.getElementById("client-id");
     const statusNode = document.getElementById("status");
     const paymentButtons = document.getElementById("payment-buttons");
     let currentOrderId = "";
@@ -204,6 +212,49 @@
       }
 
       return payload;
+    }
+
+    async function getJson(url) {
+      const response = await fetch(url, {
+        method: "GET",
+        credentials: "include"
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || payload.ok === false) {
+        throw new Error(payload.error || `Solicitud fallida (${response.status})`);
+      }
+
+      return payload;
+    }
+
+    async function loadClients() {
+      const state = await getJson("/api/state");
+      const clients = Array.isArray(state.oa_users)
+        ? state.oa_users.filter((user) => user.role === "client")
+        : [];
+
+      clientSelect.replaceChildren();
+
+      if (!clients.length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "No hay clientes disponibles";
+        clientSelect.appendChild(option);
+        return;
+      }
+
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Selecciona cliente de prueba";
+      clientSelect.appendChild(placeholder);
+
+      clients.forEach((client) => {
+        const option = document.createElement("option");
+        option.value = client.id;
+        option.textContent = `${client.name || "Cliente"} - ${client.email || client.id}`;
+        clientSelect.appendChild(option);
+      });
     }
 
     function loadScript(src, integrity) {
@@ -247,6 +298,17 @@
         result,
         orderId: currentOrderId
       });
+
+      if (confirmation.alreadyProcessed) {
+        setStatus("Esta orden ya fue procesada anteriormente.", "success");
+        return;
+      }
+
+      if (confirmation.creditsGranted) {
+        setStatus("Creditos acreditados en sandbox Banco General.", "success");
+        return;
+      }
+
       setStatus(confirmation.message || "Orden Banco General validada en sandbox.", "success");
     }
 
@@ -257,8 +319,13 @@
       setStatus("Creando sesion sandbox...");
 
       try {
+        if (!clientSelect.value) {
+          throw new Error("Selecciona un cliente para la prueba sandbox.");
+        }
+
         const session = await postJson("/api/banco-general/sandbox/session", {
-          plan: planSelect.value
+          plan: planSelect.value,
+          userId: clientSelect.value
         });
 
         if (!session.sessionJWT || !session.clientLibrary || !session.clientLibraryIntegrity) {
@@ -292,6 +359,17 @@
         startButton.disabled = false;
       }
     }
+
+    loadClients().catch((error) => {
+      const safeMessage = sanitizeError(error);
+      console.error("Banco General sandbox:", safeMessage);
+      clientSelect.replaceChildren();
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "No se pudieron cargar clientes";
+      clientSelect.appendChild(option);
+      setStatus(safeMessage, "error");
+    });
 
     startButton.addEventListener("click", openUnifiedCheckout);
   </script>

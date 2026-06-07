@@ -2634,6 +2634,7 @@ function sanitizeBancoGeneralOrder(order, usersById) {
     cybersourceReconciliationId: toCleanString(order.cybersourceReconciliationId, 120),
     cybersourceProcessorResponseCode: toCleanString(order.cybersourceProcessorResponseCode, 40),
     cybersourceApprovalCode: toCleanString(order.cybersourceApprovalCode, 80),
+    subscriptionId: toCleanString(order.subscriptionId, 80),
     createdAt: sanitizeOptionalDate(order.createdAt || nowIso, "La fecha de creacion Banco General"),
     authorizedAt: sanitizeOptionalDate(order.authorizedAt, "La fecha de autorizacion Banco General", true),
     paidAt: sanitizeOptionalDate(order.paidAt, "La fecha de pago Banco General", true)
@@ -3905,13 +3906,20 @@ app.post("/api/banco-general/sandbox/session", adminActionRateLimit, async (requ
     const state = getValidatedState();
     const usersById = new Map(state.oa_users.map((user) => [user.id, user]));
     const plan = requireAllowedValue(request.body?.plan || "creditos10", ALLOWED_PLANS, "El plan");
+    const targetUserId = requireCleanString(request.body?.userId, "El cliente de prueba", 80);
+    const targetUser = state.oa_users.find((user) => user.id === targetUserId && (user.role || "client") === "client");
+
+    if (!targetUser) {
+      throw createPublicError(404, "Cliente de prueba no encontrado.");
+    }
+
     const orderId = createBancoGeneralOrderId();
     const result = await createBancoGeneralSandboxSession({ plan, orderId });
     const createdAt = new Date().toISOString();
     const order = sanitizeBancoGeneralOrder({
       id: orderId,
       provider: "banco-general",
-      userId: auth.user.id,
+      userId: targetUser.id,
       plan,
       amount: getPlanPrice(plan),
       currency: BG_CYBERSOURCE_CURRENCY,
@@ -3926,6 +3934,7 @@ app.post("/api/banco-general/sandbox/session", adminActionRateLimit, async (requ
     logSecurityEvent("banco_general_test_order_created", {
       actorId: auth.user.id,
       orderId,
+      userId: targetUser.id,
       plan,
       amount: order.amount,
       currency: order.currency
@@ -3980,26 +3989,44 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
       throw createPublicError(404, "Orden Banco General no encontrada.");
     }
 
-    if (order.userId !== auth.user.id) {
-      throw createPublicError(403, "No tienes permiso para confirmar esta orden Banco General.");
+    const usersById = new Map(state.oa_users.map((user) => [user.id, user]));
+    const targetUser = usersById.get(order.userId);
+    const existingSubscriptionForOrder = order.subscriptionId
+      ? state.oa_subscriptions.find((subscription) => subscription.id === order.subscriptionId)
+      : state.oa_subscriptions.find((subscription) => (
+        subscription.paymentMethod === "banco-general-sandbox"
+        && subscription.paymentToken === order.id
+      ));
+
+    if (!targetUser || (targetUser.role || "client") !== "client") {
+      throw createPublicError(404, "Cliente de la orden Banco General no encontrado.");
     }
 
-    if (["authorized", "paid"].includes(order.status)) {
+    if (order.status === "paid" || existingSubscriptionForOrder) {
+      if (existingSubscriptionForOrder && !order.subscriptionId) {
+        order.subscriptionId = existingSubscriptionForOrder.id;
+        order.status = "paid";
+        order.paidAt = order.paidAt || existingSubscriptionForOrder.reviewedAt || new Date().toISOString();
+        saveValidatedState(state);
+      }
+
       response.json({
         ok: true,
         orderId,
-        orderStatus: order.status,
-        cybersourceStatus: order.status === "paid" ? "PAID" : "AUTHORIZED",
+        orderStatus: "paid",
+        cybersourceStatus: "PAID",
         responseCode: order.cybersourceProcessorResponseCode || "",
         transactionIdPresent: Boolean(order.cybersourceTransactionId),
+        creditsGranted: false,
         idempotent: true,
         alreadyProcessed: true,
-        message: "Orden Banco General ya validada en sandbox"
+        subscriptionId: order.subscriptionId || existingSubscriptionForOrder?.id || "",
+        message: "Esta orden ya fue procesada anteriormente"
       });
       return;
     }
 
-    if (order.status !== "pending") {
+    if (!["pending", "authorized"].includes(order.status)) {
       throw createPublicError(409, "La orden Banco General ya no esta pendiente.");
     }
 
@@ -4026,12 +4053,14 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
       response.json({
         ok: true,
         orderId,
-        orderStatus: order.status,
+        orderStatus: existingProcessedOrder.status,
         cybersourceStatus: paymentDetails.status,
         responseCode: paymentDetails.responseCode,
         transactionIdPresent: true,
+        creditsGranted: false,
         idempotent: true,
         alreadyProcessed: true,
+        subscriptionId: existingProcessedOrder.subscriptionId || "",
         message: "Transaccion Banco General ya procesada en sandbox"
       });
       return;
@@ -4053,18 +4082,68 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
       throw createPublicError(409, "Banco General no devolvio una autorizacion valida en sandbox.");
     }
 
-    order.status = paymentDetails.nextOrderStatus;
+    const existingSubscriptionByTransaction = state.oa_subscriptions.find((subscription) => (
+      subscription.paymentMethod === "banco-general-sandbox"
+      && subscription.transactionId === paymentDetails.transactionId
+    ));
+    const nowIso = new Date().toISOString();
+
+    if (existingSubscriptionByTransaction) {
+      order.status = "paid";
+      order.subscriptionId = existingSubscriptionByTransaction.id;
+      order.cybersourceTransactionId = paymentDetails.transactionId;
+      order.cybersourceNetworkTransactionId = paymentDetails.networkTransactionId;
+      order.cybersourceReconciliationId = paymentDetails.reconciliationId;
+      order.cybersourceProcessorResponseCode = paymentDetails.responseCode;
+      order.cybersourceApprovalCode = paymentDetails.approvalCode;
+      order.paidAt = order.paidAt || existingSubscriptionByTransaction.reviewedAt || nowIso;
+      saveValidatedState(state);
+
+      response.json({
+        ok: true,
+        orderId,
+        orderStatus: "paid",
+        cybersourceStatus: paymentDetails.status,
+        responseCode: paymentDetails.responseCode,
+        transactionIdPresent: true,
+        creditsGranted: false,
+        idempotent: true,
+        alreadyProcessed: true,
+        subscriptionId: existingSubscriptionByTransaction.id,
+        message: "Esta orden ya fue procesada anteriormente"
+      });
+      return;
+    }
+
+    const subscription = sanitizeSubscription({
+      id: crypto.randomUUID(),
+      userId: order.userId,
+      plan: order.plan,
+      status: "Pagado",
+      paymentMethod: "banco-general-sandbox",
+      amount: order.amount,
+      currency: order.currency,
+      transactionId: paymentDetails.transactionId,
+      paymentToken: order.id,
+      paymentProof: null,
+      paymentNote: "Acreditacion sandbox Banco General / Cybersource. No representa un pago real.",
+      reviewedAt: nowIso,
+      reviewedBy: "banco-general-sandbox",
+      createdAt: nowIso,
+      startsAt: nowIso,
+      expiresAt: isCreditPackPlan(order.plan) ? "" : addDays(new Date(nowIso), 30).toISOString()
+    }, usersById);
+
+    state.oa_subscriptions.unshift(subscription);
+    order.status = "paid";
     order.cybersourceTransactionId = paymentDetails.transactionId;
     order.cybersourceNetworkTransactionId = paymentDetails.networkTransactionId;
     order.cybersourceReconciliationId = paymentDetails.reconciliationId;
     order.cybersourceProcessorResponseCode = paymentDetails.responseCode;
     order.cybersourceApprovalCode = paymentDetails.approvalCode;
-
-    if (order.status === "paid") {
-      order.paidAt = new Date().toISOString();
-    } else {
-      order.authorizedAt = new Date().toISOString();
-    }
+    order.authorizedAt = order.authorizedAt || nowIso;
+    order.paidAt = nowIso;
+    order.subscriptionId = subscription.id;
 
     saveValidatedState(state);
 
@@ -4072,6 +4151,8 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
       actorId: auth.user.id,
       orderId,
       orderStatus: order.status,
+      userId: order.userId,
+      subscriptionId: subscription.id,
       resultType: summary.resultType,
       looksLikeJwt: summary.looksLikeJwt,
       cybersourceStatus: paymentDetails.status,
@@ -4097,6 +4178,9 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
       cybersourceStatus: paymentDetails.status,
       responseCode: paymentDetails.responseCode,
       transactionIdPresent: Boolean(paymentDetails.transactionId),
+      creditsGranted: true,
+      alreadyProcessed: false,
+      subscriptionId: subscription.id,
       idempotent: false,
       received: true,
       resultType: summary.resultType,
@@ -4131,7 +4215,7 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
       resultClassification: summary.resultClassification,
       possiblePaymentFields: summary.possiblePaymentFields,
       possibleTransactionFields: summary.possibleTransactionFields,
-      message: "Orden Banco General validada en sandbox"
+      message: "Creditos acreditados en sandbox Banco General"
     });
   } catch (error) {
     sendError(response, error, "No se pudo recibir el resultado sandbox de Banco General.");

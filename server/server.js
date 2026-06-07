@@ -307,8 +307,8 @@ function isClientEmailVerified(user) {
   return !user.emailVerificationTokenHash && !user.emailVerificationTokenExpiresAt;
 }
 
-function queueEmailVerification(user, token) {
-  queueTransactionalEmail({
+function createEmailVerificationEmail(user, token) {
+  return {
     event: "email_verification",
     to: user.email,
     subject: "Confirma tu correo en ZeroCopy IA",
@@ -321,6 +321,16 @@ function queueEmailVerification(user, token) {
       actionText: "Confirmar mi correo",
       actionUrl: getEmailVerificationLink(token)
     })
+  };
+}
+
+function sendEmailVerification(user, token) {
+  return sendTransactionalEmail(createEmailVerificationEmail(user, token));
+}
+
+function queueEmailVerification(user, token) {
+  sendEmailVerification(user, token).catch((error) => {
+    logEmailOutbox({ ...createEmailVerificationEmail(user, token), error: error.message }, "failed");
   });
 }
 
@@ -3355,7 +3365,7 @@ app.get("/api/verify-email", oauthRateLimit, (request, response) => {
   }
 });
 
-app.post("/api/email-verification/resend", formRateLimit, (request, response) => {
+app.post("/api/email-verification/resend", formRateLimit, async (request, response) => {
   const auth = requireAuth(request, response);
 
   if (!auth) {
@@ -3382,9 +3392,23 @@ app.post("/api/email-verification/resend", formRateLimit, (request, response) =>
 
     const token = assignEmailVerificationToken(user);
     saveValidatedState(state);
-    queueEmailVerification(user, token);
-    logSecurityEvent("email_verification_resent", { userId: user.id, ip: getClientIp(request) });
-    response.json({ ok: true, sent: true, user: sanitizeUser(user) });
+    const emailResult = await sendEmailVerification(user, token);
+    logSecurityEvent("email_verification_resent", {
+      userId: user.id,
+      ip: getClientIp(request),
+      delivered: emailResult.delivered,
+      queued: emailResult.queued
+    });
+
+    if (!emailResult.delivered) {
+      sendError(response, createPublicError(
+        503,
+        "No pudimos enviar el correo de verificacion ahora. Intenta de nuevo en unos minutos o contacta soporte."
+      ));
+      return;
+    }
+
+    response.json({ ok: true, sent: true, delivered: true, user: sanitizeUser(user) });
   } catch (error) {
     sendError(response, error, "No se pudo reenviar la verificacion.");
   }
@@ -5029,9 +5053,19 @@ app.post("/api/register", registerRateLimit, async (request, response) => {
 
   const safeUser = sanitizeUser(user);
   setSessionCookie(response, safeUser);
-  queueEmailVerification(user, verificationToken);
-  logSecurityEvent("register_success", { userId: user.id, ip: getClientIp(request) });
-  response.json({ ok: true, user: safeUser, verificationEmailSent: true });
+  const emailResult = await sendEmailVerification(user, verificationToken);
+  logSecurityEvent("register_success", {
+    userId: user.id,
+    ip: getClientIp(request),
+    verificationEmailDelivered: emailResult.delivered,
+    verificationEmailQueued: emailResult.queued
+  });
+  response.json({
+    ok: true,
+    user: safeUser,
+    verificationEmailSent: emailResult.delivered,
+    verificationEmailQueued: emailResult.queued
+  });
 });
 
 app.post("/api/login", (request, response) => {

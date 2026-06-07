@@ -162,8 +162,14 @@ function registerClientUser(data) {
     throw new Error(result?.error || "No se pudo crear la cuenta.");
   }
 
-  setCurrentUser(result.user);
-  return result.user;
+  const registeredUser = {
+    ...result.user,
+    verificationEmailSent: Boolean(result.verificationEmailSent),
+    verificationEmailQueued: Boolean(result.verificationEmailQueued)
+  };
+
+  setCurrentUser(registeredUser);
+  return registeredUser;
 }
 
 function loginClientUser(email, password) {

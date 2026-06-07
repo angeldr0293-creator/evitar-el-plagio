@@ -922,9 +922,15 @@
         });
 
         registerPendingSubscription();
-        window.queueScreenNotification?.("Cuenta creada correctamente. Revisa tu correo para confirmar la cuenta.");
-        showMessage("Cuenta creada. Te enviamos un enlace de confirmacion al correo registrado.", "success");
-        setTimeout(() => window.location.href = getHomeForUser(user), 700);
+        const verificationEmailFailed = user.verificationEmailSent === false;
+        if (verificationEmailFailed) {
+          window.queueScreenNotification?.("Cuenta creada, pero el correo de confirmacion no pudo enviarse.");
+          showMessage("Cuenta creada, pero no pudimos enviar el correo de confirmacion ahora. Intenta reenviarlo desde tu panel o contacta soporte.", "error");
+        } else {
+          window.queueScreenNotification?.("Cuenta creada correctamente. Revisa tu correo para confirmar la cuenta.");
+          showMessage("Cuenta creada. Te enviamos un enlace de confirmacion al correo registrado.", "success");
+        }
+        setTimeout(() => window.location.href = getHomeForUser(user), verificationEmailFailed ? 2200 : 700);
       } catch (error) {
         showMessage(error.message, "error");
       }

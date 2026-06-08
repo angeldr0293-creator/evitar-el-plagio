@@ -1613,12 +1613,30 @@ function getBancoGeneralProcessorInformation(searchableResult) {
   return isPlainObject(processorInformation) ? processorInformation : {};
 }
 
+function getBancoGeneralDiagnosticScalar(value, maxLength = 160) {
+  if (value === undefined || value === null) {
+    return "";
+  }
+
+  return toCleanString(String(value), maxLength);
+}
+
 function extractBancoGeneralSandboxPaymentDetails(requestBody) {
   const { searchableResult } = getBancoGeneralSandboxResultPayload(requestBody);
   const amountDetails = getBancoGeneralAmountDetails(searchableResult);
   const processorInformation = getBancoGeneralProcessorInformation(searchableResult);
   const status = toCleanString(findNestedValueByKey(searchableResult, "status"), 40).toUpperCase();
   const responseCode = toCleanString(processorInformation.responseCode || findNestedValueByKey(searchableResult, "responseCode"), 40);
+  const reasonCode = getBancoGeneralDiagnosticScalar(
+    findNestedValueByKey(searchableResult, "reasonCode") || processorInformation.reasonCode,
+    40
+  );
+  const replyMessage = getBancoGeneralDiagnosticScalar(
+    findNestedValueByKey(searchableResult, "replyMessage")
+      || findNestedValueByKey(searchableResult, "message")
+      || findNestedValueByKey(searchableResult, "reason"),
+    240
+  );
   const transactionId = toCleanString(
     findNestedValueByKey(searchableResult, "transactionId") || findNestedValueByKey(searchableResult, "id"),
     120
@@ -1631,6 +1649,11 @@ function extractBancoGeneralSandboxPaymentDetails(requestBody) {
     referenceCode: getBancoGeneralReferenceCode(searchableResult),
     status,
     responseCode,
+    reasonCode,
+    replyMessage,
+    reasonCodePresent: Boolean(reasonCode),
+    replyMessagePresent: Boolean(replyMessage),
+    validationMode: reasonCode ? "reasonCode" : "status-responseCode",
     amount: normalizePaymentAmountString(amountDetails.totalAmount || amountDetails.authorizedAmount),
     currency: toCleanString(amountDetails.currency || findNestedValueByKey(searchableResult, "currency"), 8).toUpperCase(),
     transactionId,
@@ -1647,6 +1670,7 @@ function extractBancoGeneralSandboxPaymentDetails(requestBody) {
 function isSuccessfulBancoGeneralSandboxPayment(paymentDetails) {
   return Boolean(
     paymentDetails.transactionId
+    && (!paymentDetails.reasonCodePresent || paymentDetails.reasonCode === "100")
     && paymentDetails.responseCode === "00"
     && ["AUTHORIZED", "COMPLETED", "CAPTURED", "SETTLED", "PAID"].includes(paymentDetails.status)
   );
@@ -2651,6 +2675,9 @@ function sanitizeBancoGeneralOrder(order, usersById) {
     cybersourceNetworkTransactionId: toCleanString(order.cybersourceNetworkTransactionId, 120),
     cybersourceReconciliationId: toCleanString(order.cybersourceReconciliationId, 120),
     cybersourceProcessorResponseCode: toCleanString(order.cybersourceProcessorResponseCode, 40),
+    cybersourceReasonCode: toCleanString(order.cybersourceReasonCode, 40),
+    cybersourceReplyMessage: toCleanString(order.cybersourceReplyMessage, 240),
+    cybersourceValidationMode: requireAllowedValue(order.cybersourceValidationMode || "status-responseCode", ["reasonCode", "status-responseCode"], "El modo de validacion Banco General"),
     cybersourceApprovalCode: toCleanString(order.cybersourceApprovalCode, 80),
     subscriptionId: toCleanString(order.subscriptionId, 80),
     createdAt: sanitizeOptionalDate(order.createdAt || nowIso, "La fecha de creacion Banco General"),
@@ -4048,6 +4075,11 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
         orderStatus: "paid",
         cybersourceStatus: "PAID",
         responseCode: order.cybersourceProcessorResponseCode || "",
+        reasonCodePresent: Boolean(order.cybersourceReasonCode),
+        reasonCode: order.cybersourceReasonCode || "",
+        replyMessagePresent: Boolean(order.cybersourceReplyMessage),
+        replyMessage: order.cybersourceReplyMessage || "",
+        validationMode: order.cybersourceValidationMode || "status-responseCode",
         transactionIdPresent: Boolean(order.cybersourceTransactionId),
         creditsGranted: false,
         idempotent: true,
@@ -4088,6 +4120,11 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
         orderStatus: existingProcessedOrder.status,
         cybersourceStatus: paymentDetails.status,
         responseCode: paymentDetails.responseCode,
+        reasonCodePresent: paymentDetails.reasonCodePresent,
+        reasonCode: paymentDetails.reasonCode,
+        replyMessagePresent: paymentDetails.replyMessagePresent,
+        replyMessage: paymentDetails.replyMessage,
+        validationMode: paymentDetails.validationMode,
         transactionIdPresent: true,
         creditsGranted: false,
         idempotent: true,
@@ -4127,6 +4164,9 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
       order.cybersourceNetworkTransactionId = paymentDetails.networkTransactionId;
       order.cybersourceReconciliationId = paymentDetails.reconciliationId;
       order.cybersourceProcessorResponseCode = paymentDetails.responseCode;
+      order.cybersourceReasonCode = paymentDetails.reasonCode;
+      order.cybersourceReplyMessage = paymentDetails.replyMessage;
+      order.cybersourceValidationMode = paymentDetails.validationMode;
       order.cybersourceApprovalCode = paymentDetails.approvalCode;
       order.paidAt = order.paidAt || existingSubscriptionByTransaction.reviewedAt || nowIso;
       saveValidatedState(state);
@@ -4137,6 +4177,11 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
         orderStatus: "paid",
         cybersourceStatus: paymentDetails.status,
         responseCode: paymentDetails.responseCode,
+        reasonCodePresent: paymentDetails.reasonCodePresent,
+        reasonCode: paymentDetails.reasonCode,
+        replyMessagePresent: paymentDetails.replyMessagePresent,
+        replyMessage: paymentDetails.replyMessage,
+        validationMode: paymentDetails.validationMode,
         transactionIdPresent: true,
         creditsGranted: false,
         idempotent: true,
@@ -4172,6 +4217,9 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
     order.cybersourceNetworkTransactionId = paymentDetails.networkTransactionId;
     order.cybersourceReconciliationId = paymentDetails.reconciliationId;
     order.cybersourceProcessorResponseCode = paymentDetails.responseCode;
+    order.cybersourceReasonCode = paymentDetails.reasonCode;
+    order.cybersourceReplyMessage = paymentDetails.replyMessage;
+    order.cybersourceValidationMode = paymentDetails.validationMode;
     order.cybersourceApprovalCode = paymentDetails.approvalCode;
     order.authorizedAt = order.authorizedAt || nowIso;
     order.paidAt = nowIso;
@@ -4189,6 +4237,11 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
       looksLikeJwt: summary.looksLikeJwt,
       cybersourceStatus: paymentDetails.status,
       responseCode: paymentDetails.responseCode,
+      reasonCodePresent: paymentDetails.reasonCodePresent,
+      reasonCode: paymentDetails.reasonCode,
+      replyMessagePresent: paymentDetails.replyMessagePresent,
+      replyMessage: paymentDetails.replyMessage,
+      validationMode: paymentDetails.validationMode,
       transactionIdPresent: Boolean(paymentDetails.transactionId),
       requestTopLevelKeys: summary.requestTopLevelKeys,
       topLevelKeys: summary.topLevelKeys,
@@ -4209,6 +4262,11 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
       orderStatus: order.status,
       cybersourceStatus: paymentDetails.status,
       responseCode: paymentDetails.responseCode,
+      reasonCodePresent: paymentDetails.reasonCodePresent,
+      reasonCode: paymentDetails.reasonCode,
+      replyMessagePresent: paymentDetails.replyMessagePresent,
+      replyMessage: paymentDetails.replyMessage,
+      validationMode: paymentDetails.validationMode,
       transactionIdPresent: Boolean(paymentDetails.transactionId),
       creditsGranted: true,
       alreadyProcessed: false,

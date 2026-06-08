@@ -559,6 +559,18 @@
       color: #11493f;
     }
 
+    .pill.email-confirmed {
+      background: #edf6f3;
+      border-color: #b7ded2;
+      color: #0f584a;
+    }
+
+    .pill.email-pending {
+      background: #fff7ed;
+      border-color: #fed7aa;
+      color: #9a3412;
+    }
+
     .folder-arrow {
       color: #64748b;
       font-size: 22px;
@@ -1244,6 +1256,26 @@
         month: "short",
         day: "numeric"
       }).format(new Date(value));
+    }
+
+    function formatDateTime(value) {
+      if (!value) {
+        return "-";
+      }
+
+      const date = new Date(value);
+
+      if (Number.isNaN(date.getTime())) {
+        return "-";
+      }
+
+      return new Intl.DateTimeFormat("es", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      }).format(date);
     }
 
     function formatDateInput(value) {
@@ -2055,7 +2087,25 @@
       attachPaymentControls(paymentsList);
     }
 
+    function isClientEmailConfirmed(client) {
+      return Boolean(client.emailVerified || client.emailVerifiedAt);
+    }
+
+    function getClientEmailStatus(client) {
+      const confirmed = isClientEmailConfirmed(client);
+
+      return {
+        confirmed,
+        className: confirmed ? "email-confirmed" : "email-pending",
+        label: confirmed ? "Correo confirmado" : "Correo pendiente",
+        detail: confirmed
+          ? (client.emailVerifiedAt ? `Confirmado el ${formatDateTime(client.emailVerifiedAt)}` : "Confirmado")
+          : "Pendiente de confirmar"
+      };
+    }
+
     function renderProfile(client, planName, expiryText) {
+      const emailStatus = getClientEmailStatus(client);
       const credentialBox = clientCredentialMessage && clientCredentialMessage.clientId === client.id ? `
         <div class="credential-box show">
           <strong>Nueva clave del cliente:</strong><br />
@@ -2070,6 +2120,7 @@
           <div class="detail-card"><strong>No. suscriptor</strong>${escapeHTML(client.subscriberId || getSubscriberId(client))}</div>
           <div class="detail-card"><strong>Nombre</strong>${escapeHTML(client.name)}</div>
           <div class="detail-card"><strong>Correo</strong>${escapeHTML(client.email)}</div>
+          <div class="detail-card"><strong>Estado de correo</strong><span class="pill ${emailStatus.className}">${escapeHTML(emailStatus.label)}</span><br /><span class="muted">${escapeHTML(emailStatus.detail)}</span></div>
           <div class="detail-card"><strong>Teléfono</strong>${escapeHTML(client.phone || "Sin teléfono")}</div>
           <div class="detail-card"><strong>Profesor responsable</strong>${escapeHTML(client.teacher ? client.teacher.name : "Sin profesor fijo")}</div>
           <div class="detail-card"><strong>Plan actual</strong>${escapeHTML(planName)}</div>
@@ -2191,6 +2242,7 @@
         const statusLabel = client.activeSubscription ? "Pagado" : "Sin suscripción pagada";
         const expiryText = subscription ? `${formatDate(subscription.expiresAt)} · ${daysUntil(subscription.expiresAt)}` : "-";
         const pendingCount = client.requests.filter((request) => !request.teacherId || request.status === "Recibida").length;
+        const emailStatus = getClientEmailStatus(client);
 
         return `
           <details class="client-folder ${pendingCount ? "has-pending" : ""}" data-client-id="${escapeHTML(client.id)}">
@@ -2204,6 +2256,7 @@
               </span>
               <span class="pill ${client.activeSubscription ? "active" : ""}">${escapeHTML(planName)}</span>
               <span class="pill">${escapeHTML(statusLabel)}</span>
+              <span class="pill ${emailStatus.className}">${escapeHTML(emailStatus.label)}</span>
               <span class="folder-arrow">›</span>
             </summary>
 

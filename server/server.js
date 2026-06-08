@@ -1089,13 +1089,42 @@ function normalizePaymentAmountString(value) {
   return Number.isFinite(numberValue) ? numberValue.toFixed(2) : "";
 }
 
-function createBancoGeneralSessionRequestBody({ plan, orderId }) {
+function requireBancoGeneralSandboxTestEmail(value, targetUser) {
+  const targetEmail = normalizeEmail(targetUser?.email || "");
+  const selectedEmail = normalizeEmail(value || targetEmail);
+  const allowedEmails = new Set(["accept@accept.com", "reject@reject.com"]);
+
+  if (targetEmail) {
+    allowedEmails.add(targetEmail);
+  }
+
+  if (!isValidEmail(selectedEmail) || !allowedEmails.has(selectedEmail)) {
+    throw createValidationError("El correo de prueba Banco General no es valido para sandbox.");
+  }
+
+  return selectedEmail;
+}
+
+function createBancoGeneralSessionRequestBody({ plan, orderId, buyerEmail = "" }) {
   const amount = getPlanPrice(plan).toFixed(2);
   const referenceCode = requireCleanString(
     orderId || `ZC-${crypto.randomBytes(6).toString("hex").toUpperCase()}`,
     "La referencia Banco General",
     80
   );
+  const cleanBuyerEmail = buyerEmail ? requireValidEmail(buyerEmail) : "";
+  const orderInformation = {
+    amountDetails: {
+      totalAmount: amount,
+      currency: BG_CYBERSOURCE_CURRENCY
+    }
+  };
+
+  if (cleanBuyerEmail) {
+    orderInformation.billTo = {
+      email: cleanBuyerEmail
+    };
+  }
 
   return {
     targetOrigins: [BG_CYBERSOURCE_TARGET_ORIGIN],
@@ -1106,12 +1135,7 @@ function createBancoGeneralSessionRequestBody({ plan, orderId }) {
       clientReferenceInformation: {
         code: referenceCode
       },
-      orderInformation: {
-        amountDetails: {
-          totalAmount: amount,
-          currency: BG_CYBERSOURCE_CURRENCY
-        }
-      }
+      orderInformation
     }
   };
 }
@@ -1139,14 +1163,14 @@ function summarizeBancoGeneralSessionResponse(responseText, parsedPayload) {
   };
 }
 
-async function createBancoGeneralSandboxSession({ plan, orderId }) {
+async function createBancoGeneralSandboxSession({ plan, orderId, buyerEmail = "" }) {
   if (!isBancoGeneralSandboxTestEnabled()) {
     throw createPublicError(404, "Ruta no encontrada.");
   }
 
   const apiBaseUrl = getBancoGeneralSandboxBaseUrl();
   const endpointUrl = new URL("/uc/v1/sessions", apiBaseUrl);
-  const body = createBancoGeneralSessionRequestBody({ plan, orderId });
+  const body = createBancoGeneralSessionRequestBody({ plan, orderId, buyerEmail });
   const bodyText = JSON.stringify(body);
   const response = await fetch(endpointUrl, {
     method: "POST",
@@ -2669,6 +2693,7 @@ function sanitizeBancoGeneralOrder(order, usersById) {
     amount: sanitizePaymentAmount(order.amount, plan),
     currency: toCleanString(order.currency || BG_CYBERSOURCE_CURRENCY || "USD", 8) || "USD",
     status: requireAllowedValue(order.status || "pending", ALLOWED_BANCO_GENERAL_ORDER_STATUSES, "El estado Banco General"),
+    cybersourceTestEmail: normalizeEmail(order.cybersourceTestEmail || ""),
     cybersourceSessionId: toCleanString(order.cybersourceSessionId, 120),
     cybersourceCaptureContextJti: toCleanString(order.cybersourceCaptureContextJti, 120),
     cybersourceTransactionId: toCleanString(order.cybersourceTransactionId, 120),
@@ -3972,8 +3997,9 @@ app.post("/api/banco-general/sandbox/session", adminActionRateLimit, async (requ
       throw createPublicError(404, "Cliente de prueba no encontrado.");
     }
 
+    const testBuyerEmail = requireBancoGeneralSandboxTestEmail(request.body?.testBuyerEmail, targetUser);
     const orderId = createBancoGeneralOrderId();
-    const result = await createBancoGeneralSandboxSession({ plan, orderId });
+    const result = await createBancoGeneralSandboxSession({ plan, orderId, buyerEmail: testBuyerEmail });
     const createdAt = new Date().toISOString();
     const order = sanitizeBancoGeneralOrder({
       id: orderId,
@@ -3985,6 +4011,7 @@ app.post("/api/banco-general/sandbox/session", adminActionRateLimit, async (requ
       status: "pending",
       cybersourceSessionId: result.requestId || result.sessionId || "",
       cybersourceCaptureContextJti: result.sessionJti || "",
+      cybersourceTestEmail: testBuyerEmail,
       createdAt
     }, usersById);
 
@@ -3996,7 +4023,10 @@ app.post("/api/banco-general/sandbox/session", adminActionRateLimit, async (requ
       userId: targetUser.id,
       plan,
       amount: order.amount,
-      currency: order.currency
+      currency: order.currency,
+      testEmailMode: testBuyerEmail === "accept@accept.com" || testBuyerEmail === "reject@reject.com"
+        ? testBuyerEmail
+        : "cliente"
     });
 
     response.json({
@@ -4008,6 +4038,7 @@ app.post("/api/banco-general/sandbox/session", adminActionRateLimit, async (requ
       clientLibrary: result.clientLibrary,
       clientLibraryIntegrity: result.clientLibraryIntegrity,
       environment: "sandbox",
+      testBuyerEmail,
       sessionJwtReceived: result.sessionJwtReceived,
       clientLibraryReceived: result.clientLibraryReceived,
       clientLibraryIntegrityReceived: result.clientLibraryIntegrityReceived,

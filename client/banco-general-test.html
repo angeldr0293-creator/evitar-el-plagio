@@ -183,6 +183,15 @@
           </select>
         </label>
 
+        <label>
+          Correo de prueba para Cybersource
+          <select id="test-email">
+            <option value="current">Correo actual/default</option>
+            <option value="accept@accept.com">accept@accept.com</option>
+            <option value="reject@reject.com">reject@reject.com</option>
+          </select>
+        </label>
+
         <button id="start-button" type="button">Crear sesion y abrir Unified Checkout</button>
         <button id="reset-button" class="secondary-button" type="button">Cambiar plan / reiniciar sesion</button>
       </div>
@@ -200,6 +209,7 @@
     const resetButton = document.getElementById("reset-button");
     const planSelect = document.getElementById("plan");
     const clientSelect = document.getElementById("client-id");
+    const testEmailSelect = document.getElementById("test-email");
     const sessionSummary = document.getElementById("session-summary");
     const statusNode = document.getElementById("status");
     const paymentButtons = document.getElementById("payment-buttons");
@@ -228,6 +238,7 @@
     function setSessionLocked(locked, summaryText = "") {
       planSelect.disabled = locked;
       clientSelect.disabled = locked;
+      testEmailSelect.disabled = locked;
       startButton.disabled = locked;
       resetButton.style.display = locked ? "inline-flex" : "none";
       sessionSummary.textContent = summaryText;
@@ -305,9 +316,20 @@
       clients.forEach((client) => {
         const option = document.createElement("option");
         option.value = client.id;
+        option.dataset.email = client.email || "";
         option.textContent = `${client.name || "Cliente"} - ${client.email || client.id}`;
         clientSelect.appendChild(option);
       });
+    }
+
+    function getSelectedClientEmail() {
+      return clientSelect.selectedOptions[0]?.dataset.email || "";
+    }
+
+    function getSelectedTestEmail() {
+      return testEmailSelect.value === "current"
+        ? getSelectedClientEmail()
+        : testEmailSelect.value;
     }
 
     function loadScript(src, integrity) {
@@ -376,9 +398,16 @@
           throw new Error("Selecciona un cliente para la prueba sandbox.");
         }
 
+        const testBuyerEmail = getSelectedTestEmail();
+
+        if (!testBuyerEmail) {
+          throw new Error("Selecciona un correo de prueba para Cybersource.");
+        }
+
         const session = await postJson("/api/banco-general/sandbox/session", {
           plan: planSelect.value,
-          userId: clientSelect.value
+          userId: clientSelect.value,
+          testBuyerEmail
         });
 
         if (!session.sessionJWT || !session.clientLibrary || !session.clientLibraryIntegrity) {
@@ -394,9 +423,10 @@
         const selectedPlanName = selectedPlanLabel.replace(/\s+-\s+USD\s+\d+(?:\.\d{2})?$/, "");
         const selectedClientLabel = getSelectedOptionText(clientSelect) || clientSelect.value;
         const selectedAmount = planAmounts[planSelect.value] || "monto configurado";
+        const selectedTestEmail = session.testBuyerEmail || testBuyerEmail;
         setSessionLocked(
           true,
-          `Sesion creada para: ${selectedPlanName} - ${selectedAmount}. Cliente: ${selectedClientLabel}. Si deseas cambiar el plan, reinicia la sesion.`
+          `Sesion creada para: ${selectedPlanName} - ${selectedAmount}. Cliente: ${selectedClientLabel}. Correo Cybersource: ${selectedTestEmail}. Si deseas cambiar el plan, reinicia la sesion.`
         );
         setStatus("Cargando libreria oficial de Cybersource...");
         await loadScript(session.clientLibrary, session.clientLibraryIntegrity);

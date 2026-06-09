@@ -110,6 +110,16 @@ const ALLOWED_USER_ROLES = ["client", "teacher"];
 const ALLOWED_REQUEST_STATUSES = ["Pendiente de pago", "Recibida", "Asignada", "Visto", "Trabajando", "En proceso", "Lista", "Entrega subida", "Entregada"];
 const ALLOWED_SUBSCRIPTION_STATUSES = ["Pendiente", "Pagado", "Activa", "Cancelada", "Rechazado", "Reembolsado", "Expirado", "Suspendida", "Pago fallido"];
 const ALLOWED_BANCO_GENERAL_ORDER_STATUSES = ["pending", "authorized", "paid", "failed"];
+const ALLOWED_BANCO_GENERAL_TEST_CASES = [
+  "approved-normal",
+  "3ds-success",
+  "3ds-cancelled",
+  "3ds-wrong-otp",
+  "dm-accept",
+  "dm-reject",
+  "duplicate-reprocess",
+  "other"
+];
 const LEGACY_SUBSCRIPTION_STATUS_MAP = {
   Expirada: "Expirado"
 };
@@ -1103,6 +1113,10 @@ function requireBancoGeneralSandboxTestEmail(value, targetUser) {
   }
 
   return selectedEmail;
+}
+
+function requireBancoGeneralSandboxTestCase(value) {
+  return requireAllowedValue(value || "approved-normal", ALLOWED_BANCO_GENERAL_TEST_CASES, "El caso de prueba Banco General");
 }
 
 function createBancoGeneralSessionRequestBody({ plan, orderId, buyerEmail = "" }) {
@@ -2692,10 +2706,12 @@ function sanitizeBancoGeneralOrder(order, usersById) {
     plan,
     amount: sanitizePaymentAmount(order.amount, plan),
     currency: toCleanString(order.currency || BG_CYBERSOURCE_CURRENCY || "USD", 8) || "USD",
+    testCase: requireBancoGeneralSandboxTestCase(order.testCase),
     status: requireAllowedValue(order.status || "pending", ALLOWED_BANCO_GENERAL_ORDER_STATUSES, "El estado Banco General"),
     cybersourceTestEmail: normalizeEmail(order.cybersourceTestEmail || ""),
     cybersourceSessionId: toCleanString(order.cybersourceSessionId, 120),
     cybersourceCaptureContextJti: toCleanString(order.cybersourceCaptureContextJti, 120),
+    cybersourceStatus: toCleanString(order.cybersourceStatus, 40).toUpperCase(),
     cybersourceTransactionId: toCleanString(order.cybersourceTransactionId, 120),
     cybersourceNetworkTransactionId: toCleanString(order.cybersourceNetworkTransactionId, 120),
     cybersourceReconciliationId: toCleanString(order.cybersourceReconciliationId, 120),
@@ -3974,6 +3990,61 @@ app.get("/api/yappy/config", (request, response) => {
   });
 });
 
+app.get("/api/banco-general/sandbox/orders", adminActionRateLimit, (request, response) => {
+  const auth = requireAuth(request, response);
+
+  if (!auth) {
+    return;
+  }
+
+  if (auth.user.role !== "admin") {
+    sendError(response, createPublicError(403, "Solo el administrador puede revisar pruebas Banco General."));
+    return;
+  }
+
+  if (!isBancoGeneralSandboxTestEnabled()) {
+    sendError(response, createPublicError(404, "Ruta no encontrada."));
+    return;
+  }
+
+  try {
+    const state = getValidatedState();
+    const usersById = new Map(state.oa_users.map((user) => [user.id, user]));
+    const subscriptionsById = new Map(state.oa_subscriptions.map((subscription) => [subscription.id, subscription]));
+    const orders = state.bancoGeneralOrders.slice(0, 50).map((order) => {
+      const user = usersById.get(order.userId);
+      const subscriptionIdPresent = Boolean(order.subscriptionId && subscriptionsById.has(order.subscriptionId));
+
+      return {
+        orderId: order.id,
+        testCase: order.testCase || "approved-normal",
+        customerEmail: normalizeEmail(user?.email || ""),
+        cybersourceTestEmail: normalizeEmail(order.cybersourceTestEmail || ""),
+        plan: order.plan,
+        amount: order.amount,
+        currency: order.currency,
+        orderStatus: order.status,
+        cybersourceStatus: order.cybersourceStatus || "",
+        responseCode: order.cybersourceProcessorResponseCode || "",
+        reasonCodePresent: Boolean(order.cybersourceReasonCode),
+        reasonCode: order.cybersourceReasonCode || "",
+        replyMessagePresent: Boolean(order.cybersourceReplyMessage),
+        replyMessage: order.cybersourceReplyMessage || "",
+        validationMode: order.cybersourceValidationMode || "status-responseCode",
+        transactionIdPresent: Boolean(order.cybersourceTransactionId),
+        creditsGranted: order.status === "paid" && subscriptionIdPresent,
+        subscriptionIdPresent,
+        createdAt: order.createdAt || "",
+        paidAt: order.paidAt || ""
+      };
+    });
+
+    response.json({ ok: true, orders });
+  } catch (error) {
+    sendError(response, error, "No se pudieron cargar las pruebas Banco General.");
+  }
+});
+
 app.post("/api/banco-general/sandbox/session", adminActionRateLimit, async (request, response) => {
   const auth = requireAuth(request, response);
 
@@ -3992,6 +4063,7 @@ app.post("/api/banco-general/sandbox/session", adminActionRateLimit, async (requ
     const plan = requireAllowedValue(request.body?.plan || "creditos10", ALLOWED_PLANS, "El plan");
     const targetUserId = requireCleanString(request.body?.userId, "El cliente de prueba", 80);
     const targetUser = state.oa_users.find((user) => user.id === targetUserId && (user.role || "client") === "client");
+    const testCase = requireBancoGeneralSandboxTestCase(request.body?.testCase);
 
     if (!targetUser) {
       throw createPublicError(404, "Cliente de prueba no encontrado.");
@@ -4008,6 +4080,7 @@ app.post("/api/banco-general/sandbox/session", adminActionRateLimit, async (requ
       plan,
       amount: getPlanPrice(plan),
       currency: BG_CYBERSOURCE_CURRENCY,
+      testCase,
       status: "pending",
       cybersourceSessionId: result.requestId || result.sessionId || "",
       cybersourceCaptureContextJti: result.sessionJti || "",
@@ -4022,6 +4095,7 @@ app.post("/api/banco-general/sandbox/session", adminActionRateLimit, async (requ
       orderId,
       userId: targetUser.id,
       plan,
+      testCase,
       amount: order.amount,
       currency: order.currency,
       testEmailMode: testBuyerEmail === "accept@accept.com" || testBuyerEmail === "reject@reject.com"
@@ -4038,6 +4112,7 @@ app.post("/api/banco-general/sandbox/session", adminActionRateLimit, async (requ
       clientLibrary: result.clientLibrary,
       clientLibraryIntegrity: result.clientLibraryIntegrity,
       environment: "sandbox",
+      testCase,
       testBuyerEmail,
       sessionJwtReceived: result.sessionJwtReceived,
       clientLibraryReceived: result.clientLibraryReceived,
@@ -4104,7 +4179,7 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
         ok: true,
         orderId,
         orderStatus: "paid",
-        cybersourceStatus: "PAID",
+        cybersourceStatus: order.cybersourceStatus || "PAID",
         responseCode: order.cybersourceProcessorResponseCode || "",
         reasonCodePresent: Boolean(order.cybersourceReasonCode),
         reasonCode: order.cybersourceReasonCode || "",
@@ -4194,6 +4269,7 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
       order.cybersourceTransactionId = paymentDetails.transactionId;
       order.cybersourceNetworkTransactionId = paymentDetails.networkTransactionId;
       order.cybersourceReconciliationId = paymentDetails.reconciliationId;
+      order.cybersourceStatus = paymentDetails.status;
       order.cybersourceProcessorResponseCode = paymentDetails.responseCode;
       order.cybersourceReasonCode = paymentDetails.reasonCode;
       order.cybersourceReplyMessage = paymentDetails.replyMessage;
@@ -4247,6 +4323,7 @@ app.post("/api/banco-general/sandbox/confirm", adminActionRateLimit, (request, r
     order.cybersourceTransactionId = paymentDetails.transactionId;
     order.cybersourceNetworkTransactionId = paymentDetails.networkTransactionId;
     order.cybersourceReconciliationId = paymentDetails.reconciliationId;
+    order.cybersourceStatus = paymentDetails.status;
     order.cybersourceProcessorResponseCode = paymentDetails.responseCode;
     order.cybersourceReasonCode = paymentDetails.reasonCode;
     order.cybersourceReplyMessage = paymentDetails.replyMessage;

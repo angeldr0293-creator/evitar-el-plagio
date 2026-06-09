@@ -153,6 +153,50 @@
       margin-top: 16px;
       font-size: 0.92rem;
     }
+
+    .evidence-panel {
+      margin-top: 24px;
+    }
+
+    .table-wrap {
+      margin-top: 16px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      min-width: 980px;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f8fafc;
+      color: var(--ink);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .empty-row {
+      text-align: center;
+      color: var(--muted);
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
@@ -184,6 +228,20 @@
         </label>
 
         <label>
+          Caso de prueba
+          <select id="test-case">
+            <option value="approved-normal">Pago aprobado normal</option>
+            <option value="3ds-success">3DS exitoso</option>
+            <option value="3ds-cancelled">3DS cancelado</option>
+            <option value="3ds-wrong-otp">3DS OTP incorrecto</option>
+            <option value="dm-accept">Decision Manager accept@accept.com</option>
+            <option value="dm-reject">Decision Manager reject@reject.com</option>
+            <option value="duplicate-reprocess">Duplicado / reproceso</option>
+            <option value="other">Otro</option>
+          </select>
+        </label>
+
+        <label>
           Correo de prueba para Cybersource
           <select id="test-email">
             <option value="current">Correo actual/default</option>
@@ -202,6 +260,37 @@
 
       <p class="small">Esta página acredita créditos únicamente en modo sandbox Banco General. No usar en producción ni con tarjetas reales.</p>
     </section>
+
+    <section class="panel evidence-panel" aria-labelledby="orders-title">
+      <h2 id="orders-title">Historial sandbox Banco General</h2>
+      <p>Ultimas ordenes privadas para documentar la matriz de pruebas.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Orden</th>
+              <th>Caso</th>
+              <th>Cliente</th>
+              <th>Correo CS</th>
+              <th>Plan</th>
+              <th>Monto</th>
+              <th>Estado</th>
+              <th>CS</th>
+              <th>Reason</th>
+              <th>Creditos</th>
+              <th>Creada</th>
+              <th>Pagada</th>
+            </tr>
+          </thead>
+          <tbody id="orders-body">
+            <tr>
+              <td class="empty-row" colspan="12">Cargando ordenes sandbox...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
   <script>
@@ -209,11 +298,24 @@
     const resetButton = document.getElementById("reset-button");
     const planSelect = document.getElementById("plan");
     const clientSelect = document.getElementById("client-id");
+    const testCaseSelect = document.getElementById("test-case");
     const testEmailSelect = document.getElementById("test-email");
     const sessionSummary = document.getElementById("session-summary");
     const statusNode = document.getElementById("status");
     const paymentButtons = document.getElementById("payment-buttons");
+    const ordersBody = document.getElementById("orders-body");
     let currentOrderId = "";
+
+    const testCaseLabels = {
+      "approved-normal": "Pago aprobado normal",
+      "3ds-success": "3DS exitoso",
+      "3ds-cancelled": "3DS cancelado",
+      "3ds-wrong-otp": "3DS OTP incorrecto",
+      "dm-accept": "Decision Manager accept@accept.com",
+      "dm-reject": "Decision Manager reject@reject.com",
+      "duplicate-reprocess": "Duplicado / reproceso",
+      other: "Otro"
+    };
 
     const planAmounts = {
       creditos10: "USD 3.99",
@@ -238,6 +340,7 @@
     function setSessionLocked(locked, summaryText = "") {
       planSelect.disabled = locked;
       clientSelect.disabled = locked;
+      testCaseSelect.disabled = locked;
       testEmailSelect.disabled = locked;
       startButton.disabled = locked;
       resetButton.style.display = locked ? "inline-flex" : "none";
@@ -332,6 +435,76 @@
         : testEmailSelect.value;
     }
 
+    function formatBoolean(value) {
+      return value ? "Si" : "No";
+    }
+
+    function formatDate(value) {
+      if (!value) {
+        return "-";
+      }
+
+      const date = new Date(value);
+
+      if (Number.isNaN(date.getTime())) {
+        return "-";
+      }
+
+      return date.toLocaleString("es-PA", {
+        dateStyle: "short",
+        timeStyle: "short"
+      });
+    }
+
+    function appendCell(row, value) {
+      const cell = document.createElement("td");
+      cell.textContent = value === undefined || value === null || value === "" ? "-" : String(value);
+      row.appendChild(cell);
+    }
+
+    function renderOrders(orders) {
+      ordersBody.replaceChildren();
+
+      if (!orders.length) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.className = "empty-row";
+        cell.colSpan = 12;
+        cell.textContent = "No hay ordenes sandbox registradas.";
+        row.appendChild(cell);
+        ordersBody.appendChild(row);
+        return;
+      }
+
+      orders.forEach((order) => {
+        const row = document.createElement("tr");
+        appendCell(row, order.orderId);
+        appendCell(row, testCaseLabels[order.testCase] || order.testCase);
+        appendCell(row, order.customerEmail);
+        appendCell(row, order.cybersourceTestEmail);
+        appendCell(row, order.plan);
+        appendCell(row, `${order.currency || "USD"} ${order.amount || "-"}`);
+        appendCell(row, order.orderStatus);
+        appendCell(row, `${order.cybersourceStatus || "-"} / ${order.responseCode || "-"}`);
+        appendCell(
+          row,
+          order.reasonCodePresent
+            ? `${order.reasonCode || "-"} / ${order.replyMessage || "-"}`
+            : `No presente / ${order.validationMode || "-"}`
+        );
+        appendCell(row, formatBoolean(order.creditsGranted));
+        appendCell(row, formatDate(order.createdAt));
+        appendCell(row, formatDate(order.paidAt));
+        ordersBody.appendChild(row);
+      });
+    }
+
+    async function loadOrders() {
+      const payload = await getJson("/api/banco-general/sandbox/orders");
+      const orders = Array.isArray(payload.orders) ? payload.orders : [];
+      renderOrders(orders);
+    }
+
     function loadScript(src, integrity) {
       return new Promise((resolve, reject) => {
         if (!src) {
@@ -376,15 +549,18 @@
 
       if (confirmation.alreadyProcessed) {
         setStatus("Esta orden ya fue procesada anteriormente.", "success");
+        await loadOrders();
         return;
       }
 
       if (confirmation.creditsGranted) {
         setStatus("Creditos acreditados en sandbox Banco General.", "success");
+        await loadOrders();
         return;
       }
 
       setStatus(confirmation.message || "Orden Banco General validada en sandbox.", "success");
+      await loadOrders();
     }
 
     async function openUnifiedCheckout() {
@@ -407,6 +583,7 @@
         const session = await postJson("/api/banco-general/sandbox/session", {
           plan: planSelect.value,
           userId: clientSelect.value,
+          testCase: testCaseSelect.value,
           testBuyerEmail
         });
 
@@ -423,11 +600,13 @@
         const selectedPlanName = selectedPlanLabel.replace(/\s+-\s+USD\s+\d+(?:\.\d{2})?$/, "");
         const selectedClientLabel = getSelectedOptionText(clientSelect) || clientSelect.value;
         const selectedAmount = planAmounts[planSelect.value] || "monto configurado";
+        const selectedTestCase = getSelectedOptionText(testCaseSelect) || testCaseSelect.value;
         const selectedTestEmail = session.testBuyerEmail || testBuyerEmail;
         setSessionLocked(
           true,
-          `Sesion creada para: ${selectedPlanName} - ${selectedAmount}. Cliente: ${selectedClientLabel}. Correo Cybersource: ${selectedTestEmail}. Si deseas cambiar el plan, reinicia la sesion.`
+          `Sesion creada para: ${selectedPlanName} - ${selectedAmount}. Caso: ${selectedTestCase}. Cliente: ${selectedClientLabel}. Correo Cybersource: ${selectedTestEmail}. Si deseas cambiar el plan, reinicia la sesion.`
         );
+        await loadOrders();
         setStatus("Cargando libreria oficial de Cybersource...");
         await loadScript(session.clientLibrary, session.clientLibraryIntegrity);
 
@@ -460,6 +639,12 @@
       option.textContent = "No se pudieron cargar clientes";
       clientSelect.appendChild(option);
       setStatus(safeMessage, "error");
+    });
+
+    loadOrders().catch((error) => {
+      const safeMessage = sanitizeError(error);
+      console.error("Banco General sandbox:", safeMessage);
+      renderOrders([]);
     });
 
     startButton.addEventListener("click", openUnifiedCheckout);

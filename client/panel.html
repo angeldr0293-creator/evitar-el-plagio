@@ -201,6 +201,19 @@
       font-size: 17px;
     }
 
+    .welcome-actions {
+      display: none;
+      margin-top: 22px;
+    }
+
+    .welcome-actions .btn {
+      background: white;
+      color: #071832;
+      box-shadow: 0 16px 32px rgba(0,0,0,0.16);
+      min-height: 46px;
+      padding: 11px 18px;
+    }
+
     .stats {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -649,6 +662,9 @@
         <p>
           Desde aquí puedes administrar tus solicitudes, revisar el estado de tus trabajos y enviar nuevos documentos para humanización, reducción de similitud o apoyo con citas.
         </p>
+        <div class="welcome-actions" id="welcome-actions">
+          <a class="btn" id="welcome-request-action" href="formulario.html">Solicitar humanización</a>
+        </div>
       </section>
 
       <section class="stats">
@@ -861,11 +877,15 @@
         ? `${creditSummary.availableCredits} de ${creditSummary.totalCredits} créditos disponibles`
         : "Sin créditos activos";
       const accountAction = document.getElementById("account-action");
+      const welcomeActions = document.getElementById("welcome-actions");
+      const welcomeRequestAction = document.getElementById("welcome-request-action");
       const canSendWork = creditSummary.availableCredits >= 2;
       const emailVerified = isCurrentUserEmailVerified(user);
 
       accountAction.textContent = canSendWork ? "Enviar trabajo" : "Comprar créditos";
       accountAction.href = emailVerified ? (canSendWork ? "formulario.html" : "precios.html") : "registro.html";
+      welcomeActions.style.display = emailVerified ? "flex" : "none";
+      welcomeRequestAction.href = canSendWork ? "formulario.html" : "precios.html";
       document.querySelectorAll("[data-request-action]").forEach((link) => {
         link.textContent = canSendWork ? "Nueva solicitud" : "Comprar créditos";
         link.href = emailVerified ? (canSendWork ? "formulario.html" : "precios.html") : "registro.html";

@@ -885,7 +885,7 @@
       accountAction.textContent = canSendWork ? "Enviar trabajo" : "Comprar créditos";
       accountAction.href = emailVerified ? (canSendWork ? "formulario.html" : "precios.html") : "registro.html";
       welcomeActions.style.display = emailVerified ? "flex" : "none";
-      welcomeRequestAction.href = canSendWork ? "formulario.html" : "precios.html";
+      welcomeRequestAction.href = "formulario.html";
       document.querySelectorAll("[data-request-action]").forEach((link) => {
         link.textContent = canSendWork ? "Nueva solicitud" : "Comprar créditos";
         link.href = emailVerified ? (canSendWork ? "formulario.html" : "precios.html") : "registro.html";
